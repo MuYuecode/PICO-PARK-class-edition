@@ -30,7 +30,6 @@ public:
         auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
         temp->Play();
     }
-
     [[nodiscard]] bool IfAnimationEnds() const;
 
 };
