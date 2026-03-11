@@ -6,8 +6,8 @@
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
 #include "Util/Text.hpp"
-#include "PhaseResourceManger.hpp"
 #include "AnimatedCharacter.hpp"
+#include "PhaseResourceManger.hpp"
 
 class App {
 public:
@@ -28,30 +28,16 @@ public:
 private:
     void ValidTask();
 
-private:
-    enum class Phase {
-        CHANGE_CHARACTER_IMAGE,
-        ABLE_TO_MOVE,
-        COLLIDE_DETECTION,
-        BEE_ANIMATION,
-        OPEN_THE_DOORS,
-        COUNTDOWN,
-    };
-
-
     State m_CurrentState = State::START;
-    Phase m_Phase = Phase::CHANGE_CHARACTER_IMAGE;
 
     Util::Renderer m_Root;
 
-    std::shared_ptr<Character> m_Giraffe;
-    std::shared_ptr<Character> m_Chest;
-    std::vector<std::shared_ptr<Character>> m_Doors;
+    std::shared_ptr<Character> m_WhiteBackground;
+    std::shared_ptr<Character> m_Floor;
+    // std::shared_ptr<AnimatedCharacter> m_BlueCat;
+    std::shared_ptr<Character> m_BlueCat ;
+    std::shared_ptr<Character> m_Header;
 
-    std::shared_ptr<AnimatedCharacter> m_Bee;
-    std::shared_ptr<AnimatedCharacter> m_Ball;
-
-    std::shared_ptr<PhaseResourceManger> m_PRM;
 
     bool m_EnterDown = false;
 };

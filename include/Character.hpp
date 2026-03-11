@@ -27,6 +27,8 @@ public:
 
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
 
+    void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
+
     // TODO: Implement the collision detection
     [[nodiscard]] bool IfCollides(const std::shared_ptr<Character>& other) const {
         float distance = glm::distance(this->GetPosition(), other->GetPosition());
