@@ -8,6 +8,7 @@
 #include "Util/Text.hpp"
 #include "AnimatedCharacter.hpp"
 #include "PhaseResourceManger.hpp"
+#include "GameText.hpp"
 
 class App {
 public:
@@ -36,8 +37,10 @@ private:
     std::shared_ptr<Character> m_Floor;
     // std::shared_ptr<AnimatedCharacter> m_BlueCat;
     std::shared_ptr<Character> m_BlueCat ;
-    std::shared_ptr<Character> m_Header;
-
+    // std::shared_ptr<Character> m_Header; // use image
+    std::shared_ptr<GameText> m_TitleMain;
+    std::shared_ptr<GameText> m_TitleLine;
+    std::shared_ptr<GameText> m_TitleSub;
 
     bool m_EnterDown = false;
 };

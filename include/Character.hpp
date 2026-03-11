@@ -5,7 +5,8 @@
 
 #include "Util/GameObject.hpp"
 
-class Character : public Util::GameObject {
+class Character : public Util::GameObject
+{
 public:
     explicit Character(const std::string& ImagePath);
 
@@ -29,13 +30,14 @@ public:
 
     void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
 
-    // TODO: Implement the collision detection
     [[nodiscard]] bool IfCollides(const std::shared_ptr<Character>& other) const {
         float distance = glm::distance(this->GetPosition(), other->GetPosition());
         return distance < 50.0f;
     }
 
-    // TODO: Add and implement more methods and properties as needed to finish Giraffe Adventure.
+    [[nodiscard]] bool IsStandingOn(const std::shared_ptr<Character>& other, float surfaceOffset) const {
+        return this->GetPosition().y <= (other->GetPosition().y + surfaceOffset);
+    }
 
 private:
     void ResetPosition() { m_Transform.translation = {0, 0}; }

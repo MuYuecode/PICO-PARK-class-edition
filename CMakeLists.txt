@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26)
-project(GiraffeAdventure)
+project(picopart)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -25,7 +25,8 @@ FetchContent_MakeAvailable(ptsd)
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 file(GLOB_RECURSE HEADER_FILES include/*.hpp)
 
-add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES})
+add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
+        include/GameText.hpp)
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4)
