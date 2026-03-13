@@ -17,10 +17,12 @@ public:
         END
     };
     enum class GameState {
-        STATE_00,   // header screen
-        STATE_01_1, // Menu screen - EXIT
-        STATE_01_2, // Menu screen - OPTION
-        STATE_01_3  // Menu screen - LOCAL PLAY MODE
+        STATE_00,     // header screen
+        STATE_01_1,   // Menu screen - EXIT
+        STATE_01_1_1, // Menu screen - EXIT - NO
+        STATE_01_1_2, // Menu screen - EXIT - YES
+        STATE_01_2,   // Menu screen - OPTION
+        STATE_01_3    // Menu screen - LOCAL PLAY MODE
     };
 
     State GetCurrentState() const { return m_CurrentState; }
@@ -36,6 +38,8 @@ private:
     void UpdateState00() ;
     void UpdateState01() ;
     void UpdateState01_1() ;
+    void UpdateState01_1_1() ;
+    void UpdateState01_1_2() ;
     void UpdateState01_2() ;
     void UpdateState01_3() ;
 
@@ -66,7 +70,15 @@ private:
     std::shared_ptr<Character> m_ExitGameButton; // 小黑色 X
     std::shared_ptr<Character> m_Left_Tri_Button;
     std::shared_ptr<Character> m_Right_Tri_Button;
-    // float m_ButtonTimer = 0.0f; // 用於控制 01-X 左右按鈕動畫停留 0.5 秒
+    // 新增：用於控制 01-X 左右按鈕動畫停留 0.5 秒的獨立計時器
+    float m_LeftButtonTimer = 0.0f;
+    float m_RightButtonTimer = 0.0f;
+
+    // --- 01-1-X.png 所需物件 ---
+    std::shared_ptr<GameText> m_ExitGame_1Text;
+    std::shared_ptr<GameText> m_YESText;
+    std::shared_ptr<GameText> m_NOText;
+    std::shared_ptr<Character> m_Choice_Frame;
 };
 
 #endif

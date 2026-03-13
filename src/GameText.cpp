@@ -1,25 +1,15 @@
-#include "Character.hpp"
-#include "Util/Image.hpp"
+//
+// Created by cody2 on 2026/3/13.
+//
 
-// 新增這兩行來獲取滑鼠輸入
+#include "GameText.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
-
-Character::Character(const std::string& ImagePath) {
-    SetImage(ImagePath);
-    ResetPosition();
-}
-
-void Character::SetImage(const std::string& ImagePath) {
-    m_ImagePath = ImagePath;
-
-    m_Drawable = std::make_shared<Util::Image>(m_ImagePath);
-}
 
 // ==========================================
 // 實作：偵測滑鼠是否懸停
 // ==========================================
-bool Character::IsMouseHovering() const {
+bool GameText::IsMouseHovering() const {
     // 取得滑鼠當前座標
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
@@ -28,7 +18,6 @@ bool Character::IsMouseHovering() const {
     glm::vec2 mySize = this->GetSize();
     float halfWidth = mySize.x/2 ;
     float halfHeight = mySize.y/2 ;
-
     // 進行 AABB (矩形範圍) 碰撞計算
     return (mousePos.x >= myPos.x - halfWidth &&
             mousePos.x <= myPos.x + halfWidth &&
@@ -39,11 +28,10 @@ bool Character::IsMouseHovering() const {
 // ==========================================
 // 實作：偵測是否被左鍵點擊
 // ==========================================
-bool Character::IsLeftClicked() const {
+bool GameText::IsLeftClicked() const {
     // 先確認滑鼠左鍵有被按下
     if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
         // 直接重複利用上面寫好的懸停判斷，只要在範圍內就是被點擊了！
-
         return IsMouseHovering();
     }
     return false;

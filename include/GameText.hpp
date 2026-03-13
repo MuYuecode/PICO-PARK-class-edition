@@ -22,6 +22,20 @@ public:
     void SetVisible(bool visible) { m_Visible = visible; }
 
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
+
+    [[nodiscard]] const glm::vec2 GetPosition() const { return m_Transform.translation; }
+
+    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
+
+    // ==========================================
+    // 新增：偵測滑鼠是否懸停在文字範圍內
+    // ==========================================
+    [[nodiscard]] bool IsMouseHovering() const;
+
+    // ==========================================
+    // 新增：偵測文字是否被滑鼠左鍵點擊
+    // ==========================================
+    [[nodiscard]] bool IsLeftClicked() const;
 };
 
 #endif //GAMETEXT_HPP

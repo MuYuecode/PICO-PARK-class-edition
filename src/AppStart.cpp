@@ -18,7 +18,7 @@ void App::Start() {
 
     // -- big title --
     m_Header = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Background/header.png");
-    m_Header->SetZIndex(10);
+    m_Header->SetZIndex(30);
     m_Header->SetPosition({0.0f, 135.0f});
     m_Root.AddChild(m_Header);
 
@@ -52,7 +52,7 @@ void App::Start() {
     m_RedCat->SetZIndex(20);
     m_RedCat->SetPosition({30.0f, -281.5f});
     m_RedCat->SetScale({0.2f, 0.2f});
-    m_Root.AddChild(m_RedCat);
+    m_Root.AddChild(m_RedCat) ;
 
     // === 初始化 STATE_01 所需物件 (預設隱藏) ===
     m_ExitGameText = std::make_shared<GameText>("EXIT GAME", 65, black);
@@ -92,6 +92,28 @@ void App::Start() {
     m_Right_Tri_Button->SetPosition({305.0f, -153.0f});
     m_Right_Tri_Button->SetVisible(false);
     m_Root.AddChild(m_Right_Tri_Button);
+
+    m_ExitGame_1Text = std::make_shared<GameText>("EXIT GAME ?", 65, black) ;
+    m_ExitGame_1Text->SetPosition({10.0f, -53.0f});
+    m_ExitGame_1Text->SetVisible(false);
+    m_Root.AddChild(m_ExitGame_1Text);
+
+    m_YESText = std::make_shared<GameText>("YES", 65, black) ;
+    m_YESText->SetZIndex(10);
+    m_YESText->SetPosition({-110.0f,-183.0f}) ;
+    m_YESText->SetVisible(false);
+    m_Root.AddChild(m_YESText);
+
+    m_NOText = std::make_shared<GameText>("NO", 65, black) ;
+    m_NOText->SetZIndex(10);
+    m_NOText->SetPosition({130.0f,-183.0f}) ;
+    m_NOText->SetVisible(false);
+    m_Root.AddChild(m_NOText);
+
+    m_Choice_Frame = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Background/Choice_Frame.png") ;
+    m_Choice_Frame->SetZIndex(20);
+    m_Choice_Frame->SetVisible(false) ;
+    m_Root.AddChild(m_Choice_Frame);
 
     m_CurrentState = State::UPDATE; // don't delete this line
 }

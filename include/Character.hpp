@@ -2,8 +2,9 @@
 #define CHARACTER_HPP
 
 #include <string>
-
 #include "Util/GameObject.hpp"
+
+
 
 class Character : public Util::GameObject
 {
@@ -24,6 +25,8 @@ public:
 
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
 
+    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
+
     void SetImage(const std::string& ImagePath);
 
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
@@ -38,6 +41,16 @@ public:
     [[nodiscard]] bool IsStandingOn(const std::shared_ptr<Character>& other, float surfaceOffset) const {
         return this->GetPosition().y <= (other->GetPosition().y + surfaceOffset);
     }
+
+    // ==========================================
+    // 新增：偵測滑鼠是否懸停在圖片範圍內
+    // ==========================================
+    [[nodiscard]] bool IsMouseHovering() const;
+
+    // ==========================================
+    // 新增：偵測文字是否被滑鼠左鍵點擊
+    // ==========================================
+    [[nodiscard]] bool IsLeftClicked() const;
 
 private:
     void ResetPosition() { m_Transform.translation = {0, 0}; }
