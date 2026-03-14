@@ -1,84 +1,49 @@
 #ifndef APP_HPP
 #define APP_HPP
 
-#include "pch.hpp" // IWYU pragma: export
+#include "pch.hpp"
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
-#include "AnimatedCharacter.hpp"
 #include "PlayerCat.hpp"
-#include "PhaseResourceManger.hpp"
-#include "GameText.hpp"
+#include "GameContext.hpp"
+#include "Scene.hpp"  // Scene 是完整型別，unique_ptr<Scene> 不需要子類別定義
+
+// 前向宣告只保留「AppStart.cpp 需要呼叫 setter 時」用到的型別
+class TitleScene;
+class MenuScene;
+class ExitConfirmScene;
+class OptionScene;
+class PlayerSelectScene;
 
 class App {
 public:
-    enum class State {
-        START,
-        UPDATE,
-        END
-    };
-    enum class GameState {
-        STATE_00,     // header screen
-        STATE_01_1,   // Menu screen - EXIT
-        STATE_01_1_1, // Menu screen - EXIT - NO
-        STATE_01_1_2, // Menu screen - EXIT - YES
-        STATE_01_2,   // Menu screen - OPTION
-        STATE_01_3    // Menu screen - LOCAL PLAY MODE
-    };
+    enum class State { START, UPDATE, END };
 
     State GetCurrentState() const { return m_CurrentState; }
-    GameState GetGameState() const {return m_GameState;}
 
     void Start();
     void Update();
-    void End(); // NOLINT(readability-convert-member-functions-to-static)
+    void End();
+    // ~App() 不再需要特別宣告，
+    // 因為 unique_ptr<Scene> 使用完整型別，= default 在這裡就夠了
 
 private:
-    // void ValidTask();
+    void TransitionTo(Scene* next);
 
-    void UpdateState00() ;
-    void UpdateState01() ;
-    void UpdateState01_1() ;
-    void UpdateState01_1_1() ;
-    void UpdateState01_1_2() ;
-    void UpdateState01_2() ;
-    void UpdateState01_3() ;
-
-    State m_CurrentState = State::START;
-    GameState m_GameState = GameState::STATE_00;
-
+    State          m_CurrentState = State::START;
     Util::Renderer m_Root;
 
-    // --- 背景與共用物件 ---
-    std::shared_ptr<Character> m_WhiteBackground;
-    std::shared_ptr<Character> m_Floor;
+    std::unique_ptr<GameContext> m_Ctx;
 
-    // --- 00.png 所需物件 ---
-    std::shared_ptr<Character> m_Header ;
-    std::shared_ptr<GameText> m_TitleSub;
-    std::shared_ptr<GameText> m_PressEnterText; // 新增: PRESS ENTER KEY
-    float m_FlashTimer = 0.0f;                  // 新增: 用於控制文字閃爍的計時器
+    // 改成 unique_ptr<Scene>：
+    //   - Scene 已有 virtual destructor，多型 delete 正確
+    //   - App.hpp 不再依賴子類別的完整定義
+    //   - 消除 "incomplete type" 錯誤
+    std::unique_ptr<Scene> m_TitleScene;
+    std::unique_ptr<Scene> m_MenuScene;
+    std::unique_ptr<Scene> m_ExitConfirmScene;
 
-    std::shared_ptr<PlayerCat> m_BlueCat;
-    std::shared_ptr<PlayerCat> m_RedCat;
-
-    // --- 01-X.png 所需物件 ---
-    std::shared_ptr<Character> m_MenuFrame;
-    std::shared_ptr<GameText> m_ExitGameText;
-    std::shared_ptr<GameText> m_OptionText;
-    std::shared_ptr<GameText> m_LocalPlayText;
-
-    std::shared_ptr<Character> m_ExitGameButton; // 小黑色 X
-    std::shared_ptr<Character> m_Left_Tri_Button;
-    std::shared_ptr<Character> m_Right_Tri_Button;
-    // 新增：用於控制 01-X 左右按鈕動畫停留 0.5 秒的獨立計時器
-    float m_LeftButtonTimer = 0.0f;
-    float m_RightButtonTimer = 0.0f;
-
-    // --- 01-1-X.png 所需物件 ---
-    std::shared_ptr<GameText> m_ExitGame_1Text;
-    std::shared_ptr<GameText> m_YESText;
-    std::shared_ptr<GameText> m_NOText;
-    std::shared_ptr<Character> m_Choice_Frame;
+    Scene* m_CurrentScene = nullptr;
 };
 
-#endif
+#endif // APP_HPP

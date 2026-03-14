@@ -29,7 +29,20 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         include/GameText.hpp
         include/PlayerCat.hpp
         src/PlayerCat.cpp
-        src/GameText.cpp)
+        src/GameText.cpp
+        src/OptionMenu.cpp
+        include/OptionMenu.hpp
+        include/UI_Triangle_Button.hpp
+        src/UI_Triangle_Button.cpp
+        include/Scene.hpp
+        include/GameContext.hpp
+        include/Titlescene.hpp
+        src/Titlescene.cpp
+        include/Menuscene.hpp
+        src/Menuscene.cpp
+        include/Exitconfirmscene.hpp
+        src/Exitconfirmscene.cpp
+)
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4)

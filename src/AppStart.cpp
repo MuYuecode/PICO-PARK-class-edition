@@ -1,119 +1,88 @@
 #include "App.hpp"
+#include "TitleScene.hpp"
+#include "MenuScene.hpp"
+#include "ExitConfirmScene.hpp"
 #include "Util/Logger.hpp"
-
 
 void App::Start() {
     LOG_TRACE("Start");
 
-    // -- 預設白色 background --
-    m_WhiteBackground = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Background/white_background.jpg");
-    m_WhiteBackground->SetZIndex(-10);
-    m_WhiteBackground->SetScale({100.0f, 100.0f}); // Make it large enough to cover the screen
-    m_Root.AddChild(m_WhiteBackground);
+    // ── Step 1：GameContext（跨場景共用物件）────────────────────────────────
+    m_Ctx = std::make_unique<GameContext>(m_Root);
 
-    m_Floor = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Background/background_floor.png");
-    m_Floor->SetZIndex(0);
-    m_Floor->SetPosition({0.0f, -340.0f}); // Place at the bottom
-    m_Root.AddChild(m_Floor);
+    m_Ctx->WhiteBackground = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/white_background.jpg");
+    m_Ctx->WhiteBackground->SetZIndex(-10);
+    m_Ctx->WhiteBackground->SetScale({100.0f, 100.0f});
+    m_Root.AddChild(m_Ctx->WhiteBackground);
 
-    // -- big title --
-    m_Header = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Background/header.png");
-    m_Header->SetZIndex(30);
-    m_Header->SetPosition({0.0f, 135.0f});
-    m_Root.AddChild(m_Header);
+    m_Ctx->Floor = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/background_floor.png");
+    m_Ctx->Floor->SetZIndex(0);
+    m_Ctx->Floor->SetPosition({0.0f, -340.0f});
+    m_Root.AddChild(m_Ctx->Floor);
 
+    m_Ctx->BlueCat = std::make_shared<PlayerCat>(
+        std::vector<std::string>{GA_RESOURCE_DIR "/Image/Character/blue_cat.png"},
+        Util::Keycode::A, Util::Keycode::D, Util::Keycode::W);
+    m_Ctx->BlueCat->SetZIndex(20);
+    m_Ctx->BlueCat->SetPosition({-30.0f, -281.5f});
+    m_Ctx->BlueCat->SetScale({0.2f, 0.2f});
+    m_Root.AddChild(m_Ctx->BlueCat);
 
-    // --- title ---
-    Util::Color orange(254, 133, 78, 255);
-    Util::Color black = Util::Color::FromRGB(0,0,0,255) ;
+    m_Ctx->RedCat = std::make_shared<PlayerCat>(
+        std::vector<std::string>{GA_RESOURCE_DIR "/Image/Character/red_cat.png"},
+        Util::Keycode::LEFT, Util::Keycode::RIGHT, Util::Keycode::UP);
+    m_Ctx->RedCat->SetZIndex(20);
+    m_Ctx->RedCat->SetPosition({30.0f, -281.5f});
+    m_Ctx->RedCat->SetScale({0.2f, 0.2f});
+    m_Root.AddChild(m_Ctx->RedCat);
 
-    // sub_title CLASSIC EDITED
-    m_TitleSub = std::make_shared<GameText>("- CLASSIC EDITED -", 46, orange);
-    m_TitleSub->SetPosition({0.0f, -22.5f});
-    m_Root.AddChild(m_TitleSub);
+    // ── Step 2：建立場景 ──────────────────────────────────────────────────────
+    //
+    // 注意相依順序：
+    //   ExitConfirmScene 需要 MenuScene 指標
+    //   MenuScene        需要 ExitConfirmScene 指標
+    //
+    // 解法：先建立 MenuScene（此時 ExitConfirmScene 還是 nullptr），
+    //       再建立 ExitConfirmScene 並把兩個共用物件傳入，
+    //       最後再把 ExitConfirmScene 的指標告訴 MenuScene。
+    //
+    // 因此 MenuScene 需要一個 SetExitConfirmScene() setter，
+    // 或者在 constructor 用 nullptr 占位，之後再 Set。
 
-    // PRESS ENTER KEY
-    m_PressEnterText = std::make_shared<GameText>("PRESS ENTER KEY", 66, orange);
-    m_PressEnterText->SetPosition({0.0f, -155.0f});
-    m_Root.AddChild(m_PressEnterText);
-    // -------------------
+    // MenuScene 傳入的 MenuFrame 與 ExitGameButton 需要在 ExitConfirmScene
+    // 裡修改外觀，所以要先建立這兩個物件並「借」給雙方。
+    // 最乾淨的做法是讓 MenuScene 建立這些物件，再把 shared_ptr 傳給
+    // ExitConfirmScene。這裡示範直接由 App 建立並傳遞。
 
-    // blue_cat
-    std::vector<std::string> blueCatPaths = {GA_RESOURCE_DIR"/Image/Character/blue_cat.png"};
-    m_BlueCat = std::make_shared<PlayerCat>(blueCatPaths, Util::Keycode::A, Util::Keycode::D, Util::Keycode::W);
-    m_BlueCat->SetZIndex(20);
-    m_BlueCat->SetPosition({-30.0f, -281.5f}); // Place on top of the floor
-    m_BlueCat->SetScale({0.2f, 0.2f});
-    m_Root.AddChild(m_BlueCat);
+    auto menuFrame = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
+    menuFrame->SetZIndex(10);
+    menuFrame->SetPosition({0.0f, -105.0f});
 
-    // red_cat
-    std::vector<std::string> redCatPaths = {GA_RESOURCE_DIR"/Image/Character/red_cat.png"};
-    m_RedCat = std::make_shared<PlayerCat>(redCatPaths, Util::Keycode::LEFT, Util::Keycode::RIGHT, Util::Keycode::UP);
-    m_RedCat->SetZIndex(20);
-    m_RedCat->SetPosition({30.0f, -281.5f});
-    m_RedCat->SetScale({0.2f, 0.2f});
-    m_Root.AddChild(m_RedCat) ;
+    auto exitButton = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Button/ExitGameButton.png");
+    exitButton->SetZIndex(20);
+    exitButton->SetPosition({331.0f, -14.0f});
 
-    // === 初始化 STATE_01 所需物件 (預設隱藏) ===
-    m_ExitGameText = std::make_shared<GameText>("EXIT GAME", 65, black);
-    m_ExitGameText->SetPosition({0.0f, -153.0f});
-    m_ExitGameText->SetVisible(false);
-    m_Root.AddChild(m_ExitGameText);
-    m_OptionText = std::make_shared<GameText>("OPTION", 65, black);
-    m_OptionText->SetPosition({0.0f, -153.0f});
-    m_OptionText->SetVisible(false);
-    m_Root.AddChild(m_OptionText);
-    m_LocalPlayText = std::make_shared<GameText>(" LOCAL PLAY MODE", 65, black);
-    m_LocalPlayText->SetPosition({0.0f, -153.0f});
-    m_LocalPlayText->SetVisible(false);
-    m_Root.AddChild(m_LocalPlayText);
+    // 建立時用 make_unique<具體型別>，指派給 unique_ptr<Scene> 完全合法
+    auto exitConfirmScene = std::make_unique<ExitConfirmScene>(
+        *m_Ctx, nullptr, menuFrame, exitButton);
+    auto menuScene = std::make_unique<MenuScene>(
+        *m_Ctx, nullptr, exitConfirmScene.get(), nullptr, nullptr);
+    auto titleScene = std::make_unique<TitleScene>(
+        *m_Ctx, menuScene.get());
 
-    m_MenuFrame = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Background/Menu_Frame.png");
-    m_MenuFrame->SetZIndex(10);
-    m_MenuFrame->SetPosition({0.0f, -105.0f});
-    m_MenuFrame->SetVisible(false);
-    m_Root.AddChild(m_MenuFrame);
+    // setter 在 move 進 unique_ptr<Scene> 之前呼叫，此時還持有具體型別指標
+    menuScene->SetTitleScene(titleScene.get());
+    exitConfirmScene->SetMenuScene(menuScene.get());
 
-    m_ExitGameButton = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Button/ExitGameButton.png") ;
-    m_ExitGameButton->SetZIndex(20);
-    m_ExitGameButton->SetPosition({331.0f, -14.0f});
-    m_ExitGameButton->SetVisible(false);
-    m_Root.AddChild(m_ExitGameButton);
+    // move 進成員（upcast 自動發生）
+    m_TitleScene       = std::move(titleScene);
+    m_MenuScene        = std::move(menuScene);
+    m_ExitConfirmScene = std::move(exitConfirmScene);
 
-    // MenuFrame_x + 305 == right_tri_button
-    m_Left_Tri_Button = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Button/Left_Tri_Button.png") ;
-    m_Left_Tri_Button->SetZIndex(10);
-    m_Left_Tri_Button->SetPosition({-305.0f, -153.0f});
-    m_Left_Tri_Button->SetVisible(false);
-    m_Root.AddChild(m_Left_Tri_Button);
-
-    m_Right_Tri_Button = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Button/Right_Tri_Button.png") ;
-    m_Right_Tri_Button->SetZIndex(10);
-    m_Right_Tri_Button->SetPosition({305.0f, -153.0f});
-    m_Right_Tri_Button->SetVisible(false);
-    m_Root.AddChild(m_Right_Tri_Button);
-
-    m_ExitGame_1Text = std::make_shared<GameText>("EXIT GAME ?", 65, black) ;
-    m_ExitGame_1Text->SetPosition({10.0f, -53.0f});
-    m_ExitGame_1Text->SetVisible(false);
-    m_Root.AddChild(m_ExitGame_1Text);
-
-    m_YESText = std::make_shared<GameText>("YES", 65, black) ;
-    m_YESText->SetZIndex(10);
-    m_YESText->SetPosition({-110.0f,-183.0f}) ;
-    m_YESText->SetVisible(false);
-    m_Root.AddChild(m_YESText);
-
-    m_NOText = std::make_shared<GameText>("NO", 65, black) ;
-    m_NOText->SetZIndex(10);
-    m_NOText->SetPosition({130.0f,-183.0f}) ;
-    m_NOText->SetVisible(false);
-    m_Root.AddChild(m_NOText);
-
-    m_Choice_Frame = std::make_shared<Character>(GA_RESOURCE_DIR"/Image/Background/Choice_Frame.png") ;
-    m_Choice_Frame->SetZIndex(20);
-    m_Choice_Frame->SetVisible(false) ;
-    m_Root.AddChild(m_Choice_Frame);
-
-    m_CurrentState = State::UPDATE; // don't delete this line
+    TransitionTo(m_TitleScene.get());
+    m_CurrentState = State::UPDATE;
 }
