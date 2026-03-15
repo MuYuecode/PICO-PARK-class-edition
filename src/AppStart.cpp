@@ -1,13 +1,14 @@
 #include "App.hpp"
-#include "TitleScene.hpp"
-#include "MenuScene.hpp"
+#include "Titlescene.hpp"
+#include "Menuscene.hpp"
 #include "ExitConfirmScene.hpp"
+#include "OptionMenuScene.hpp"
 #include "Util/Logger.hpp"
 
 void App::Start() {
     LOG_TRACE("Start");
 
-    // ── Step 1：GameContext（跨場景共用物件）────────────────────────────────
+    // ── Step 1：GameContext ───────────────────────────────────────────────────
     m_Ctx = std::make_unique<GameContext>(m_Root);
 
     m_Ctx->WhiteBackground = std::make_shared<Character>(
@@ -21,6 +22,14 @@ void App::Start() {
     m_Ctx->Floor->SetZIndex(0);
     m_Ctx->Floor->SetPosition({0.0f, -340.0f});
     m_Root.AddChild(m_Ctx->Floor);
+
+    // const Util::Color orange(254, 133, 78, 255);
+
+    m_Ctx->Header = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/header.png");
+    m_Ctx->Header->SetZIndex(0);
+    m_Ctx->Header->SetPosition({0.0f, 135.0f});
+    m_Root.AddChild(m_Ctx->Header);
 
     m_Ctx->BlueCat = std::make_shared<PlayerCat>(
         std::vector<std::string>{GA_RESOURCE_DIR "/Image/Character/blue_cat.png"},
@@ -38,50 +47,40 @@ void App::Start() {
     m_Ctx->RedCat->SetScale({0.2f, 0.2f});
     m_Root.AddChild(m_Ctx->RedCat);
 
-    // ── Step 2：建立場景 ──────────────────────────────────────────────────────
-    //
-    // 注意相依順序：
-    //   ExitConfirmScene 需要 MenuScene 指標
-    //   MenuScene        需要 ExitConfirmScene 指標
-    //
-    // 解法：先建立 MenuScene（此時 ExitConfirmScene 還是 nullptr），
-    //       再建立 ExitConfirmScene 並把兩個共用物件傳入，
-    //       最後再把 ExitConfirmScene 的指標告訴 MenuScene。
-    //
-    // 因此 MenuScene 需要一個 SetExitConfirmScene() setter，
-    // 或者在 constructor 用 nullptr 占位，之後再 Set。
-
-    // MenuScene 傳入的 MenuFrame 與 ExitGameButton 需要在 ExitConfirmScene
-    // 裡修改外觀，所以要先建立這兩個物件並「借」給雙方。
-    // 最乾淨的做法是讓 MenuScene 建立這些物件，再把 shared_ptr 傳給
-    // ExitConfirmScene。這裡示範直接由 App 建立並傳遞。
-
-    auto menuFrame = std::make_shared<Character>(
-        GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
-    menuFrame->SetZIndex(10);
-    menuFrame->SetPosition({0.0f, -105.0f});
-
-    auto exitButton = std::make_shared<Character>(
-        GA_RESOURCE_DIR "/Image/Button/ExitGameButton.png");
-    exitButton->SetZIndex(20);
-    exitButton->SetPosition({331.0f, -14.0f});
-
-    // 建立時用 make_unique<具體型別>，指派給 unique_ptr<Scene> 完全合法
-    auto exitConfirmScene = std::make_unique<ExitConfirmScene>(
-        *m_Ctx, nullptr, menuFrame, exitButton);
-    auto menuScene = std::make_unique<MenuScene>(
-        *m_Ctx, nullptr, exitConfirmScene.get(), nullptr, nullptr);
+    // ── Step 2：場景建立 ──────────────────────────────────────────────────────
+    // TitleScene
     auto titleScene = std::make_unique<TitleScene>(
-        *m_Ctx, menuScene.get());
+        *m_Ctx, nullptr);
 
-    // setter 在 move 進 unique_ptr<Scene> 之前呼叫，此時還持有具體型別指標
+    auto menuScene = std::make_unique<MenuScene>(
+        *m_Ctx, titleScene.get(), nullptr, nullptr, nullptr);
+
+    auto exitConfirmScene = std::make_unique<ExitConfirmScene>(
+        *m_Ctx,
+        menuScene.get(),
+        menuScene->GetMenuFrame(),
+        menuScene->GetExitGameButton()
+    );
+
+    // ── 新增 OptionMenuScene ──────────────────────────────────────
+    auto optionMenuScene = std::make_unique<OptionMenuScene>(
+        *m_Ctx,
+        menuScene.get(),
+        menuScene->GetExitGameButton()
+    );
+
     menuScene->SetTitleScene(titleScene.get());
-    exitConfirmScene->SetMenuScene(menuScene.get());
+    menuScene->SetExitConfirmScene(exitConfirmScene.get());
+    menuScene->SetOptionScene(optionMenuScene.get());     // ← 新增（見下方說明）
+    titleScene->SetMenuScene(menuScene.get());
+    // exitConfirmScene->SetMenuScene(menuScene.get()); // 已從建構子傳入
+    // optionMenuScene->SetMenuScene(menuScene.get()); // 同上
 
-    // move 進成員（upcast 自動發生）
+    // unique_ptr<MenuScene> → unique_ptr<Scene> upcast
     m_TitleScene       = std::move(titleScene);
     m_MenuScene        = std::move(menuScene);
     m_ExitConfirmScene = std::move(exitConfirmScene);
+    m_OptionMenuScene  = std::move(optionMenuScene);
 
     TransitionTo(m_TitleScene.get());
     m_CurrentState = State::UPDATE;

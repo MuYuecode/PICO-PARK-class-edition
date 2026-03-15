@@ -30,8 +30,6 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         include/PlayerCat.hpp
         src/PlayerCat.cpp
         src/GameText.cpp
-        src/OptionMenu.cpp
-        include/OptionMenu.hpp
         include/UI_Triangle_Button.hpp
         src/UI_Triangle_Button.cpp
         include/Scene.hpp
@@ -42,6 +40,8 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         src/Menuscene.cpp
         include/Exitconfirmscene.hpp
         src/Exitconfirmscene.cpp
+        include/OptionMenuScene.hpp
+        src/OptionMenuScene.cpp
 )
 
 if(MSVC)

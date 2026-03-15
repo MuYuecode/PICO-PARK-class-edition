@@ -1,0 +1,2779 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+CMakeLists.txt
+include/AnimatedCharacter.hpp
+include/App.hpp
+include/AppUtil.hpp
+include/BackgroundImage.hpp
+include/Character.hpp
+include/Exitconfirmscene.hpp
+include/GameContext.hpp
+include/GameText.hpp
+include/Menuscene.hpp
+include/OptionMenuScene.hpp
+include/PhaseResourceManger.hpp
+include/PlayerCat.hpp
+include/Scene.hpp
+include/Titlescene.hpp
+include/UI_Triangle_Button.hpp
+LICENSE
+README.md
+Resources/Font/FORCEDSQUARE.ttf
+Resources/Font/Monocraft.ttf
+Resources/Font/TerminusTTFWindows-Bold-4.49.3.ttf
+Resources/Image/Background/background_floor.png
+Resources/Image/Background/Choice_Frame.png
+Resources/Image/Background/header.png
+Resources/Image/Background/Menu_Frame.png
+Resources/Image/Background/Option_Choice_Frame.png
+Resources/Image/Background/Option_Menu_Frame.png
+Resources/Image/Background/white_background.jpg
+Resources/Image/Button/ExitGameButton.png
+Resources/Image/Button/Left_Tri_Button_Full.png
+Resources/Image/Button/Left_Tri_Button.png
+Resources/Image/Button/Right_Tri_Button_Full.png
+Resources/Image/Button/Right_Tri_Button.png
+Resources/Image/Character/blue_cat.png
+Resources/Image/Character/red_cat.png
+src/AnimatedCharacter.cpp
+src/AppEnd.cpp
+src/AppStart.cpp
+src/AppUpdate.cpp
+src/AppUtil.cpp
+src/Character.cpp
+src/Exitconfirmscene.cpp
+src/GameText.cpp
+src/main.cpp
+src/Menuscene.cpp
+src/OptionMenuScene.cpp
+src/PhaseManager.cpp
+src/PlayerCat.cpp
+src/Titlescene.cpp
+src/UI_Triangle_Button.cpp
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="include/OptionMenuScene.hpp">
+//
+// Created by cody2 on 2026/3/15.
+//
+
+#ifndef PICOPART_OPTIONMENUSCENE_HPP
+#define PICOPART_OPTIONMENUSCENE_HPP
+
+#include <vector>
+#include <string>
+
+#include "Scene.hpp"
+#include "Character.hpp"
+#include "GameText.hpp"
+#include "UI_Triangle_Button.hpp"
+
+class MenuScene;
+
+/**
+ * @brief 遊戲設定選單場景
+ *
+ * 選單結構（由上至下）：
+ *   OPTION（標題，置中）
+ *   KEYBOARD CONFIG  |  OPEN
+ *   BG COLOR         |  ◀  WHITE  ▶
+ *   BGM VOLUME       |  ◀  0      ▶
+ *   SE VOLUME        |  ◀  0      ▶
+ *   DISP NUMBER      |  ◀  OFF    ▶
+ *   ──────────────────────────────
+ *          OK              CANCEL
+ *
+ * 操作方式：
+ *   W / ↑  : 游標上移
+ *   S / ↓  : 游標下移
+ *   A / 左鍵點擊左方按鈕 : 目前列左調整
+ *   D / 左鍵點擊右方按鈕 : 目前列右調整
+ *   ENTER  : 確認（KEYBOARD CONFIG 開啟子頁；OK/CANCEL 離開）
+ *   ESC / X 按鈕 / CANCEL : 取消並返回 MenuScene
+ *
+ * m_ChoiceFrame 永遠圍住當前選中列的「值」區域（OPEN 或中間文字）。
+ */
+class OptionMenuScene : public Scene {
+public:
+    OptionMenuScene(GameContext& ctx,
+                    MenuScene* menuScene,
+                    std::shared_ptr<Character> exitGameButton);
+    ~OptionMenuScene() override = default;
+
+    void   OnEnter() override;
+    void   OnExit()  override;
+    Scene* Update()  override;
+
+    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
+
+private:
+    // ── 與 MenuScene 共用（借用，不持有所有權）────────────────────────────
+    std::shared_ptr<Character> m_ExitGameButton;
+
+    // ── 大框架 ─────────────────────────────────────────────────────────────
+    std::shared_ptr<Character> m_OptionMenuFrame;
+
+    // ── 選擇框 ─────────────────────────────────────────────────────────────
+    std::shared_ptr<Character> m_ChoiceFrame;
+
+    // ── 標題 ───────────────────────────────────────────────────────────────
+    std::shared_ptr<GameText> m_TitleText;           // "OPTION"
+
+    // ── KEYBOARD CONFIG 列 ─────────────────────────────────────────────────
+    std::shared_ptr<GameText> m_KbConfigLabel;       // "KEYBOARD CONFIG"
+    std::shared_ptr<GameText> m_KbConfigOpen;        // "OPEN"
+
+    // ── BG COLOR 列 ────────────────────────────────────────────────────────
+    std::shared_ptr<GameText>           m_BgColorLabel;
+    std::shared_ptr<UI_Triangle_Button> m_BgColorLeftBtn;
+    std::shared_ptr<GameText>           m_BgColorValue;
+    std::shared_ptr<UI_Triangle_Button> m_BgColorRightBtn;
+
+    // ── BGM VOLUME 列 ──────────────────────────────────────────────────────
+    std::shared_ptr<GameText>           m_BgmVolumeLabel;
+    std::shared_ptr<UI_Triangle_Button> m_BgmVolumeLeftBtn;
+    std::shared_ptr<GameText>           m_BgmVolumeValue;
+    std::shared_ptr<UI_Triangle_Button> m_BgmVolumeRightBtn;
+
+    // ── SE VOLUME 列 ───────────────────────────────────────────────────────
+    std::shared_ptr<GameText>           m_SeVolumeLabel;
+    std::shared_ptr<UI_Triangle_Button> m_SeVolumeLeftBtn;
+    std::shared_ptr<GameText>           m_SeVolumeValue;
+    std::shared_ptr<UI_Triangle_Button> m_SeVolumeRightBtn;
+
+    // ── DISP NUMBER 列 ─────────────────────────────────────────────────────
+    std::shared_ptr<GameText>           m_DispNumberLabel;
+    std::shared_ptr<UI_Triangle_Button> m_DispNumberLeftBtn;
+    std::shared_ptr<GameText>           m_DispNumberValue;
+    std::shared_ptr<UI_Triangle_Button> m_DispNumberRightBtn;
+
+    // ── 底部按鈕 ───────────────────────────────────────────────────────────
+    std::shared_ptr<GameText> m_OkText;
+    std::shared_ptr<GameText> m_CancelText;
+
+    // ── 切換目標 ───────────────────────────────────────────────────────────
+    MenuScene* m_MenuScene = nullptr;
+
+    // ── 選單值狀態 ─────────────────────────────────────────────────────────
+    // 可擴充：在 s_BgColorOptions 中新增顏色字串即可
+    static const std::vector<std::string> s_BgColorOptions;
+
+    int  m_BgColorIndex = 0;    // index into s_BgColorOptions
+    int  m_BgmVolume    = 0;    // 0–20
+    int  m_SeVolume     = 0;    // 0–20
+    bool m_DispNumber   = false;// false = OFF, true = ON
+
+    // ── 游標列（0 = KEYBOARD_CONFIG … 6 = CANCEL）─────────────────────────
+    int m_SelectedRow   = 0;
+
+    static constexpr int ROW_COUNT = 7;
+
+    // ── 列 Y 座標（螢幕空間，中心點）──────────────────────────────────────
+    static constexpr float ROW_Y_KB    =  145.0f;
+    static constexpr float ROW_Y_BG    =  60.0f;
+    static constexpr float ROW_Y_BGM   = -25.0f;
+    static constexpr float ROW_Y_SE    = -110.0f;
+    static constexpr float ROW_Y_DISP  = -195.0f;
+    static constexpr float ROW_Y_BTN   = -275.0f;
+
+    // ── 欄 X 座標（螢幕空間，中心點）──────────────────────────────────────
+    // 左方標籤欄
+    static constexpr float COL_LABEL_X      = -155.0f;
+    // 右方：左三角按鈕、中間值文字、右三角按鈕
+    static constexpr float COL_LEFT_BTN_X   =  100.0f;
+    static constexpr float COL_VALUE_X      =  230.0f;
+    static constexpr float COL_RIGHT_BTN_X  =  330.0f;
+    // 底部 OK / CANCEL（對稱排列）
+    static constexpr float COL_OK_X         = -130.0f;
+    static constexpr float COL_CANCEL_X     =  130.0f;
+
+    // ── 輔助函式 ───────────────────────────────────────────────────────────
+    void UpdateChoiceFrame();
+    void UpdateValueTexts();
+
+    void DecrementRow();
+    void IncrementRow();
+    void AdjustLeft(int row);
+    void AdjustRight(int row);
+};
+
+#endif //PICOPART_OPTIONMENUSCENE_HPP
+</file>
+
+<file path="src/OptionMenuScene.cpp">
+//
+// Created by cody2 on 2026/3/15.
+//
+
+#include "OptionMenuScene.hpp"
+#include "Menuscene.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+#include "Util/Logger.hpp"
+
+// ────────────────────────────────────────────────────────────────────────────
+// 靜態資料：BG COLOR 選項清單（新增顏色只需在此處追加字串）
+// ────────────────────────────────────────────────────────────────────────────
+const std::vector<std::string> OptionMenuScene::s_BgColorOptions = {
+    "WHITE",
+    // "BLACK",   ← 示例：未來可新增其他顏色
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// 建構子：建立所有 UI 物件（尚未加入渲染樹）
+// ────────────────────────────────────────────────────────────────────────────
+OptionMenuScene::OptionMenuScene(GameContext& ctx,
+                                 MenuScene* menuScene,
+                                 std::shared_ptr<Character> exitGameButton)
+    : Scene(ctx)
+    , m_ExitGameButton(std::move(exitGameButton))
+    , m_MenuScene(menuScene)
+{
+    const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
+
+    // ── 大框架 ─────────────────────────────────────────────────────────────
+    m_OptionMenuFrame = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
+    m_OptionMenuFrame->SetZIndex(25);
+
+    // ── 選擇框 ──────────────────────────────────────────────────────────────
+    m_ChoiceFrame = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png") ;
+    m_ChoiceFrame->SetZIndex(30);
+
+    // ── 標題 "OPTION" ────────────────────────────────────────────────────────
+    m_TitleText = std::make_shared<GameText>("OPTION", 65, black);
+    m_TitleText->SetZIndex(35);
+    m_TitleText->SetPosition({0.0f, 228.0f});
+
+    // ── KEYBOARD CONFIG 列 ──────────────────────────────────────────────────
+    m_KbConfigLabel = std::make_shared<GameText>("KEYBOARD CONFIG", 45, black);
+    m_KbConfigLabel->SetZIndex(35);
+    m_KbConfigLabel->SetPosition({COL_LABEL_X, ROW_Y_KB});
+
+    m_KbConfigOpen = std::make_shared<GameText>("OPEN", 45, black);
+    m_KbConfigOpen->SetZIndex(35);
+    m_KbConfigOpen->SetPosition({COL_VALUE_X-5.0f, ROW_Y_KB});
+
+    // ── BG COLOR 列 ─────────────────────────────────────────────────────────
+    m_BgColorLabel = std::make_shared<GameText>("BG COLOR", 45, black);
+    m_BgColorLabel->SetZIndex(35);
+    m_BgColorLabel->SetPosition({COL_LABEL_X, ROW_Y_BG});
+
+    m_BgColorLeftBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
+    m_BgColorLeftBtn->SetZIndex(35);
+    m_BgColorLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_BG});
+
+    m_BgColorValue = std::make_shared<GameText>("WHITE", 45, black);
+    m_BgColorValue->SetZIndex(35);
+    m_BgColorValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_BG});
+
+    m_BgColorRightBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
+    m_BgColorRightBtn->SetZIndex(35);
+    m_BgColorRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_BG});
+
+    // ── BGM VOLUME 列 ───────────────────────────────────────────────────────
+    m_BgmVolumeLabel = std::make_shared<GameText>("BGM VOLUME", 45, black);
+    m_BgmVolumeLabel->SetZIndex(35);
+    m_BgmVolumeLabel->SetPosition({COL_LABEL_X, ROW_Y_BGM});
+
+    m_BgmVolumeLeftBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
+    m_BgmVolumeLeftBtn->SetZIndex(35);
+    m_BgmVolumeLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_BGM});
+
+    m_BgmVolumeValue = std::make_shared<GameText>("0", 45, black);
+    m_BgmVolumeValue->SetZIndex(35);
+    m_BgmVolumeValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_BGM});
+
+    m_BgmVolumeRightBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
+    m_BgmVolumeRightBtn->SetZIndex(35);
+    m_BgmVolumeRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_BGM});
+
+    // ── SE VOLUME 列 ────────────────────────────────────────────────────────
+    m_SeVolumeLabel = std::make_shared<GameText>("SE VOLUME", 45, black);
+    m_SeVolumeLabel->SetZIndex(35);
+    m_SeVolumeLabel->SetPosition({COL_LABEL_X, ROW_Y_SE});
+
+    m_SeVolumeLeftBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
+    m_SeVolumeLeftBtn->SetZIndex(35);
+    m_SeVolumeLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_SE});
+
+    m_SeVolumeValue = std::make_shared<GameText>("0", 45, black);
+    m_SeVolumeValue->SetZIndex(35);
+    m_SeVolumeValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_SE});
+
+    m_SeVolumeRightBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
+    m_SeVolumeRightBtn->SetZIndex(35);
+    m_SeVolumeRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_SE});
+
+    // ── DISP NUMBER 列 ──────────────────────────────────────────────────────
+    m_DispNumberLabel = std::make_shared<GameText>("DISP NUMBER", 45, black);
+    m_DispNumberLabel->SetZIndex(35);
+    m_DispNumberLabel->SetPosition({COL_LABEL_X, ROW_Y_DISP});
+
+    m_DispNumberLeftBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
+    m_DispNumberLeftBtn->SetZIndex(35);
+    m_DispNumberLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_DISP});
+
+    m_DispNumberValue = std::make_shared<GameText>("OFF", 45, black);
+    m_DispNumberValue->SetZIndex(35);
+    m_DispNumberValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_DISP});
+
+    m_DispNumberRightBtn = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
+    m_DispNumberRightBtn->SetZIndex(35);
+    m_DispNumberRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_DISP});
+
+    // ── 底部按鈕 ────────────────────────────────────────────────────────────
+    m_OkText = std::make_shared<GameText>("OK", 45, black);
+    m_OkText->SetZIndex(35);
+    m_OkText->SetPosition({COL_OK_X, ROW_Y_BTN});
+
+    m_CancelText = std::make_shared<GameText>("CANCEL", 45, black);
+    m_CancelText->SetZIndex(35);
+    m_CancelText->SetPosition({COL_CANCEL_X, ROW_Y_BTN});
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// OnEnter
+// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::OnEnter() {
+    LOG_INFO("OptionMenuScene::OnEnter");
+
+    // 借用的共用物件
+    m_Ctx.Root.AddChild(m_ExitGameButton);
+
+    // 大框架
+    m_Ctx.Root.AddChild(m_OptionMenuFrame);
+
+    // 選擇框
+    m_Ctx.Root.AddChild(m_ChoiceFrame);
+
+    // 標題
+    m_Ctx.Root.AddChild(m_TitleText);
+
+    // KEYBOARD CONFIG 列
+    m_Ctx.Root.AddChild(m_KbConfigLabel);
+    m_Ctx.Root.AddChild(m_KbConfigOpen);
+
+    // BG COLOR 列
+    m_Ctx.Root.AddChild(m_BgColorLabel);
+    m_Ctx.Root.AddChild(m_BgColorLeftBtn);
+    m_Ctx.Root.AddChild(m_BgColorValue);
+    m_Ctx.Root.AddChild(m_BgColorRightBtn);
+
+    // BGM VOLUME 列
+    m_Ctx.Root.AddChild(m_BgmVolumeLabel);
+    m_Ctx.Root.AddChild(m_BgmVolumeLeftBtn);
+    m_Ctx.Root.AddChild(m_BgmVolumeValue);
+    m_Ctx.Root.AddChild(m_BgmVolumeRightBtn);
+
+    // SE VOLUME 列
+    m_Ctx.Root.AddChild(m_SeVolumeLabel);
+    m_Ctx.Root.AddChild(m_SeVolumeLeftBtn);
+    m_Ctx.Root.AddChild(m_SeVolumeValue);
+    m_Ctx.Root.AddChild(m_SeVolumeRightBtn);
+
+    // DISP NUMBER 列
+    m_Ctx.Root.AddChild(m_DispNumberLabel);
+    m_Ctx.Root.AddChild(m_DispNumberLeftBtn);
+    m_Ctx.Root.AddChild(m_DispNumberValue);
+    m_Ctx.Root.AddChild(m_DispNumberRightBtn);
+
+    // 底部按鈕
+    m_Ctx.Root.AddChild(m_OkText);
+    m_Ctx.Root.AddChild(m_CancelText);
+
+    // 調整大框架與關閉按鈕位置
+    m_OptionMenuFrame->SetPosition({0.0f, -5.0f});
+    m_ExitGameButton->SetPosition({399.2f, 285.1f});
+
+    // 重置按鈕動畫狀態
+    m_BgColorLeftBtn->ResetState();
+    m_BgColorRightBtn->ResetState();
+    m_BgmVolumeLeftBtn->ResetState();
+    m_BgmVolumeRightBtn->ResetState();
+    m_SeVolumeLeftBtn->ResetState();
+    m_SeVolumeRightBtn->ResetState();
+    m_DispNumberLeftBtn->ResetState();
+    m_DispNumberRightBtn->ResetState();
+
+    // 重置游標到第一列 (KEYBOARD CONFIG)
+    m_SelectedRow = 0;
+    UpdateValueTexts();
+    UpdateChoiceFrame();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// OnExit
+// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::OnExit() {
+    LOG_INFO("OptionMenuScene::OnExit");
+
+    // 本場景私有物件
+    m_Ctx.Root.RemoveChild(m_OptionMenuFrame);
+    m_Ctx.Root.RemoveChild(m_TitleText);
+    m_Ctx.Root.RemoveChild(m_KbConfigLabel);
+    m_Ctx.Root.RemoveChild(m_KbConfigOpen);
+    m_Ctx.Root.RemoveChild(m_BgColorLabel);
+    m_Ctx.Root.RemoveChild(m_BgColorLeftBtn);
+    m_Ctx.Root.RemoveChild(m_BgColorValue);
+    m_Ctx.Root.RemoveChild(m_BgColorRightBtn);
+    m_Ctx.Root.RemoveChild(m_BgmVolumeLabel);
+    m_Ctx.Root.RemoveChild(m_BgmVolumeLeftBtn);
+    m_Ctx.Root.RemoveChild(m_BgmVolumeValue);
+    m_Ctx.Root.RemoveChild(m_BgmVolumeRightBtn);
+    m_Ctx.Root.RemoveChild(m_SeVolumeLabel);
+    m_Ctx.Root.RemoveChild(m_SeVolumeLeftBtn);
+    m_Ctx.Root.RemoveChild(m_SeVolumeValue);
+    m_Ctx.Root.RemoveChild(m_SeVolumeRightBtn);
+    m_Ctx.Root.RemoveChild(m_DispNumberLabel);
+    m_Ctx.Root.RemoveChild(m_DispNumberLeftBtn);
+    m_Ctx.Root.RemoveChild(m_DispNumberValue);
+    m_Ctx.Root.RemoveChild(m_DispNumberRightBtn);
+    m_Ctx.Root.RemoveChild(m_OkText);
+    m_Ctx.Root.RemoveChild(m_CancelText);
+    m_Ctx.Root.RemoveChild(m_ChoiceFrame);
+
+    // 還原共用物件（順序與 ExitConfirmScene 一致）
+    m_ExitGameButton->SetPosition({331.0f, -14.0f});
+    m_Ctx.Root.RemoveChild(m_ExitGameButton);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Update  （每 frame 呼叫）
+// ────────────────────────────────────────────────────────────────────────────
+Scene* OptionMenuScene::Update() {
+
+    // ── 推進按鈕動畫計時器 ──────────────────────────────────────────────────
+    m_BgColorLeftBtn->UpdateButton();
+    m_BgColorRightBtn->UpdateButton();
+    m_BgmVolumeLeftBtn->UpdateButton();
+    m_BgmVolumeRightBtn->UpdateButton();
+    m_SeVolumeLeftBtn->UpdateButton();
+    m_SeVolumeRightBtn->UpdateButton();
+    m_DispNumberLeftBtn->UpdateButton();
+    m_DispNumberRightBtn->UpdateButton();
+
+    // ── ESC / X 按鈕 / CANCEL 點擊 → 返回 MenuScene ────────────────────────
+    if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
+        m_ExitGameButton->IsLeftClicked()              ||
+        m_CancelText->IsLeftClicked())
+    {
+        LOG_INFO("OptionMenuScene: cancelled => MenuScene");
+        return m_MenuScene;
+    }
+
+    // ── OK 點擊（滑鼠） ─────────────────────────────────────────────────────
+    if (m_OkText->IsLeftClicked()) {
+        LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
+        return m_MenuScene;
+    }
+
+    // ── 列游標：W 上移；S /下移 ──────────────────────────────────
+    if (Util::Input::IsKeyDown(Util::Keycode::W)) {
+        DecrementRow();
+    }
+    else if (Util::Input::IsKeyDown(Util::Keycode::S)) {
+        IncrementRow();
+    }
+
+    // ── 滑鼠 hover 自動切換游標列 ───────────────────────────────────────────
+    auto hoverTo = [&](const std::shared_ptr<GameText>& text, int row) {
+        if (text->IsMouseHovering() && m_SelectedRow != row) {
+            m_SelectedRow = row;
+            UpdateChoiceFrame();
+        }
+    };
+    hoverTo(m_KbConfigOpen,    0);
+    hoverTo(m_BgColorValue,    1);
+    hoverTo(m_BgmVolumeValue,  2);
+    hoverTo(m_SeVolumeValue,   3);
+    hoverTo(m_DispNumberValue, 4);
+    hoverTo(m_OkText,          5);
+    hoverTo(m_CancelText,      6);
+
+    // ── 直接點擊各列按鈕（同時跳到該列並調整值）───────────────────────────
+    // BG COLOR
+    if (m_BgColorLeftBtn->IsLeftClicked()) {
+        m_SelectedRow = 1; UpdateChoiceFrame(); AdjustLeft(1);
+    } else if (m_BgColorRightBtn->IsLeftClicked()) {
+        m_SelectedRow = 1; UpdateChoiceFrame(); AdjustRight(1);
+    }
+    // BGM VOLUME
+    else if (m_BgmVolumeLeftBtn->IsLeftClicked()) {
+        m_SelectedRow = 2; UpdateChoiceFrame(); AdjustLeft(2);
+    } else if (m_BgmVolumeRightBtn->IsLeftClicked()) {
+        m_SelectedRow = 2; UpdateChoiceFrame(); AdjustRight(2);
+    }
+    // SE VOLUME
+    else if (m_SeVolumeLeftBtn->IsLeftClicked()) {
+        m_SelectedRow = 3; UpdateChoiceFrame(); AdjustLeft(3);
+    } else if (m_SeVolumeRightBtn->IsLeftClicked()) {
+        m_SelectedRow = 3; UpdateChoiceFrame(); AdjustRight(3);
+    }
+    // DISP NUMBER
+    else if (m_DispNumberLeftBtn->IsLeftClicked()) {
+        m_SelectedRow = 4; UpdateChoiceFrame(); AdjustLeft(4);
+    } else if (m_DispNumberRightBtn->IsLeftClicked()) {
+        m_SelectedRow = 4; UpdateChoiceFrame(); AdjustRight(4);
+    }
+
+    // ── A / D 鍵調整當前列的值 ─────────────────────────────────────────────
+    if (Util::Input::IsKeyDown(Util::Keycode::A)) {
+        AdjustLeft(m_SelectedRow) ;
+    }
+    else if (Util::Input::IsKeyDown(Util::Keycode::D)) {
+        AdjustRight(m_SelectedRow);
+    }
+
+    // ── ENTER 鍵確認 ────────────────────────────────────────────────────────
+    if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
+        switch (m_SelectedRow) {
+        case 0:
+            // KEYBOARD CONFIG → 子場景（stub：尚未實作）
+            LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (stub)");
+            break;
+        case 5:
+            LOG_INFO("OptionMenuScene: OK (keyboard) => MenuScene");
+            return m_MenuScene;
+        case 6:
+            LOG_INFO("OptionMenuScene: CANCEL (keyboard) => MenuScene");
+            return m_MenuScene;
+        default:
+            break;
+        }
+    }
+
+    return nullptr;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 私有輔助：游標移動
+// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::DecrementRow() {
+    switch (m_SelectedRow) {
+    case 6 :
+        m_SelectedRow = 4 ;
+        break ;
+    default:
+        m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
+        break ;
+    }
+    LOG_INFO("Option DecrementRow") ;
+    UpdateChoiceFrame();
+}
+
+void OptionMenuScene::IncrementRow() {
+    switch (m_SelectedRow) {
+    case 5 :
+        m_SelectedRow = 0 ;
+        break ;
+    default:
+        m_SelectedRow = (m_SelectedRow + 1) % ROW_COUNT;
+        break ;
+    }
+    LOG_INFO("Option IncrementRow") ;
+    UpdateChoiceFrame();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 私有輔助：左調整（← 方向）
+// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::AdjustLeft(int row) {
+    switch (row) {
+    case 1:  // BG COLOR（循環）
+        m_BgColorIndex = (m_BgColorIndex
+                          + static_cast<int>(s_BgColorOptions.size()) - 1)
+                         % static_cast<int>(s_BgColorOptions.size());
+        m_BgColorLeftBtn->Press(75.0f);
+        break;
+    case 2:  // BGM VOLUME（下限 0）
+        if (m_BgmVolume > 0) {
+            --m_BgmVolume;
+            m_BgmVolumeLeftBtn->Press(75.0f);
+        }
+        break;
+    case 3:  // SE VOLUME（下限 0）
+        if (m_SeVolume > 0) {
+            --m_SeVolume;
+            m_SeVolumeLeftBtn->Press(75.0f);
+        }
+        break;
+    case 4:  // DISP NUMBER（LEFT = OFF）
+        if (m_DispNumber) {
+            m_DispNumber = false;
+            m_DispNumberLeftBtn->Press(75.0f);
+        }
+        break;
+    case 5:
+        m_SelectedRow = 6 ;
+        UpdateChoiceFrame();
+        break ;
+    case 6:
+        m_SelectedRow = 5 ;
+        UpdateChoiceFrame();
+        break ;
+    default:
+        break;
+    }
+    LOG_INFO("Option AdjustLeft") ;
+    UpdateValueTexts();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 私有輔助：右調整（→ 方向）
+// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::AdjustRight(int row) {
+    switch (row) {
+    case 1:  // BG COLOR（循環）
+        m_BgColorIndex = (m_BgColorIndex + 1)
+                         % static_cast<int>(s_BgColorOptions.size());
+        m_BgColorRightBtn->Press(75.0f);
+        break;
+    case 2:  // BGM VOLUME（上限 20）
+        if (m_BgmVolume < 20) {
+            ++m_BgmVolume;
+            m_BgmVolumeRightBtn->Press(75.0f);
+        }
+        break;
+    case 3:  // SE VOLUME（上限 20）
+        if (m_SeVolume < 20) {
+            ++m_SeVolume;
+            m_SeVolumeRightBtn->Press(75.0f);
+        }
+        break;
+    case 4:  // DISP NUMBER（RIGHT = ON）
+        if (!m_DispNumber) {
+            m_DispNumber = true;
+            m_DispNumberRightBtn->Press(75.0f);
+        }
+        break;
+    case 5:
+        m_SelectedRow = 6 ;
+        UpdateChoiceFrame();
+        break ;
+    case 6:
+        m_SelectedRow = 5 ;
+        UpdateChoiceFrame();
+        break ;
+    }
+    LOG_INFO("Option AdjustRight") ;
+    UpdateValueTexts();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 私有輔助：根據內部狀態重新設定所有值文字
+// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::UpdateValueTexts() {
+    m_BgColorValue->SetText(s_BgColorOptions[m_BgColorIndex]);
+    m_BgmVolumeValue->SetText(std::to_string(m_BgmVolume));
+    m_SeVolumeValue->SetText(std::to_string(m_SeVolume));
+    m_DispNumberValue->SetText(m_DispNumber ? "ON" : "OFF");
+    LOG_INFO("UpdateValueTexts") ;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 私有輔助：把 m_ChoiceFrame 移到當前選中列的「值區域」
+// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::UpdateChoiceFrame() {
+    switch (m_SelectedRow) {
+    case 0:  // KEYBOARD CONFIG → 圍住 OPEN
+        m_ChoiceFrame->SetScale({277.0f/367.0f, 1.1f}) ;
+        m_ChoiceFrame->SetPosition({COL_VALUE_X-15.0f, ROW_Y_KB});
+        break;
+    case 1:  // BG COLOR → 圍住中間值
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
+        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_BG});
+        break;
+    case 2:  // BGM VOLUME
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
+        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_BGM});
+        break;
+    case 3:  // SE VOLUME
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
+        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_SE});
+        break;
+    case 4:  // DISP NUMBER
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
+        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_DISP});
+        break;
+    case 5:  // OK
+        m_ChoiceFrame->SetScale({207.0f/367.0f, 1.1f}) ;
+        m_ChoiceFrame->SetPosition({COL_OK_X-15.0f, ROW_Y_BTN});
+        break;
+    case 6:  // CANCEL
+        m_ChoiceFrame->SetScale({207.0f/367.0f, 1.1f}) ;
+        m_ChoiceFrame->SetPosition({COL_CANCEL_X-15.0f, ROW_Y_BTN});
+        break;
+    default:
+        break;
+    }
+    LOG_INFO("UpdateChoiceFrame") ;
+}
+</file>
+
+<file path=".gitignore">
+# .gitignore file for CLion, Visual Studio, and Visual Studio Code
+
+# From JetBrains .gitignore template
+# https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+# User-specific stuff
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+# AWS User-specific
+.idea/**/aws.xml
+
+# Generated files
+.idea/**/contentModel.xml
+
+# Sensitive or high-churn files
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+
+# Gradle
+.idea/**/gradle.xml
+.idea/**/libraries
+
+# Gradle and Maven with auto-import
+# When using Gradle or Maven with auto-import, you should exclude module files,
+# since they will be recreated, and may cause churn.  Uncomment if using
+# auto-import.
+# .idea/artifacts
+# .idea/compiler.xml
+# .idea/jarRepositories.xml
+# .idea/modules.xml
+# .idea/*.iml
+# .idea/modules
+# *.iml
+# *.ipr
+
+# CMake
+cmake-build-*/
+
+# Mongo Explorer plugin
+.idea/**/mongoSettings.xml
+
+# File-based project format
+*.iws
+
+# IntelliJ
+out/
+
+# mpeltonen/sbt-idea plugin
+.idea_modules/
+
+# JIRA plugin
+atlassian-ide-plugin.xml
+
+# Cursive Clojure plugin
+.idea/replstate.xml
+
+# SonarLint plugin
+.idea/sonarlint/
+
+# Crashlytics plugin (for Android Studio and IntelliJ)
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# Editor-based Rest Client
+.idea/httpRequests
+
+# Android studio 3.1+ serialized cache file
+.idea/caches/build_file_checksums.ser
+
+# From Visual Studio .gitignore template
+# https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
+
+## Ignore Visual Studio temporary files, build results, and
+## files generated by popular Visual Studio add-ons.
+##
+## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Mono auto generated files
+mono_crash.*
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+# Uncomment if you have tasks that create the project's static files in wwwroot
+#wwwroot/
+
+# Visual Studio 2017 auto generated files
+Generated\ Files/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Build Results of an ATL Project
+[Dd]ebugPS/
+[Rr]eleasePS/
+dlldata.c
+
+# Benchmark Results
+BenchmarkDotNet.Artifacts/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# StyleCop
+StyleCopReport.xml
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Chutzpah Test files
+_Chutzpah*
+
+# Visual C++ cache files
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Visual Studio Trace Files
+*.e2e
+
+# TFS 2012 Local Workspace
+$tf/
+
+# Guidance Automation Toolkit
+*.gpState
+
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# TeamCity is a build add-in
+_TeamCity*
+
+# DotCover is a Code Coverage Tool
+*.dotCover
+
+# AxoCover is a Code Coverage Tool
+.axoCover/*
+!.axoCover/settings.json
+
+# Coverlet is a free, cross platform Code Coverage Tool
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Visual Studio code coverage results
+*.coverage
+*.coveragexml
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+
+# Web workbench (sass)
+.sass-cache/
+
+# Installshield output folder
+[Ee]xpress/
+
+# DocProject is a documentation generator add-in
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+
+# Click-Once directory
+publish/
+
+# Publish Web Output
+*.[Pp]ublish.xml
+*.azurePubxml
+# Note: Comment the next line if you want to checkin your web deploy settings,
+# but database connection strings (with potential passwords) will be unencrypted
+*.pubxml
+*.publishproj
+
+# Microsoft Azure Web App publish settings. Comment the next line if you want to
+# checkin your Azure Web App publish settings, but sensitive information contained
+# in these scripts will be unencrypted
+PublishScripts/
+
+# NuGet Packages
+*.nupkg
+# NuGet Symbol Packages
+*.snupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+#!**/[Pp]ackages/repositories.config
+# NuGet v3's project.json files produces more ignorable files
+*.nuget.props
+*.nuget.targets
+
+# Microsoft Azure Build Output
+csx/
+*.build.csdef
+
+# Microsoft Azure Emulator
+ecf/
+rcf/
+
+# Windows Store app package directories and files
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!?*.[Cc]ache/
+
+# Others
+ClientBin/
+~$*
+*~
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+orleans.codegen.cs
+
+# Including strong name files can present a security risk
+# (https://github.com/github/gitignore/pull/2483#issue-259490424)
+#*.snk
+
+# Since there are multiple workflows, uncomment next line to ignore bower_components
+# (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)
+#bower_components/
+
+# RIA/Silverlight projects
+Generated_Code/
+
+# Backup & report files from converting an old project file
+# to a newer Visual Studio version. Backup files are not needed,
+# because we have git ;-)
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+ServiceFabricBackup/
+*.rptproj.bak
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# Business Intelligence projects
+*.rdl.data
+*.bim.layout
+*.bim_*.settings
+*.rptproj.rsuser
+*- [Bb]ackup.rdl
+*- [Bb]ackup ([0-9]).rdl
+*- [Bb]ackup ([0-9][0-9]).rdl
+
+# Microsoft Fakes
+FakesAssemblies/
+
+# GhostDoc plugin setting file
+*.GhostDoc.xml
+
+# Node.js Tools for Visual Studio
+.ntvs_analysis.dat
+node_modules/
+
+# Visual Studio 6 build log
+*.plg
+
+# Visual Studio 6 workspace options file
+*.opt
+
+# Visual Studio 6 auto-generated workspace file (contains which files were open etc.)
+*.vbw
+
+# Visual Studio 6 auto-generated project file (contains which files were open etc.)
+*.vbp
+
+# Visual Studio 6 workspace and project file (working project files containing files to include in project)
+*.dsw
+*.dsp
+
+# Visual Studio 6 technical files
+*.ncb
+*.aps
+
+# Visual Studio LightSwitch build output
+**/*.HTMLClient/GeneratedArtifacts
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+_Pvt_Extensions
+
+# Paket dependency manager
+.paket/paket.exe
+paket-files/
+
+# FAKE - F# Make
+.fake/
+
+# CodeRush personal settings
+.cr/personal
+
+# Python Tools for Visual Studio (PTVS)
+__pycache__/
+*.pyc
+
+# Cake - Uncomment if you are using it
+# tools/**
+# !tools/packages.config
+
+# Tabs Studio
+*.tss
+
+# Telerik's JustMock configuration file
+*.jmconfig
+
+# BizTalk build output
+*.btp.cs
+*.btm.cs
+*.odx.cs
+*.xsd.cs
+
+# OpenCover UI analysis results
+OpenCover/
+
+# Azure Stream Analytics local run output
+ASALocalRun/
+
+# MSBuild Binary and Structured Log
+*.binlog
+
+# NVidia Nsight GPU debugger configuration file
+*.nvuser
+
+# MFractors (Xamarin productivity tool) working folder
+.mfractor/
+
+# Local History for Visual Studio
+.localhistory/
+
+# Visual Studio History (VSHistory) files
+.vshistory/
+
+# BeatPulse healthcheck temp database
+healthchecksdb
+
+# Backup folder for Package Reference Convert tool in Visual Studio 2017
+MigrationBackup/
+
+# Ionide (cross platform F# VS Code tools) working folder
+.ionide/
+
+# Fody - auto-generated XML schema
+FodyWeavers.xsd
+
+# VS Code files for those working on multiple tools
+# .vscode/*
+# !.vscode/settings.json
+# !.vscode/tasks.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
+# *.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+# Windows Installer files from build outputs
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# JetBrains
+*.sln.iml
+/.idea/
+# Custom writen VSCode .gitignore
+.vscode/
+
+# Default build directory for CMake extension
+build/
+
+# Ignore 3rd party dependencies
+lib/
+
+# Doxygen generated files
+docs/html/
+
+PTSD/
+</file>
+
+<file path="include/BackgroundImage.hpp">
+#ifndef BACKGROUND_IMAGE_HPP
+#define BACKGROUND_IMAGE_HPP
+
+#include "Util/GameObject.hpp"
+#include "Util/Image.hpp"
+
+class BackgroundImage : public Util::GameObject {
+
+public:
+    BackgroundImage() : GameObject(
+            std::make_unique<Util::Image>(GA_RESOURCE_DIR"/Image/Background/phase0.png"), -10) {
+    }
+
+    void NextPhase(const int phase) {
+        auto temp = std::dynamic_pointer_cast<Util::Image>(m_Drawable);
+        temp->SetImage(ImagePath(phase));
+    }
+
+private:
+    inline std::string ImagePath(const int phase) {
+        return GA_RESOURCE_DIR"/Image/Background/phase" + std::to_string(phase) + ".png";
+    }
+};
+
+#endif //BACKGROUND_IMAGE_HPP
+</file>
+
+<file path="include/Exitconfirmscene.hpp">
+#ifndef EXIT_CONFIRM_SCENE_HPP
+#define EXIT_CONFIRM_SCENE_HPP
+
+#include "Scene.hpp"
+#include "Character.hpp"
+#include "GameText.hpp"
+
+class MenuScene;
+
+/**
+ * @brief 退出確認對話框場景（原 STATE_01_1_1 / _01_1_2）
+ *
+ * 職責：
+ *   - 顯示「EXIT GAME ?」文字、YES / NO 選項與選擇框
+ *   - 管理游標在 YES / NO 之間切換（A/D 鍵或滑鼠 hover）
+ *   - 確認離開（YES + ENTER）→ 設定 m_Ctx.ShouldQuit = true
+ *   - 取消（NO + ENTER 或 ESC 或 X 按鈕）→ 返回 MenuScene
+ *
+ * 設計重點：
+ *   - 選單框的縮放（SetScale）只在 OnEnter / OnExit 做，
+ *     不再散落在各個 if/else 裡。
+ *   - 唯一的狀態是 m_IsYesSelected（bool），比原本兩個 sub-state 更清楚。
+ */
+class ExitConfirmScene : public Scene {
+public:
+    ExitConfirmScene(GameContext& ctx,
+                     MenuScene* menuScene,
+                     std::shared_ptr<Character> menuFrame,
+                     std::shared_ptr<Character> exitGameButton);
+    ~ExitConfirmScene() override = default;
+
+    void   OnEnter() override;
+    void   OnExit()  override;
+    Scene* Update()  override;
+
+    // ---- setter：解決 App::Start() 裡的循環指標問題 ----
+    // ExitConfirmScene 需要 MenuScene 指標，但 MenuScene 也需要
+    // ExitConfirmScene 指標，建立順序上無法兩邊同時傳齊。
+    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
+
+private:
+    // ---- 此場景私有的 UI 元件 ----
+    std::shared_ptr<GameText>  m_ExitGame1Text;
+    std::shared_ptr<GameText>  m_YesText;
+    std::shared_ptr<GameText>  m_NoText;
+    std::shared_ptr<Character> m_ChoiceFrame;
+
+    // ---- 與 MenuScene 共用的元件（借用，不持有所有權）----
+    // 原本的程式碼會修改 MenuFrame 的 scale 和 ExitGameButton 的 position，
+    // 這裡繼續借用這兩個物件來做同樣的事。
+    std::shared_ptr<Character> m_MenuFrame;
+    std::shared_ptr<Character> m_ExitGameButton;
+
+    // ---- 切換目標 ----
+    // 宣告順序必須與 constructor 初始化清單順序一致，否則產生 -Wreorder 警告
+    MenuScene* m_MenuScene = nullptr;
+
+    // ---- 內部狀態 ----
+    // true = 游標在 YES，false = 游標在 NO
+    bool m_IsYesSelected = true;
+
+    // ---- 輔助函式 ----
+    void UpdateChoiceFramePosition();
+};
+
+#endif // EXIT_CONFIRM_SCENE_HPP
+</file>
+
+<file path="include/GameContext.hpp">
+#ifndef PICOPART_GAMECONTEXT_HPP
+#define PICOPART_GAMECONTEXT_HPP
+
+#include "pch.hpp" // IWYU pragma: export
+#include "Util/Renderer.hpp"
+#include "Character.hpp"
+#include "GameText.hpp"    // [新增] TitleSub 是 GameText
+#include "PlayerCat.hpp"
+
+struct GameContext {
+    Util::Renderer& Root;
+
+    // 永久留在渲染樹的物件（所有場景都看得到）
+    std::shared_ptr<Character>  WhiteBackground;
+    std::shared_ptr<Character>  Floor;
+
+    // [新增] Header 在 TitleScene 和 MenuScene 都要顯示，
+    // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除。
+    std::shared_ptr<Character>  Header;
+
+    std::shared_ptr<PlayerCat>  BlueCat;
+    std::shared_ptr<PlayerCat>  RedCat;
+
+    bool ShouldQuit = false;
+
+    explicit GameContext(Util::Renderer& root)
+        : Root(root) {}
+
+    GameContext(const GameContext&)            = delete;
+    GameContext& operator=(const GameContext&) = delete;
+    GameContext(GameContext&&)                 = delete;
+    GameContext& operator=(GameContext&&)      = delete;
+};
+
+#endif //PICOPART_GAMECONTEXT_HPP
+</file>
+
+<file path="include/Menuscene.hpp">
+#ifndef MENU_SCENE_HPP
+#define MENU_SCENE_HPP
+
+#include "Scene.hpp"
+#include "Character.hpp"
+#include "GameText.hpp"
+#include "UI_Triangle_Button.hpp"
+
+class ExitConfirmScene;
+class OptionMenuScene;
+class PlayerSelectScene;
+
+class MenuScene : public Scene {
+public:
+    MenuScene(GameContext& ctx,
+              Scene* titleScene,
+              ExitConfirmScene* exitConfirmScene,
+              OptionMenuScene* optionScene,
+              PlayerSelectScene* playerSelectScene);
+    ~MenuScene() override = default;
+
+    void   OnEnter() override;
+    void   OnExit()  override;
+    Scene* Update()  override;
+
+    void SetTitleScene(Scene* s)                   { m_TitleScene = s; }
+    void SetExitConfirmScene(ExitConfirmScene* s)  { m_ExitConfirmScene = s; }
+    void SetOptionScene(OptionMenuScene* s)       { m_OptionScene = s; }
+    void SetPlayerSelectScene(PlayerSelectScene* s) { m_PlayerSelectScene = s; }
+
+    // [新增] ExitConfirmScene 需要借用這兩個物件（修改 scale / position），
+    // 而且需要知道它們是「已在渲染樹中的那組」，所以透過 getter 共享。
+    // AppStart 先建立 MenuScene，再把這兩個物件傳給 ExitConfirmScene。
+    std::shared_ptr<Character> GetMenuFrame()      const { return m_MenuFrame; }
+    std::shared_ptr<Character> GetExitGameButton() const { return m_ExitGameButton; }
+
+private:
+    std::shared_ptr<Character>          m_MenuFrame;
+    std::shared_ptr<Character>          m_ExitGameButton;
+    std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
+    std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
+
+    std::shared_ptr<GameText> m_ExitGameText;
+    std::shared_ptr<GameText> m_OptionText;
+    std::shared_ptr<GameText> m_LocalPlayText;
+
+    int m_SelectedIndex = 0;
+
+    Scene*             m_TitleScene        = nullptr;
+    ExitConfirmScene*  m_ExitConfirmScene  = nullptr;
+    OptionMenuScene*   m_OptionScene       = nullptr;
+    PlayerSelectScene* m_PlayerSelectScene = nullptr;
+
+    void ShowCurrentOption();
+    void HideAllOptions();
+};
+
+#endif // MENU_SCENE_HPP
+</file>
+
+<file path="include/PlayerCat.hpp">
+//
+// Created by cody2 on 2026/3/12.
+//
+
+#ifndef PLAYER_CAT_HPP
+#define PLAYER_CAT_HPP
+
+#include "AnimatedCharacter.hpp"
+#include "Character.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+
+class PlayerCat : public AnimatedCharacter {
+public:
+    // 建構子：傳入動畫路徑，以及專屬的控制按鍵
+    PlayerCat(const std::vector<std::string>& animationPaths,
+              Util::Keycode leftKey, Util::Keycode rightKey, Util::Keycode jumpKey)
+        : AnimatedCharacter(animationPaths), m_LeftKey(leftKey), m_RightKey(rightKey), m_JumpKey(jumpKey) {}
+
+    // 給外部呼叫的更新函式
+    void Update(std::shared_ptr<Character> floor) ;
+
+    void SetInputEnabled(bool enabled) { m_InputEnabled = enabled; }
+
+    [[nodiscard]] const glm::vec2& GetPosition() const { return m_Transform.translation; }
+    void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
+    void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
+
+private:
+    bool m_InputEnabled = true;
+    Util::Keycode m_LeftKey;
+    Util::Keycode m_RightKey;
+    Util::Keycode m_JumpKey;
+
+    // Manually tracked state for the jump key.
+    bool m_JumpKeyIsHeld = false;
+
+    float m_MoveSpeed = 5.0f;
+    glm::vec2 m_Velocity = {0, 0};
+    float m_JumpForce = 11.0f;
+    float m_Gravity = 0.75f;
+    bool m_IsGrounded = true; // Start on the ground
+};
+
+#endif
+</file>
+
+<file path="include/Scene.hpp">
+//
+// Created by cody2 on 2026/3/14.
+//
+
+#ifndef PICOPART_SCENE_HPP
+#define PICOPART_SCENE_HPP
+
+#include "GameContext.hpp"
+
+/**
+ * @brief 所有場景的抽象基底類別
+ *
+ * ── 生命週期 ──────────────────────────────────────────────────────────────
+ *
+ *   App::Start()    → 建立所有 Scene 物件（此時不呼叫 OnEnter）
+ *   TransitionTo(X) → 先呼叫前一個場景的 OnExit()，再呼叫 X 的 OnEnter()
+ *   每個 frame      → Update() 被呼叫，回傳下一個場景的指標
+ *
+ * ── Update() 回傳值約定 ────────────────────────────────────────────────────
+ *
+ *   nullptr   → 繼續待在這個場景，不切換
+ *   Scene*    → 切換到該場景（指標由 App 持有，Scene 只借用，不能 delete）
+ *
+ * ── 重要：AddChild / RemoveChild 的使用規則 ───────────────────────────────
+ *
+ *   OnEnter() 裡呼叫 m_Ctx.Root.AddChild(xxx)   → 加入渲染樹
+ *   OnExit()  裡呼叫 m_Ctx.Root.RemoveChild(xxx) → 從渲染樹移除
+ *
+ *   「一定要配對」，否則同一個 shared_ptr 會在渲染清單裡出現兩次，
+ *   造成每次進入場景就多渲染一個重疊的圖層。
+ *
+ * ── 所有權 ────────────────────────────────────────────────────────────────
+ *
+ *   App 以 unique_ptr<Scene> 持有所有場景（負責生命週期）
+ *   Scene 之間互傳的是 raw pointer（non-owning），絕對不能 delete
+ */
+class Scene {
+public:
+    explicit Scene(GameContext& ctx) : m_Ctx(ctx) {}
+
+    virtual ~Scene() = default;
+
+    // 場景不應被複製或移動
+    Scene(const Scene&)            = delete;
+    Scene& operator=(const Scene&) = delete;
+    Scene(Scene&&)                 = delete;
+    Scene& operator=(Scene&&)      = delete;
+
+    // -----------------------------------------------------------------------
+    // 純虛擬介面
+    // -----------------------------------------------------------------------
+
+    /**
+     * @brief 進入此場景時呼叫一次
+     * - 呼叫 m_Ctx.Root.AddChild() 把需要的物件加入渲染樹
+     * - 重置場景內部狀態（計時器、選擇索引…）
+     */
+    virtual void OnEnter() = 0;
+
+    /**
+     * @brief 離開此場景時呼叫一次
+     * - 呼叫 m_Ctx.Root.RemoveChild() 移除本場景加入的物件
+     * - 必須與 OnEnter 裡的 AddChild 完全配對
+     */
+    virtual void OnExit()  = 0;
+
+    /**
+     * @brief 每 frame 呼叫一次
+     * @return nullptr 繼續待在此場景；其他指標切換到該場景
+     */
+    virtual Scene* Update() = 0;
+
+protected:
+    GameContext& m_Ctx;
+};
+
+#endif //PICOPART_SCENE_HPP
+</file>
+
+<file path="include/Titlescene.hpp">
+#ifndef PICOPART_TITLESCENE_HPP
+#define PICOPART_TITLESCENE_HPP
+
+#include "Scene.hpp"
+#include "GameText.hpp"
+
+class MenuScene;
+
+class TitleScene : public Scene {
+public:
+    TitleScene(GameContext& ctx, MenuScene* menuScene);
+    ~TitleScene() override = default;
+
+    void   OnEnter() override;
+    void   OnExit()  override;
+    Scene* Update()  override;
+
+    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
+
+private:
+    // m_Header 已移至 GameContext，
+    // 因為它們在 MenuScene 也要顯示，不屬於 TitleScene 私有。
+    // TitleScene 只負責 m_PressEnterText（只在標題畫面閃爍）。
+    std::shared_ptr<GameText> m_TitleSub;
+    std::shared_ptr<GameText> m_PressEnterText;
+
+    float m_FlashTimer = 0.0f;
+
+    MenuScene* m_MenuScene = nullptr;
+};
+
+#endif //PICOPART_TITLESCENE_HPP
+</file>
+
+<file path="include/UI_Triangle_Button.hpp">
+//
+// Created by cody2 on 2026/3/14.
+//
+
+#ifndef PICOPART_UI_TRIANGLE_BUTTON_HPP
+#define PICOPART_UI_TRIANGLE_BUTTON_HPP
+
+#include "Character.hpp"
+#include <string>
+
+class UI_Triangle_Button : public Character {
+public:
+    // 傳入兩種狀態的圖片路徑
+    UI_Triangle_Button(const std::string& normalImagePath, const std::string& pressedImagePath);
+
+    // 必須在每一幀呼叫此方法，用來更新按鈕內部的計時器邏輯
+    void UpdateButton();
+
+    // 觸發「按下」狀態，並設定維持時間 (預設 200 毫秒)
+    void Press(float durationMs = 200.0f);
+
+    // 強制重置按鈕為未按下狀態 (用於選單切換時清空殘留狀態)
+    void ResetState();
+
+private:
+    std::string m_NormalImagePath;
+    std::string m_PressedImagePath;
+    float m_PressTimer = 0.0f;
+};
+
+#endif //PICOPART_UI_TRIANGLE_BUTTON_HPP
+</file>
+
+<file path="LICENSE">
+MIT License
+
+Copyright (c) 2024 NTUT Open-Source Club
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="src/AnimatedCharacter.cpp">
+#include "AnimatedCharacter.hpp"
+
+
+AnimatedCharacter::AnimatedCharacter(const std::vector<std::string>& AnimationPaths) {
+    m_Drawable = std::make_shared<Util::Animation>(AnimationPaths, false, 500, false, 0);
+}
+
+bool AnimatedCharacter::IfAnimationEnds() const {
+    auto animation = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
+        return animation->GetCurrentFrameIndex() == animation->GetFrameCount() - 1;
+}
+</file>
+
+<file path="src/Exitconfirmscene.cpp">
+#include "ExitConfirmScene.hpp"
+#include "Menuscene.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+#include "Util/Logger.hpp"
+
+ExitConfirmScene::ExitConfirmScene(GameContext& ctx,
+                                   MenuScene* menuScene,
+                                   std::shared_ptr<Character> menuFrame,
+                                   std::shared_ptr<Character> exitGameButton)
+    : Scene(ctx)
+    , m_MenuFrame(std::move(menuFrame))
+    , m_ExitGameButton(std::move(exitGameButton))
+    , m_MenuScene(menuScene)
+{
+    const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
+
+    m_ExitGame1Text = std::make_shared<GameText>("EXIT GAME ?", 65, black);
+    m_ExitGame1Text->SetZIndex(25);
+    m_ExitGame1Text->SetPosition({10.0f, -53.0f});
+
+    m_YesText = std::make_shared<GameText>("YES", 65, black);
+    m_YesText->SetZIndex(25);
+    m_YesText->SetPosition({-110.0f, -183.0f});
+
+    m_NoText = std::make_shared<GameText>("NO", 65, black);
+    m_NoText->SetZIndex(25);
+    m_NoText->SetPosition({130.0f, -183.0f});
+
+    m_ChoiceFrame = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/Choice_Frame.png");
+    m_ChoiceFrame->SetZIndex(20);
+}
+
+void ExitConfirmScene::OnEnter() {
+    LOG_INFO("ExitConfirmScene::OnEnter");
+
+    m_Ctx.Root.AddChild(m_MenuFrame);
+    m_Ctx.Root.AddChild(m_ExitGameButton);
+
+    m_Ctx.Root.AddChild(m_ExitGame1Text);
+    m_Ctx.Root.AddChild(m_YesText);
+    m_Ctx.Root.AddChild(m_NoText);
+    m_Ctx.Root.AddChild(m_ChoiceFrame);
+
+    m_MenuFrame->SetScale({408.0f / 695.0f, 287.0f / 218.0f});
+    // m_ExitGameButton->SetPosition({192.3f, 9.0f});
+    m_ExitGameButton->SetPosition({188.0f, 15.5f});
+
+    m_IsYesSelected = true;
+    UpdateChoiceFramePosition();
+}
+
+void ExitConfirmScene::OnExit() {
+    LOG_INFO("ExitConfirmScene::OnExit");
+
+    m_Ctx.Root.RemoveChild(m_ExitGame1Text);
+    m_Ctx.Root.RemoveChild(m_YesText);
+    m_Ctx.Root.RemoveChild(m_NoText);
+    m_Ctx.Root.RemoveChild(m_ChoiceFrame);
+
+    m_MenuFrame->SetScale({1.0f, 1.0f});
+    m_ExitGameButton->SetPosition({331.0f, -14.0f});
+    m_Ctx.Root.RemoveChild(m_MenuFrame);
+    m_Ctx.Root.RemoveChild(m_ExitGameButton);
+}
+
+Scene* ExitConfirmScene::Update() {
+    if (Util::Input::IsKeyDown(Util::Keycode::A) ||
+        Util::Input::IsKeyDown(Util::Keycode::D)) {
+        m_IsYesSelected = !m_IsYesSelected;
+        UpdateChoiceFramePosition();
+    }
+
+    if (m_YesText->IsMouseHovering() && !m_IsYesSelected) {
+        m_IsYesSelected = true;
+        UpdateChoiceFramePosition();
+    }
+    if (m_NoText->IsMouseHovering() && m_IsYesSelected) {
+        m_IsYesSelected = false;
+        UpdateChoiceFramePosition();
+    }
+
+    if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
+        m_ExitGameButton->IsLeftClicked()) {
+        LOG_INFO("ExitConfirmScene: cancelled, back to MenuScene");
+        return m_MenuScene;
+    }
+
+    const bool confirmByKeyboard = Util::Input::IsKeyDown(Util::Keycode::RETURN);
+    const bool confirmByMouse    = m_YesText->IsLeftClicked() || m_NoText->IsLeftClicked();
+
+    if (confirmByKeyboard || confirmByMouse) {
+        bool chooseYes = m_IsYesSelected;
+        if (confirmByMouse) {
+            chooseYes = m_YesText->IsLeftClicked();
+        }
+
+        if (chooseYes) {
+            LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
+            m_Ctx.ShouldQuit = true;
+            return nullptr;
+        }
+        else {
+            LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
+            return m_MenuScene;
+        }
+    }
+
+    return nullptr;
+}
+
+void ExitConfirmScene::UpdateChoiceFramePosition() {
+    if (m_IsYesSelected) {
+        m_ChoiceFrame->SetPosition({-120.0f, -180.0f});
+    }
+    else {
+        m_ChoiceFrame->SetPosition({120.0f, -180.0f});
+    }
+}
+</file>
+
+<file path="src/GameText.cpp">
+//
+// Created by cody2 on 2026/3/13.
+//
+
+#include "GameText.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+
+// ==========================================
+// 實作：偵測滑鼠是否懸停
+// ==========================================
+bool GameText::IsMouseHovering() const {
+    // 取得滑鼠當前座標
+    glm::vec2 mousePos = Util::Input::GetCursorPosition();
+
+    // 取得文字物件自身的中心座標
+    glm::vec2 myPos = this->GetPosition();
+    glm::vec2 mySize = this->GetSize();
+    float halfWidth = mySize.x/2 ;
+    float halfHeight = mySize.y/2 ;
+    // 進行 AABB (矩形範圍) 碰撞計算
+    return (mousePos.x >= myPos.x - halfWidth &&
+            mousePos.x <= myPos.x + halfWidth &&
+            mousePos.y >= myPos.y - halfHeight &&
+            mousePos.y <= myPos.y + halfHeight);
+}
+
+// ==========================================
+// 實作：偵測是否被左鍵點擊
+// ==========================================
+bool GameText::IsLeftClicked() const {
+    // 先確認滑鼠左鍵有被按下
+    if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        // 直接重複利用上面寫好的懸停判斷，只要在範圍內就是被點擊了！
+        return IsMouseHovering();
+    }
+    return false;
+}
+</file>
+
+<file path="src/main.cpp">
+#include "App.hpp"
+
+#include "Core/Context.hpp"
+
+int main(int, char**) {
+    auto context = Core::Context::GetInstance();
+    App app;
+
+    while (!context->GetExit()) {
+        switch (app.GetCurrentState()) {
+            case App::State::START:
+                app.Start();
+                break;
+
+            case App::State::UPDATE:
+                app.Update();
+                break;
+
+            case App::State::END:
+                app.End();
+                context->SetExit(true);
+                break;
+        }
+        context->Update();
+    }
+    return 0;
+}
+</file>
+
+<file path="src/Menuscene.cpp">
+#include "Menuscene.hpp"
+#include "ExitConfirmScene.hpp"
+#include "OptionMenuScene.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+#include "Util/Logger.hpp"
+
+MenuScene::MenuScene(GameContext& ctx,
+                     Scene* titleScene,
+                     ExitConfirmScene* exitConfirmScene,
+                     OptionMenuScene* optionScene,
+                     PlayerSelectScene* playerSelectScene)
+    : Scene(ctx)
+    , m_TitleScene(titleScene)
+    , m_ExitConfirmScene(exitConfirmScene)
+    , m_OptionScene(optionScene)
+    , m_PlayerSelectScene(playerSelectScene)
+{
+    const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
+
+    m_MenuFrame = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
+    m_MenuFrame->SetZIndex(10);
+    m_MenuFrame->SetPosition({0.0f, -105.0f});
+
+    m_ExitGameButton = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Button/ExitGameButton.png");
+    m_ExitGameButton->SetZIndex(20);
+    m_ExitGameButton->SetPosition({331.0f, -14.0f});
+
+    m_LeftTriButton = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
+
+    m_LeftTriButton->SetZIndex(15);
+    m_LeftTriButton->SetPosition({-305.0f, -153.0f});
+
+    m_RightTriButton = std::make_shared<UI_Triangle_Button>(
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
+    m_RightTriButton->SetZIndex(15); // 同上
+    m_RightTriButton->SetPosition({305.0f, -153.0f});
+
+    m_ExitGameText = std::make_shared<GameText>("EXIT GAME", 65, black);
+    m_ExitGameText->SetPosition({0.0f, -153.0f});
+
+    m_OptionText = std::make_shared<GameText>("OPTION", 65, black);
+    m_OptionText->SetPosition({0.0f, -153.0f});
+
+    m_LocalPlayText = std::make_shared<GameText>(" LOCAL PLAY MODE", 65, black);
+    m_LocalPlayText->SetPosition({0.0f, -153.0f});
+}
+
+void MenuScene::OnEnter() {
+    LOG_INFO("MenuScene::OnEnter  index={}", m_SelectedIndex);
+
+    m_Ctx.Root.AddChild(m_MenuFrame);
+    m_Ctx.Root.AddChild(m_ExitGameButton);
+    m_Ctx.Root.AddChild(m_LeftTriButton);
+    m_Ctx.Root.AddChild(m_RightTriButton);
+    m_Ctx.Root.AddChild(m_ExitGameText);
+    m_Ctx.Root.AddChild(m_OptionText);
+    m_Ctx.Root.AddChild(m_LocalPlayText);
+
+    m_SelectedIndex = 0;
+
+    m_LeftTriButton->ResetState();
+    m_RightTriButton->ResetState();
+
+    m_LeftTriButton->SetVisible(true);
+    m_RightTriButton->SetVisible(true);
+    m_ExitGameButton->SetVisible(true);
+    m_MenuFrame->SetVisible(true);
+
+    m_Ctx.BlueCat->SetInputEnabled(false);
+    m_Ctx.RedCat->SetInputEnabled(false);
+
+    ShowCurrentOption();
+}
+
+void MenuScene::OnExit() {
+    LOG_INFO("MenuScene::OnExit");
+
+    m_Ctx.Root.RemoveChild(m_MenuFrame);
+    m_Ctx.Root.RemoveChild(m_ExitGameButton);
+    m_Ctx.Root.RemoveChild(m_LeftTriButton);
+    m_Ctx.Root.RemoveChild(m_RightTriButton);
+    m_Ctx.Root.RemoveChild(m_ExitGameText);
+    m_Ctx.Root.RemoveChild(m_OptionText);
+    m_Ctx.Root.RemoveChild(m_LocalPlayText);
+}
+
+Scene* MenuScene::Update() {
+    m_Ctx.BlueCat->Update(m_Ctx.Floor);
+    m_Ctx.RedCat->Update(m_Ctx.Floor);
+
+    m_LeftTriButton->UpdateButton();
+    m_RightTriButton->UpdateButton();
+
+    if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
+        m_ExitGameButton->IsLeftClicked()) {
+        LOG_INFO("MenuScene: back to TitleScene");
+        return m_TitleScene;
+    }
+
+    if (Util::Input::IsKeyDown(Util::Keycode::A)) {
+        HideAllOptions();
+        m_SelectedIndex = (m_SelectedIndex + 2) % 3;
+        m_LeftTriButton->Press(75.0f);
+        ShowCurrentOption();
+        return nullptr;
+    }
+
+    if (Util::Input::IsKeyDown(Util::Keycode::D)) {
+        HideAllOptions();
+        m_SelectedIndex = (m_SelectedIndex + 1) % 3;
+        m_RightTriButton->Press(75.0f);
+        ShowCurrentOption();
+        return nullptr;
+    }
+
+    if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
+        switch (m_SelectedIndex) {
+        case 0:
+            LOG_INFO("MenuScene: ENTER on EXIT GAME");
+            if (m_ExitConfirmScene != nullptr) return m_ExitConfirmScene;
+            break;
+        case 1:
+            LOG_INFO("MenuScene: ENTER on OPTION");
+            if (m_OptionScene != nullptr) return m_OptionScene;
+            break;
+        case 2:
+            LOG_INFO("MenuScene: ENTER on LOCAL PLAY (stub)");
+            break;
+        default:
+            break;
+        }
+    }
+
+    return nullptr;
+}
+
+void MenuScene::ShowCurrentOption() {
+    m_ExitGameText->SetVisible(m_SelectedIndex == 0);
+    m_OptionText->SetVisible(m_SelectedIndex == 1);
+    m_LocalPlayText->SetVisible(m_SelectedIndex == 2);
+}
+
+void MenuScene::HideAllOptions() {
+    m_ExitGameText->SetVisible(false);
+    m_OptionText->SetVisible(false);
+    m_LocalPlayText->SetVisible(false);
+}
+</file>
+
+<file path="src/PlayerCat.cpp">
+//
+// Created by cody2 on 2026/3/12.
+//
+
+#include "PlayerCat.hpp"
+
+void PlayerCat::Update(std::shared_ptr<Character> floor) {
+
+    // --- Actions based on State ---
+    bool isMoving = false;
+    if (m_InputEnabled) {
+        // Horizontal Movement (IsKeyDown is fine here)
+        if (Util::Input::IsKeyPressed(m_RightKey)) {
+            m_Transform.translation.x += m_MoveSpeed;
+            if (m_Transform.scale.x < 0) m_Transform.scale.x = -m_Transform.scale.x; // Face right
+            isMoving = true;
+        }
+        else if (Util::Input::IsKeyPressed(m_LeftKey)) {
+            m_Transform.translation.x -= m_MoveSpeed;
+            if (m_Transform.scale.x > 0) m_Transform.scale.x = -m_Transform.scale.x; // Face left
+            isMoving = true;
+        }
+
+        // Jump Action (using our reliable tracked state)
+        if (m_IsGrounded && Util::Input::IsKeyDown(m_JumpKey)) {
+            m_Velocity.y = m_JumpForce;
+            m_IsGrounded = false; // We are now leaving the ground
+        }
+    }
+
+    // Update animation based on movement
+    if (isMoving) {
+        SetLooping(true);
+        Play();
+    } else {
+        SetLooping(false);
+    }
+
+    // --- 3. Apply Physics ---
+    m_Velocity.y -= m_Gravity;
+    m_Transform.translation.y += m_Velocity.y;
+
+    // --- 4. Collision Detection & State Update for Next Frame ---
+    float standOffset = 58.5f;
+    if (m_Velocity.y <= 0 && floor && m_Transform.translation.y <= floor->GetPosition().y + standOffset) {
+        // We have collided with the floor.
+        m_Transform.translation.y = floor->GetPosition().y + standOffset;
+        m_Velocity.y = 0;
+        m_IsGrounded = true;
+    } else {
+        // We are not colliding with the floor, so we must be in the air.
+        m_IsGrounded = false;
+    }
+}
+</file>
+
+<file path="src/Titlescene.cpp">
+#include "Titlescene.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+#include "Util/Logger.hpp"
+#include "Util/Time.hpp"
+#include "Menuscene.hpp"
+
+TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
+    : Scene(ctx), m_MenuScene(menuScene)
+{
+    const Util::Color orange(254, 133, 78, 255);
+
+    // m_Header 和 m_TitleSub 已移至 GameContext，不在這裡建立。
+    // TitleScene 只建立自己私有的 m_PressEnterText。
+    m_TitleSub = std::make_shared<GameText>("- CLASSIC EDITED -", 46, orange);
+    m_TitleSub->SetZIndex(0);
+    m_TitleSub->SetPosition({0.0f, -22.5f});
+
+    m_PressEnterText = std::make_shared<GameText>("PRESS ENTER KEY", 66, orange);
+    m_TitleSub->SetZIndex(0);
+    m_PressEnterText->SetPosition({0.0f, -155.0f});
+}
+
+void TitleScene::OnEnter() {
+    LOG_INFO("TitleScene::OnEnter");
+
+    // Header 和 TitleSub 已永久在渲染樹，只需確保可見
+    m_Ctx.Header->SetVisible(true);
+
+    // m_TitleSub 和 m_PressEnterText 是 TitleScene 私有的，需要 AddChild
+    m_Ctx.Root.AddChild(m_TitleSub);
+    m_Ctx.Root.AddChild(m_PressEnterText);
+
+    m_FlashTimer = 0.0f;
+    m_PressEnterText->SetVisible(true);
+
+    m_Ctx.BlueCat->SetInputEnabled(true);
+    m_Ctx.RedCat->SetInputEnabled(true);
+}
+
+void TitleScene::OnExit() {
+    LOG_INFO("TitleScene::OnExit");
+
+    // Header 和 TitleSub 不移除，讓 MenuScene 也能看到它們。
+    // 只移除 TitleScene 私有的 m_PressEnterText 和 m_TitleSub。
+    m_Ctx.Root.RemoveChild(m_TitleSub);
+    m_Ctx.Root.RemoveChild(m_PressEnterText);
+
+    m_Ctx.BlueCat->SetInputEnabled(false);
+    m_Ctx.RedCat->SetInputEnabled(false);
+}
+
+Scene* TitleScene::Update() {
+    m_FlashTimer += Util::Time::GetDeltaTimeMs();
+    if (m_FlashTimer >= 1000.0f) {
+        m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
+        m_FlashTimer = 0.0f;
+    }
+
+    m_Ctx.BlueCat->Update(m_Ctx.Floor);
+    m_Ctx.RedCat->Update(m_Ctx.Floor);
+
+    if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
+        LOG_INFO("TitleScene: ENTER pressed, switching to MenuScene");
+        return m_MenuScene;
+    }
+
+    return nullptr;
+}
+</file>
+
+<file path="src/UI_Triangle_Button.cpp">
+//
+// Created by cody2 on 2026/3/14.
+//
+
+#include "UI_Triangle_Button.hpp"
+#include "Util/Time.hpp"
+
+UI_Triangle_Button::UI_Triangle_Button(const std::string& normalImagePath, const std::string& pressedImagePath)
+    : Character(normalImagePath), // 呼叫父類別建構子，預設載入 normal 圖片
+      m_NormalImagePath(normalImagePath),
+      m_PressedImagePath(pressedImagePath) {
+}
+
+void UI_Triangle_Button::Press(float durationMs) {
+    SetImage(m_PressedImagePath);
+    m_PressTimer = durationMs;
+}
+
+void UI_Triangle_Button::UpdateButton() {
+    // 如果計時器大於 0，代表按鈕正處於「被按下」的發亮狀態
+    if (m_PressTimer > 0.0f) {
+        m_PressTimer -= Util::Time::GetDeltaTimeMs();
+
+        // 時間到，切換回一般圖片
+        if (m_PressTimer <= 0.0f) {
+            m_PressTimer = 0.0f; // 防止出現負數
+            SetImage(m_NormalImagePath);
+        }
+    }
+}
+
+void UI_Triangle_Button::ResetState() {
+    m_PressTimer = 0.0f;
+    SetImage(m_NormalImagePath);
+}
+</file>
+
+<file path="include/AnimatedCharacter.hpp">
+#ifndef ANIMATED_CHARACTER_HPP
+#define ANIMATED_CHARACTER_HPP
+
+#include <vector>
+#include <string>
+
+#include "Util/Animation.hpp"
+#include "Util/GameObject.hpp"
+
+
+class AnimatedCharacter : public Util::GameObject {
+
+public:
+    explicit AnimatedCharacter(const std::vector<std::string>& AnimationPaths);
+
+    [[nodiscard]] bool IsLooping() const {
+        return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetLooping();
+    }
+
+    [[nodiscard]] bool IsPlaying() const {
+        return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetState() == Util::Animation::State::PLAY;
+    }
+
+    void SetLooping(bool looping) {
+        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
+        temp->SetLooping(looping);
+    }
+
+    void Play() {
+        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
+        temp->Play();
+    }
+    [[nodiscard]] bool IfAnimationEnds() const;
+
+};
+
+#endif //ANIMATED_CHARACTER_HPP
+</file>
+
+<file path="include/AppUtil.hpp">
+#ifndef APP_UTIL_HPP
+#define APP_UTIL_HPP
+
+#include "Character.hpp"
+
+#endif //APP_UTIL_HPP
+</file>
+
+<file path="include/GameText.hpp">
+//
+// Created by cody2 on 2026/3/12.
+//
+
+#ifndef GAMETEXT_HPP
+#define GAMETEXT_HPP
+
+#include <string>
+#include "Util/GameObject.hpp"
+#include "Util/Text.hpp"
+#include "Util/Color.hpp"
+
+class GameText : public Util::GameObject {
+public:
+    GameText(const std::string& text, int size, const Util::Color& color)
+        : GameObject(std::make_unique<Util::Text>(GA_RESOURCE_DIR"/Font/TerminusTTFWindows-Bold-4.49.3.ttf", size, text, color), 100) {
+        m_Visible = true;
+    }
+
+    [[nodiscard]] bool GetVisibility() const { return m_Visible; }
+
+    void SetVisible(bool visible) { m_Visible = visible; }
+
+    void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
+
+    [[nodiscard]] const glm::vec2 GetPosition() const { return m_Transform.translation; }
+
+    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
+
+    // 重新設定文字 用於選單值變更時更新顯示
+    void SetText(const std::string& text) {
+        auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable);
+        if (t) t->SetText(text);
+    }
+
+    // ==========================================
+    // 新增：偵測滑鼠是否懸停在文字範圍內
+    // ==========================================
+    [[nodiscard]] bool IsMouseHovering() const;
+
+    // ==========================================
+    // 新增：偵測文字是否被滑鼠左鍵點擊
+    // ==========================================
+    [[nodiscard]] bool IsLeftClicked() const;
+};
+
+#endif //GAMETEXT_HPP
+</file>
+
+<file path="include/PhaseResourceManger.hpp">
+#ifndef PHASE_MANGER_HPP
+#define PHASE_MANGER_HPP
+
+#include "Util/GameObject.hpp"
+#include "Character.hpp"
+#include "BackgroundImage.hpp"
+
+class PhaseResourceManger {
+public:
+    PhaseResourceManger();
+
+    // [[nodiscard]] std::vector<std::shared_ptr<Util::GameObject>> GetChildren() const {
+    //     return {m_TaskText, m_Background};
+    // }
+
+    void NextPhase();
+
+private:
+    // std::shared_ptr<TaskText> m_TaskText;
+    // std::shared_ptr<BackgroundImage> m_Background;
+
+    int m_Phase = 1;
+};
+
+
+#endif //PHASE_MANGER_HPP
+</file>
+
+<file path="README.md">
+# PICO PARK class edition
+## Description
+This is a [PTSD](https://github.com/ntut-open-source-club/practical-tools-for-simple-design) framework practice for students taking the OOPL course from NTUT.
+
+## Installation
+1. Clone the repository
+```bash
+git clone https://github.com/MuYuecode/PICO-PARK-class-edition.git
+```
+## Goats
+</file>
+
+<file path="src/AppEnd.cpp">
+// 必須 include 所有 Scene 的完整 header。
+// 這樣 unique_ptr<TitleScene> 等在 App destructor 展開時
+// 能看到完整型別，才能正確呼叫 delete。
+#include "App.hpp"
+#include "TitleScene.hpp"
+#include "MenuScene.hpp"
+#include "ExitConfirmScene.hpp"
+#include "OptionMenuScene.hpp"
+#include "Util/Logger.hpp"
+ 
+void App::End() {
+    LOG_TRACE("End");
+}
+</file>
+
+<file path="src/Character.cpp">
+#include "Character.hpp"
+#include "Util/Image.hpp"
+
+// 新增這兩行來獲取滑鼠輸入
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+
+Character::Character(const std::string& ImagePath) {
+    SetImage(ImagePath);
+    ResetPosition();
+}
+
+void Character::SetImage(const std::string& ImagePath) {
+    m_ImagePath = ImagePath;
+
+    m_Drawable = std::make_shared<Util::Image>(m_ImagePath);
+}
+
+// ==========================================
+// 實作：偵測滑鼠是否懸停
+// ==========================================
+bool Character::IsMouseHovering() const {
+    // 取得滑鼠當前座標
+    glm::vec2 mousePos = Util::Input::GetCursorPosition();
+
+    // 取得文字物件自身的中心座標
+    glm::vec2 myPos = this->GetPosition();
+    glm::vec2 mySize = this->GetSize();
+    float halfWidth = mySize.x/2 ;
+    float halfHeight = mySize.y/2 ;
+
+    // 進行 AABB (矩形範圍) 碰撞計算
+    return (mousePos.x >= myPos.x - halfWidth &&
+            mousePos.x <= myPos.x + halfWidth &&
+            mousePos.y >= myPos.y - halfHeight &&
+            mousePos.y <= myPos.y + halfHeight);
+}
+
+// ==========================================
+// 實作：偵測是否被左鍵點擊
+// ==========================================
+bool Character::IsLeftClicked() const {
+    // 先確認滑鼠左鍵有被按下
+    if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        // 直接重複利用上面寫好的懸停判斷，只要在範圍內就是被點擊了！
+
+        return IsMouseHovering();
+    }
+    return false;
+}
+</file>
+
+<file path="src/PhaseManager.cpp">
+#include "PhaseResourceManger.hpp"
+
+#include "Util/Logger.hpp"
+
+PhaseResourceManger::PhaseResourceManger() {
+    // m_TaskText = std::make_shared<TaskText>();
+    // m_Background = std::make_shared<BackgroundImage>();
+}
+
+void PhaseResourceManger::NextPhase() {
+    // if (m_Phase == 7) return;
+    // LOG_DEBUG("Passed! Next phase: {}", m_Phase);
+    // m_Background->NextPhase(m_Phase);
+    // m_TaskText->NextPhase(m_Phase++);
+}
+</file>
+
+<file path="src/AppUtil.cpp">
+#include "App.hpp"
+
+#include "Util/Logger.hpp"
+
+/**
+ * @brief The function to validate the tasks.
+ * @warning Do not modify this function.
+ * @note See README.md for the task details.
+ */
+// void App::ValidTask() {
+//     LOG_DEBUG("Validating the task");
+// }
+</file>
+
+<file path="include/Character.hpp">
+#ifndef CHARACTER_HPP
+#define CHARACTER_HPP
+
+#include <string>
+#include "Util/GameObject.hpp"
+
+
+
+class Character : public Util::GameObject
+{
+public:
+    explicit Character(const std::string& ImagePath);
+
+    Character(const Character&) = delete;
+
+    Character(Character&&) = delete;
+
+    Character& operator=(const Character&) = delete;
+
+    Character& operator=(Character&&) = delete;
+
+    [[nodiscard]] const std::string& GetImagePath() const { return m_ImagePath; }
+
+    [[nodiscard]] const glm::vec2& GetPosition() const { return m_Transform.translation; }
+
+    [[nodiscard]] bool GetVisibility() const { return m_Visible; }
+
+    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
+
+    void SetImage(const std::string& ImagePath);
+
+    void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
+
+    void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
+
+    [[nodiscard]] bool IfCollides(const std::shared_ptr<Character>& other) const {
+        float distance = glm::distance(this->GetPosition(), other->GetPosition());
+        return distance < 50.0f;
+    }
+
+    [[nodiscard]] bool IsStandingOn(const std::shared_ptr<Character>& other, float surfaceOffset) const {
+        return this->GetPosition().y <= (other->GetPosition().y + surfaceOffset);
+    }
+
+    // ==========================================
+    // 新增：偵測滑鼠是否懸停在圖片範圍內
+    // ==========================================
+    [[nodiscard]] bool IsMouseHovering() const;
+
+    // ==========================================
+    // 新增：偵測文字是否被滑鼠左鍵點擊
+    // ==========================================
+    [[nodiscard]] bool IsLeftClicked() const;
+
+private:
+    void ResetPosition() { m_Transform.translation = {0, 0}; }
+
+    std::string m_ImagePath;
+};
+
+
+#endif //CHARACTER_HPP
+</file>
+
+<file path="CMakeLists.txt">
+cmake_minimum_required(VERSION 3.26)
+project(picopart)
+
+set(CMAKE_CXX_STANDARD 17)
+
+cmake_policy(SET CMP0135 NEW)
+
+include(FetchContent)
+set(FETCHCONTENT_QUIET FALSE)
+
+FetchContent_Declare(
+    ptsd
+
+    URL         https://github.com/ntut-open-source-club/practical-tools-for-simple-design/archive/refs/tags/v0.2.zip
+
+    # Or alternatively if you want to use a specific git commit instead of a release:
+    # GIT_REPOSITORY  https://github.com/ntut-open-source-club/practical-tools-for-simple-design.git
+    # GIT_TAG         <git_tag>
+
+    SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/PTSD
+)
+
+FetchContent_MakeAvailable(ptsd)
+
+file(GLOB_RECURSE SRC_FILES src/*.cpp)
+file(GLOB_RECURSE HEADER_FILES include/*.hpp)
+
+add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
+        include/GameText.hpp
+        include/PlayerCat.hpp
+        src/PlayerCat.cpp
+        src/GameText.cpp
+        include/UI_Triangle_Button.hpp
+        src/UI_Triangle_Button.cpp
+        include/Scene.hpp
+        include/GameContext.hpp
+        include/Titlescene.hpp
+        src/Titlescene.cpp
+        include/Menuscene.hpp
+        src/Menuscene.cpp
+        include/Exitconfirmscene.hpp
+        src/Exitconfirmscene.cpp
+        include/OptionMenuScene.hpp
+        src/OptionMenuScene.cpp
+)
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GA_RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Resources")
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GA_RESOURCE_DIR="${CMAKE_INSTALL_PREFIX}/Resources")
+endif()
+
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${DEPENDENCY_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/PTSD/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+target_link_libraries(${PROJECT_NAME}
+    SDL2::SDL2main
+    PTSD
+)
+</file>
+
+<file path="include/App.hpp">
+#ifndef APP_HPP
+#define APP_HPP
+
+#include "pch.hpp"
+#include "Util/Renderer.hpp"
+#include "Character.hpp"
+#include "PlayerCat.hpp"
+#include "GameContext.hpp"
+#include "Scene.hpp"  // Scene 是完整型別，unique_ptr<Scene> 不需要子類別定義
+
+// 前向宣告只保留「AppStart.cpp 需要呼叫 setter 時」用到的型別
+class TitleScene;
+class MenuScene;
+class ExitConfirmScene;
+class OptionMenuScene;       // ← 新增（移除原本的 OptionScene）
+class PlayerSelectScene;
+
+class App {
+public:
+    enum class State { START, UPDATE, END };
+
+    State GetCurrentState() const { return m_CurrentState; }
+
+    void Start();
+    void Update();
+    void End();
+    // ~App() 不再需要特別宣告，
+    // 因為 unique_ptr<Scene> 使用完整型別，= default 在這裡就夠了
+
+private:
+    void TransitionTo(Scene* next);
+
+    State          m_CurrentState = State::START;
+    Util::Renderer m_Root;
+
+    std::unique_ptr<GameContext> m_Ctx;
+
+    // 改成 unique_ptr<Scene>：
+    //   - Scene 已有 virtual destructor，多型 delete 正確
+    //   - App.hpp 不再依賴子類別的完整定義
+    //   - 消除 "incomplete type" 錯誤
+    std::unique_ptr<Scene> m_TitleScene;
+    std::unique_ptr<Scene> m_MenuScene;
+    std::unique_ptr<Scene> m_ExitConfirmScene;
+    std::unique_ptr<Scene> m_OptionMenuScene;
+
+    Scene* m_CurrentScene = nullptr;
+};
+
+#endif // APP_HPP
+</file>
+
+<file path="src/AppStart.cpp">
+#include "App.hpp"
+#include "Titlescene.hpp"
+#include "Menuscene.hpp"
+#include "ExitConfirmScene.hpp"
+#include "OptionMenuScene.hpp"
+#include "Util/Logger.hpp"
+
+void App::Start() {
+    LOG_TRACE("Start");
+
+    // ── Step 1：GameContext ───────────────────────────────────────────────────
+    m_Ctx = std::make_unique<GameContext>(m_Root);
+
+    m_Ctx->WhiteBackground = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/white_background.jpg");
+    m_Ctx->WhiteBackground->SetZIndex(-10);
+    m_Ctx->WhiteBackground->SetScale({100.0f, 100.0f});
+    m_Root.AddChild(m_Ctx->WhiteBackground);
+
+    m_Ctx->Floor = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/background_floor.png");
+    m_Ctx->Floor->SetZIndex(0);
+    m_Ctx->Floor->SetPosition({0.0f, -340.0f});
+    m_Root.AddChild(m_Ctx->Floor);
+
+    // const Util::Color orange(254, 133, 78, 255);
+
+    m_Ctx->Header = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/header.png");
+    m_Ctx->Header->SetZIndex(0);
+    m_Ctx->Header->SetPosition({0.0f, 135.0f});
+    m_Root.AddChild(m_Ctx->Header);
+
+    m_Ctx->BlueCat = std::make_shared<PlayerCat>(
+        std::vector<std::string>{GA_RESOURCE_DIR "/Image/Character/blue_cat.png"},
+        Util::Keycode::A, Util::Keycode::D, Util::Keycode::W);
+    m_Ctx->BlueCat->SetZIndex(20);
+    m_Ctx->BlueCat->SetPosition({-30.0f, -281.5f});
+    m_Ctx->BlueCat->SetScale({0.2f, 0.2f});
+    m_Root.AddChild(m_Ctx->BlueCat);
+
+    m_Ctx->RedCat = std::make_shared<PlayerCat>(
+        std::vector<std::string>{GA_RESOURCE_DIR "/Image/Character/red_cat.png"},
+        Util::Keycode::LEFT, Util::Keycode::RIGHT, Util::Keycode::UP);
+    m_Ctx->RedCat->SetZIndex(20);
+    m_Ctx->RedCat->SetPosition({30.0f, -281.5f});
+    m_Ctx->RedCat->SetScale({0.2f, 0.2f});
+    m_Root.AddChild(m_Ctx->RedCat);
+
+    // ── Step 2：場景建立 ──────────────────────────────────────────────────────
+    // TitleScene
+    auto titleScene = std::make_unique<TitleScene>(
+        *m_Ctx, nullptr);
+
+    auto menuScene = std::make_unique<MenuScene>(
+        *m_Ctx, titleScene.get(), nullptr, nullptr, nullptr);
+
+    auto exitConfirmScene = std::make_unique<ExitConfirmScene>(
+        *m_Ctx,
+        menuScene.get(),
+        menuScene->GetMenuFrame(),
+        menuScene->GetExitGameButton()
+    );
+
+    // ── 新增 OptionMenuScene ──────────────────────────────────────
+    auto optionMenuScene = std::make_unique<OptionMenuScene>(
+        *m_Ctx,
+        menuScene.get(),
+        menuScene->GetExitGameButton()
+    );
+
+    menuScene->SetTitleScene(titleScene.get());
+    menuScene->SetExitConfirmScene(exitConfirmScene.get());
+    menuScene->SetOptionScene(optionMenuScene.get());     // ← 新增（見下方說明）
+    titleScene->SetMenuScene(menuScene.get());
+    // exitConfirmScene->SetMenuScene(menuScene.get()); // 已從建構子傳入
+    // optionMenuScene->SetMenuScene(menuScene.get()); // 同上
+
+    // unique_ptr<MenuScene> → unique_ptr<Scene> upcast
+    m_TitleScene       = std::move(titleScene);
+    m_MenuScene        = std::move(menuScene);
+    m_ExitConfirmScene = std::move(exitConfirmScene);
+    m_OptionMenuScene  = std::move(optionMenuScene);
+
+    TransitionTo(m_TitleScene.get());
+    m_CurrentState = State::UPDATE;
+}
+</file>
+
+<file path="src/AppUpdate.cpp">
+#include "App.hpp"
+#include "Util/Logger.hpp"
+ 
+void App::Update() {
+    if (m_CurrentScene == nullptr) {
+        LOG_ERROR("m_CurrentScene is nullptr!");
+        return;
+    }
+ 
+    Scene* next = m_CurrentScene->Update();
+
+    if (next != nullptr && next != m_CurrentScene) {
+        TransitionTo(next);
+    }
+
+    // ExitConfirmScene 設定 ShouldQuit 後，App 在這裡偵測並結束
+    if (m_Ctx->ShouldQuit) {
+        m_CurrentState = State::END;
+    }
+
+    m_Root.Update();
+}
+
+void App::TransitionTo(Scene* next) {
+    if (m_CurrentScene != nullptr) {
+        m_CurrentScene->OnExit();
+    }
+    m_CurrentScene = next;
+    if (m_CurrentScene != nullptr) {
+        m_CurrentScene->OnEnter();
+    }
+}
+</file>
+
+</files>

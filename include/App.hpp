@@ -12,7 +12,7 @@
 class TitleScene;
 class MenuScene;
 class ExitConfirmScene;
-class OptionScene;
+class OptionMenuScene;       // ← 新增（移除原本的 OptionScene）
 class PlayerSelectScene;
 
 class App {
@@ -42,6 +42,7 @@ private:
     std::unique_ptr<Scene> m_TitleScene;
     std::unique_ptr<Scene> m_MenuScene;
     std::unique_ptr<Scene> m_ExitConfirmScene;
+    std::unique_ptr<Scene> m_OptionMenuScene;
 
     Scene* m_CurrentScene = nullptr;
 };

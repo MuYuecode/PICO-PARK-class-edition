@@ -5,6 +5,7 @@
 #include "TitleScene.hpp"
 #include "MenuScene.hpp"
 #include "ExitConfirmScene.hpp"
+#include "OptionMenuScene.hpp"
 #include "Util/Logger.hpp"
  
 void App::End() {
