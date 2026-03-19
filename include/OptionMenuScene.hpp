@@ -14,6 +14,7 @@
 #include "UI_Triangle_Button.hpp"
 
 class MenuScene;
+class KeyboardConfigScene;
 
 /**
  * @brief 遊戲設定選單場景
@@ -50,6 +51,17 @@ public:
     Scene* Update()  override;
 
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
+    void SetKeyboardConfigScene(KeyboardConfigScene* s) { m_KeyboardConfigScene = s; }
+
+    struct Settings {
+        int  bgColorIndex = 0;
+        int  bgmVolume    = 0;
+        int  seVolume     = 0;
+        bool dispNumber   = false;
+    };
+
+    Settings m_Applied;   // 真正生效的設定（OK 才寫入）
+    Settings m_Pending;   // 選單開啟期間的暫時操作(會顯示在選單UI上)
 
 private:
     // ── 與 MenuScene 共用（借用，不持有所有權）────────────────────────────
@@ -98,15 +110,11 @@ private:
 
     // ── 切換目標 ───────────────────────────────────────────────────────────
     MenuScene* m_MenuScene = nullptr;
+    KeyboardConfigScene* m_KeyboardConfigScene = nullptr;
 
     // ── 選單值狀態 ─────────────────────────────────────────────────────────
     // 可擴充：在 s_BgColorOptions 中新增顏色字串即可
     static const std::vector<std::string> s_BgColorOptions;
-
-    int  m_BgColorIndex = 0;    // index into s_BgColorOptions
-    int  m_BgmVolume    = 0;    // 0–20
-    int  m_SeVolume     = 0;    // 0–20
-    bool m_DispNumber   = false;// false = OFF, true = ON
 
     // ── 游標列（0 = KEYBOARD_CONFIG … 6 = CANCEL）─────────────────────────
     int m_SelectedRow   = 0;

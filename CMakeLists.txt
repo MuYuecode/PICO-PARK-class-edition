@@ -42,6 +42,17 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         src/Exitconfirmscene.cpp
         include/OptionMenuScene.hpp
         src/OptionMenuScene.cpp
+        include/KeyboardConfigScene.hpp
+        src/KeyboardConfigScene.cpp
+        include/LocalPlayScene.hpp
+        src/LocalPlayScene.cpp
+        include/LocalPlayGameScene.hpp
+        src/LocalPlayGameScene.cpp
+        include/CharacterPhysicsSystem.hpp
+        src/CharacterPhysicsSystem.cpp
+        include/IPhysicsBody.hpp
+        include/PhysicsWorld.hpp
+        src/PhysicsWorld.cpp
 )
 
 if(MSVC)

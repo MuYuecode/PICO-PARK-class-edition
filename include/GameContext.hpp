@@ -4,8 +4,8 @@
 #include "pch.hpp" // IWYU pragma: export
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
-#include "GameText.hpp"    // [新增] TitleSub 是 GameText
 #include "PlayerCat.hpp"
+#include <vector>
 
 struct GameContext {
     Util::Renderer& Root;
@@ -18,8 +18,11 @@ struct GameContext {
     // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除。
     std::shared_ptr<Character>  Header;
 
-    std::shared_ptr<PlayerCat>  BlueCat;
-    std::shared_ptr<PlayerCat>  RedCat;
+    std::vector<std::shared_ptr<PlayerCat>> StartupCats;
+
+    // Local-play shared runtime data for upcoming level logic.
+    int SelectedPlayerCount = 2;
+    int CooperativePushPower = 1;
 
     bool ShouldQuit = false;
 

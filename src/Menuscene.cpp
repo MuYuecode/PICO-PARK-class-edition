@@ -1,20 +1,21 @@
 #include "Menuscene.hpp"
 #include "ExitConfirmScene.hpp"
 #include "OptionMenuScene.hpp"
+#include "LocalPlayScene.hpp"   // ← 新增
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-MenuScene::MenuScene(GameContext& ctx,
-                     Scene* titleScene,
+MenuScene::MenuScene(GameContext&      ctx,
+                     Scene*            titleScene,
                      ExitConfirmScene* exitConfirmScene,
-                     OptionMenuScene* optionScene,
-                     PlayerSelectScene* playerSelectScene)
+                     OptionMenuScene*  optionScene,
+                     LocalPlayScene*   localPlayScene)
     : Scene(ctx)
     , m_TitleScene(titleScene)
     , m_ExitConfirmScene(exitConfirmScene)
     , m_OptionScene(optionScene)
-    , m_PlayerSelectScene(playerSelectScene)
+    , m_LocalPlayScene(localPlayScene)
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
@@ -62,7 +63,7 @@ void MenuScene::OnEnter() {
     m_Ctx.Root.AddChild(m_OptionText);
     m_Ctx.Root.AddChild(m_LocalPlayText);
 
-    m_SelectedIndex = 0;
+    // m_SelectedIndex = 0;
 
     m_LeftTriButton->ResetState();
     m_RightTriButton->ResetState();
@@ -72,8 +73,11 @@ void MenuScene::OnEnter() {
     m_ExitGameButton->SetVisible(true);
     m_MenuFrame->SetVisible(true);
 
-    m_Ctx.BlueCat->SetInputEnabled(false);
-    m_Ctx.RedCat->SetInputEnabled(false);
+    for (auto& cat : m_Ctx.StartupCats) {
+        if (cat != nullptr) {
+            cat->SetInputEnabled(false);
+        }
+    }
 
     ShowCurrentOption();
 }
@@ -91,8 +95,11 @@ void MenuScene::OnExit() {
 }
 
 Scene* MenuScene::Update() {
-    m_Ctx.BlueCat->Update(m_Ctx.Floor);
-    m_Ctx.RedCat->Update(m_Ctx.Floor);
+    for (auto& cat : m_Ctx.StartupCats) {
+        if (cat != nullptr) {
+            cat->Update(m_Ctx.Floor);
+        }
+    }
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
@@ -130,7 +137,8 @@ Scene* MenuScene::Update() {
             if (m_OptionScene != nullptr) return m_OptionScene;
             break;
         case 2:
-            LOG_INFO("MenuScene: ENTER on LOCAL PLAY (stub)");
+            LOG_INFO("MenuScene: ENTER on LOCAL PLAY");
+            if (m_LocalPlayScene != nullptr) return m_LocalPlayScene;  // ← stub 解除
             break;
         default:
             break;

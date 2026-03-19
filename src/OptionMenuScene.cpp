@@ -2,8 +2,9 @@
 // Created by cody2 on 2026/3/15.
 //
 
-#include "OptionMenuScene.hpp"
 #include "Menuscene.hpp"
+#include "OptionMenuScene.hpp"
+#include "KeyboardConfigScene.hpp"
 #include "AppUtil.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -211,6 +212,9 @@ void OptionMenuScene::OnEnter() {
     m_DispNumberLeftBtn->ResetState();
     m_DispNumberRightBtn->ResetState();
 
+    // ── 新增：以已儲存設定初始化暫存 ──────────────────────────────────────
+    m_Pending = m_Applied;
+
     // 重置游標到第一列 (KEYBOARD CONFIG)
     m_SelectedRow = 0;
     UpdateValueTexts();
@@ -279,15 +283,16 @@ Scene* OptionMenuScene::Update() {
 
     // ── OK 點擊（滑鼠） ─────────────────────────────────────────────────────
     if (m_OkText->IsLeftClicked()) {
+        m_Applied = m_Pending;    // ← 新增
         LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
         return m_MenuScene;
     }
 
     // ── 列游標：W 上移；S /下移 ──────────────────────────────────
-    if (Util::Input::IsKeyDown(Util::Keycode::W)) {
+    if (Util::Input::IsKeyDown(Util::Keycode::W) || Util::Input::IsKeyDown(Util::Keycode::UP)) {
         DecrementRow();
     }
-    else if (Util::Input::IsKeyDown(Util::Keycode::S)) {
+    else if (Util::Input::IsKeyDown(Util::Keycode::S) || Util::Input::IsKeyDown(Util::Keycode::DOWN)) {
         IncrementRow();
     }
 
@@ -333,10 +338,10 @@ Scene* OptionMenuScene::Update() {
     }
 
     // ── A / D 鍵調整當前列的值 ─────────────────────────────────────────────
-    if (Util::Input::IsKeyDown(Util::Keycode::A)) {
+    if (Util::Input::IsKeyDown(Util::Keycode::A) || Util::Input::IsKeyDown(Util::Keycode::LEFT)) {
         AdjustLeft(m_SelectedRow) ;
     }
-    else if (Util::Input::IsKeyDown(Util::Keycode::D)) {
+    else if (Util::Input::IsKeyDown(Util::Keycode::D) || Util::Input::IsKeyDown(Util::Keycode::RIGHT)) {
         AdjustRight(m_SelectedRow);
     }
 
@@ -344,10 +349,11 @@ Scene* OptionMenuScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         switch (m_SelectedRow) {
         case 0:
-            // KEYBOARD CONFIG → 子場景（stub：尚未實作）
             LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (stub)");
+            if (m_KeyboardConfigScene != nullptr) return m_KeyboardConfigScene;
             break;
         case 5:
+            m_Applied = m_Pending;    // ← 新增
             LOG_INFO("OptionMenuScene: OK (keyboard) => MenuScene");
             return m_MenuScene;
         case 6:
@@ -365,27 +371,13 @@ Scene* OptionMenuScene::Update() {
 // 私有輔助：游標移動
 // ────────────────────────────────────────────────────────────────────────────
 void OptionMenuScene::DecrementRow() {
-    switch (m_SelectedRow) {
-    case 6 :
-        m_SelectedRow = 4 ;
-        break ;
-    default:
-        m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
-        break ;
-    }
+    m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
     LOG_INFO("Option DecrementRow") ;
     UpdateChoiceFrame();
 }
 
 void OptionMenuScene::IncrementRow() {
-    switch (m_SelectedRow) {
-    case 5 :
-        m_SelectedRow = 0 ;
-        break ;
-    default:
-        m_SelectedRow = (m_SelectedRow + 1) % ROW_COUNT;
-        break ;
-    }
+    m_SelectedRow = (m_SelectedRow + 1) % ROW_COUNT;
     LOG_INFO("Option IncrementRow") ;
     UpdateChoiceFrame();
 }
@@ -396,26 +388,26 @@ void OptionMenuScene::IncrementRow() {
 void OptionMenuScene::AdjustLeft(int row) {
     switch (row) {
     case 1:  // BG COLOR（循環）
-        m_BgColorIndex = (m_BgColorIndex
+        m_Pending.bgColorIndex = (m_Pending.bgColorIndex
                           + static_cast<int>(s_BgColorOptions.size()) - 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorLeftBtn->Press(75.0f);
         break;
     case 2:  // BGM VOLUME（下限 0）
-        if (m_BgmVolume > 0) {
-            --m_BgmVolume;
+        if (m_Pending.bgmVolume > 0) {
+            --m_Pending.bgmVolume;
             m_BgmVolumeLeftBtn->Press(75.0f);
         }
         break;
     case 3:  // SE VOLUME（下限 0）
-        if (m_SeVolume > 0) {
-            --m_SeVolume;
+        if (m_Pending.seVolume > 0) {
+            --m_Pending.seVolume;
             m_SeVolumeLeftBtn->Press(75.0f);
         }
         break;
     case 4:  // DISP NUMBER（LEFT = OFF）
-        if (m_DispNumber) {
-            m_DispNumber = false;
+        if (m_Pending.dispNumber) {
+            m_Pending.dispNumber = false;
             m_DispNumberLeftBtn->Press(75.0f);
         }
         break;
@@ -440,25 +432,25 @@ void OptionMenuScene::AdjustLeft(int row) {
 void OptionMenuScene::AdjustRight(int row) {
     switch (row) {
     case 1:  // BG COLOR（循環）
-        m_BgColorIndex = (m_BgColorIndex + 1)
+        m_Pending.bgColorIndex = (m_Pending.bgColorIndex + 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorRightBtn->Press(75.0f);
         break;
     case 2:  // BGM VOLUME（上限 20）
-        if (m_BgmVolume < 20) {
-            ++m_BgmVolume;
+        if (m_Pending.bgmVolume < 20) {
+            ++m_Pending.bgmVolume;
             m_BgmVolumeRightBtn->Press(75.0f);
         }
         break;
     case 3:  // SE VOLUME（上限 20）
-        if (m_SeVolume < 20) {
-            ++m_SeVolume;
+        if (m_Pending.seVolume < 20) {
+            ++m_Pending.seVolume;
             m_SeVolumeRightBtn->Press(75.0f);
         }
         break;
     case 4:  // DISP NUMBER（RIGHT = ON）
-        if (!m_DispNumber) {
-            m_DispNumber = true;
+        if (!m_Pending.dispNumber) {
+            m_Pending.dispNumber = true;
             m_DispNumberRightBtn->Press(75.0f);
         }
         break;
@@ -479,10 +471,10 @@ void OptionMenuScene::AdjustRight(int row) {
 // 私有輔助：根據內部狀態重新設定所有值文字
 // ────────────────────────────────────────────────────────────────────────────
 void OptionMenuScene::UpdateValueTexts() {
-    m_BgColorValue->SetText(s_BgColorOptions[m_BgColorIndex]);
-    m_BgmVolumeValue->SetText(std::to_string(m_BgmVolume));
-    m_SeVolumeValue->SetText(std::to_string(m_SeVolume));
-    m_DispNumberValue->SetText(m_DispNumber ? "ON" : "OFF");
+    m_BgColorValue->SetText(s_BgColorOptions[m_Pending.bgColorIndex]);
+    m_BgmVolumeValue->SetText(std::to_string(m_Pending.bgmVolume));
+    m_SeVolumeValue->SetText(std::to_string(m_Pending.seVolume));
+    m_DispNumberValue->SetText(m_Pending.dispNumber ? "ON" : "OFF");
     LOG_INFO("UpdateValueTexts") ;
 }
 
