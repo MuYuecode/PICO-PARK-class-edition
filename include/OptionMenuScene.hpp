@@ -55,8 +55,8 @@ public:
 
     struct Settings {
         int  bgColorIndex = 0;
-        int  bgmVolume    = 0;
-        int  seVolume     = 0;
+        int  bgmVolume    = 10;
+        int  seVolume     = 10;
         bool dispNumber   = false;
     };
 

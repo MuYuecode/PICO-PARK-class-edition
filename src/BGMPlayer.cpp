@@ -16,10 +16,10 @@ BGMPlayer::BGMPlayer() {
 
     // ==================== 預設音量 50% ====================
     for (auto& bgm : m_BGMs) {
-        bgm->SetVolume(64);
+        bgm->SetVolume(60);
     }
 
-    // ==================== 註冊音樂結束自動切歌 ====================
+    // ==================== 音樂結束自動切歌 ====================
 
     Mix_HookMusicFinished(MusicFinishedCallback);
     LOG_INFO("BGMPlayer initialized with 3 tracks");

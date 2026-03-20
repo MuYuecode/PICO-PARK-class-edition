@@ -5,6 +5,7 @@
 #include "Menuscene.hpp"
 #include "OptionMenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
+#include "BGMPlayer.hpp"
 #include "AppUtil.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -86,7 +87,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgmVolumeLeftBtn->SetZIndex(35);
     m_BgmVolumeLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_BGM});
 
-    m_BgmVolumeValue = std::make_shared<GameText>("0", 45, black);
+    m_BgmVolumeValue = std::make_shared<GameText>("10", 45, black);
     m_BgmVolumeValue->SetZIndex(35);
     m_BgmVolumeValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_BGM});
 
@@ -107,7 +108,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_SeVolumeLeftBtn->SetZIndex(35);
     m_SeVolumeLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_SE});
 
-    m_SeVolumeValue = std::make_shared<GameText>("0", 45, black);
+    m_SeVolumeValue = std::make_shared<GameText>("10", 45, black);
     m_SeVolumeValue->SetZIndex(35);
     m_SeVolumeValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_SE});
 
@@ -277,6 +278,8 @@ Scene* OptionMenuScene::Update() {
         m_ExitGameButton->IsLeftClicked()              ||
         m_CancelText->IsLeftClicked())
     {
+        // 玩家取消：把音量還原成上次 OK 確認的值，預覽的調整全部作廢
+        m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
         LOG_INFO("OptionMenuScene: cancelled => MenuScene");
         return m_MenuScene;
     }
@@ -287,7 +290,8 @@ Scene* OptionMenuScene::Update() {
         return m_KeyboardConfigScene;
     }
     if (m_OkText->IsLeftClicked()) {
-        m_Applied = m_Pending;    // ← 新增
+        m_Applied = m_Pending;
+        m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
         LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
         return m_MenuScene;
     }
@@ -357,7 +361,8 @@ Scene* OptionMenuScene::Update() {
             if (m_KeyboardConfigScene != nullptr) return m_KeyboardConfigScene;
             break;
         case 5:
-            m_Applied = m_Pending;    // ← 新增
+            m_Applied = m_Pending;
+            m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
             LOG_INFO("OptionMenuScene: OK (keyboard) => MenuScene");
             return m_MenuScene;
         case 6:
@@ -376,13 +381,11 @@ Scene* OptionMenuScene::Update() {
 // ────────────────────────────────────────────────────────────────────────────
 void OptionMenuScene::DecrementRow() {
     m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
-    LOG_INFO("Option DecrementRow") ;
     UpdateChoiceFrame();
 }
 
 void OptionMenuScene::IncrementRow() {
     m_SelectedRow = (m_SelectedRow + 1) % ROW_COUNT;
-    LOG_INFO("Option IncrementRow") ;
     UpdateChoiceFrame();
 }
 
@@ -401,6 +404,8 @@ void OptionMenuScene::AdjustLeft(int row) {
         if (m_Pending.bgmVolume > 0) {
             --m_Pending.bgmVolume;
             m_BgmVolumeLeftBtn->Press(75.0f);
+            // 即時預覽：m_Pending 還沒 OK，但讓玩家先聽到效果
+            m_Ctx.BGMPlayer->SetVolume(m_Pending.bgmVolume * 6);
         }
         break;
     case 3:  // SE VOLUME（下限 0）
@@ -426,7 +431,6 @@ void OptionMenuScene::AdjustLeft(int row) {
     default:
         break;
     }
-    LOG_INFO("Option AdjustLeft") ;
     UpdateValueTexts();
 }
 
@@ -444,6 +448,8 @@ void OptionMenuScene::AdjustRight(int row) {
         if (m_Pending.bgmVolume < 20) {
             ++m_Pending.bgmVolume;
             m_BgmVolumeRightBtn->Press(75.0f);
+            // 即時預覽
+            m_Ctx.BGMPlayer->SetVolume(m_Pending.bgmVolume * 6);
         }
         break;
     case 3:  // SE VOLUME（上限 20）
@@ -467,7 +473,6 @@ void OptionMenuScene::AdjustRight(int row) {
         UpdateChoiceFrame();
         break ;
     }
-    LOG_INFO("Option AdjustRight") ;
     UpdateValueTexts();
 }
 
@@ -479,7 +484,6 @@ void OptionMenuScene::UpdateValueTexts() {
     m_BgmVolumeValue->SetText(std::to_string(m_Pending.bgmVolume));
     m_SeVolumeValue->SetText(std::to_string(m_Pending.seVolume));
     m_DispNumberValue->SetText(m_Pending.dispNumber ? "ON" : "OFF");
-    LOG_INFO("UpdateValueTexts") ;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -518,5 +522,4 @@ void OptionMenuScene::UpdateChoiceFrame() {
     default:
         break;
     }
-    // LOG_INFO("UpdateChoiceFrame") ;
 }

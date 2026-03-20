@@ -1,4 +1,5 @@
 #include "App.hpp"
+#include "BGMPlayer.hpp"
 #include "Titlescene.hpp"
 #include "Menuscene.hpp"
 #include "ExitConfirmScene.hpp"
@@ -79,6 +80,9 @@ void App::Start() {
     m_Ctx->Header->SetZIndex(0);
     m_Ctx->Header->SetPosition({0.0f, 135.0f});
     m_Root.AddChild(m_Ctx->Header);
+
+    m_Ctx->BGMPlayer = std::make_unique<BGMPlayer>();
+    m_Ctx->BGMPlayer->Play();
 
     // ── 建立 8 隻裝飾貓（StartupCats）────────────────────────────────────────
     static const std::array<const char*, 8> kColorOrder = {
@@ -193,5 +197,6 @@ void App::Start() {
     m_LocalPlayGameScene  = std::move(localPlayGameScene);
 
     TransitionTo(m_TitleScene.get());
+
     m_CurrentState = State::UPDATE;
 }

@@ -45,6 +45,7 @@ The content is organized as follows:
   App.hpp
   AppUtil.hpp
   BackgroundImage.hpp
+  BGMPlayer.hpp
   Character.hpp
   CharacterPhysicsSystem.hpp
   Exitconfirmscene.hpp
@@ -69,6 +70,7 @@ The content is organized as follows:
   AppStart.cpp
   AppUpdate.cpp
   AppUtil.cpp
+  BGMPlayer.cpp
   Character.cpp
   CharacterPhysicsSystem.cpp
   Exitconfirmscene.cpp
@@ -92,6 +94,9 @@ The content is organized as follows:
   PHYSICS_DESIGN.md
 
 [Resources]/
+  BGM/pp1.mp3
+  BGM/pp2.mp3
+  BGM/ppc.mp3
   Font/FORCEDSQUARE.ttf
   Font/Monocraft.ttf
   Font/TerminusTTFWindows-Bold-4.49.3.ttf
@@ -127,6 +132,7 @@ The content is organized as follows:
   Image/Character/blue_cat/blue_cat_run_7.png
   Image/Character/blue_cat/blue_cat_run_8.png
   Image/Character/blue_cat/blue_cat_run_9.png
+  Image/Character/blue_cat/blue_cat_run_img.png
   Image/Character/blue_cat/blue_cat_stand_1.png
   Image/Character/blue_cat/blue_cat_stand_2.png
   Image/Character/blue_cat/blue_cat_stand_3.png
@@ -477,6 +483,54 @@ private:
 #endif //BACKGROUND_IMAGE_HPP
 </file>
 
+<file path="BGMPlayer.hpp">
+//
+// Created by cody2 on 2026/3/20.
+//
+
+#ifndef PICOPART_BGMPLAYER_HPP
+#define PICOPART_BGMPLAYER_HPP
+
+#include "Util/BGM.hpp"
+#include <vector>
+#include <string>
+#include <memory>
+
+/**
+ * @class BGMPlayer
+ * @brief 專門管理背景音樂輪播的 OOP 封裝類別
+ *
+ * 功能：
+ * - 自動載入 Resources/BGM/ 資料夾下的三首歌
+ * - 自動輪播
+ * - 預設音量 50% (64)
+ * - 可隨時暫停、繼續、調整音量
+ */
+class BGMPlayer {
+public:
+    BGMPlayer();
+
+    void Play() const;                // 播放
+    void Pause() const;               // 暫停
+    void Resume() const;              // 繼續
+    void SetVolume(int volume) const; // 0 ~ 128
+    void Next() ;                     // 手動切下一首
+
+    [[nodiscard]] int GetVolume() const; // 取得目前播放的曲目名稱
+
+private:
+    static void MusicFinishedCallback();
+
+    std::vector<std::unique_ptr<Util::BGM>> m_BGMs ;
+    std::size_t m_CurrentIndex = 0;
+
+    static inline BGMPlayer* s_Instance = nullptr;
+};
+
+
+#endif //PICOPART_BGMPLAYER_HPP
+</file>
+
 <file path="Character.hpp">
 #ifndef CHARACTER_HPP
 #define CHARACTER_HPP
@@ -716,6 +770,7 @@ private:
 #define PICOPART_GAMECONTEXT_HPP
 
 #include "pch.hpp" // IWYU pragma: export
+#include "BGMPlayer.hpp"
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
 #include "PlayerCat.hpp"
@@ -727,6 +782,7 @@ struct GameContext {
     // 永久留在渲染樹的物件（所有場景都看得到）
     std::shared_ptr<Character>  WhiteBackground;
     std::shared_ptr<Character>  Floor;
+    std::shared_ptr<BGMPlayer>  BGMPlayer;
 
     // [新增] Header 在 TitleScene 和 MenuScene 都要顯示，
     // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除。
@@ -883,7 +939,7 @@ public:
 
     // 每 frame 由 PhysicsWorld 呼叫，物件可在此更新自身狀態
     // （敵人 AI、平台軌跡計算、子彈移動等）
-    // 注意：此時物件間的碰撞尚未解析，不要在這裡讀取其他物件位置
+    // 若需查詢其他物件，應透過 PhysicsWorld 的查詢工具（CountCharactersPushing 等），而非直接存取其他 body 的位置
     virtual void PhysicsUpdate() {}
 
     // 碰撞解析完成後，PhysicsWorld 通知此物件與誰發生了碰撞
@@ -1231,6 +1287,7 @@ private:
 #include "Character.hpp"
 #include "GameText.hpp"
 #include "UI_Triangle_Button.hpp"
+#include "CharacterPhysicsSystem.hpp"
 
 class ExitConfirmScene;
 class OptionMenuScene;
@@ -1265,12 +1322,16 @@ public:
 private:
     std::shared_ptr<Character>          m_MenuFrame;
     std::shared_ptr<Character>          m_ExitGameButton;
+    std::shared_ptr<Character>          m_blue_cat_run_img;
     std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
     std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
 
     std::shared_ptr<GameText> m_ExitGameText;
     std::shared_ptr<GameText> m_OptionText;
     std::shared_ptr<GameText> m_LocalPlayText;
+
+    CharacterPhysicsSystem    m_Physics;
+    std::vector<PhysicsAgent> m_Agents;
 
     int m_SelectedIndex = 0;
 
@@ -1883,6 +1944,7 @@ void App::End() {
 
 <file path="AppStart.cpp">
 #include "App.hpp"
+#include "BGMPlayer.hpp"
 #include "Titlescene.hpp"
 #include "Menuscene.hpp"
 #include "ExitConfirmScene.hpp"
@@ -1963,6 +2025,9 @@ void App::Start() {
     m_Ctx->Header->SetZIndex(0);
     m_Ctx->Header->SetPosition({0.0f, 135.0f});
     m_Root.AddChild(m_Ctx->Header);
+
+    m_Ctx->BGMPlayer = std::make_unique<BGMPlayer>();
+    m_Ctx->BGMPlayer->Play();
 
     // ── 建立 8 隻裝飾貓（StartupCats）────────────────────────────────────────
     static const std::array<const char*, 8> kColorOrder = {
@@ -2077,6 +2142,7 @@ void App::Start() {
     m_LocalPlayGameScene  = std::move(localPlayGameScene);
 
     TransitionTo(m_TitleScene.get());
+
     m_CurrentState = State::UPDATE;
 }
 </file>
@@ -2262,6 +2328,73 @@ Util::Keycode GetAnyKeyDown() {
 }
 
 } // namespace AppUtil
+</file>
+
+<file path="BGMPlayer.cpp">
+//
+// Created by cody2 on 2026/3/20.
+//
+
+#include "BGMPlayer.hpp"
+#include <SDL_mixer.h>
+#include "Util/Logger.hpp"
+
+BGMPlayer::BGMPlayer() {
+    s_Instance = this;
+
+    // ==================== 載入三首歌 ====================
+    m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/ppc.mp3"));
+    m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/pp1.mp3"));
+    m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/pp2.mp3"));
+
+    // ==================== 預設音量 50% ====================
+    for (auto& bgm : m_BGMs) {
+        bgm->SetVolume(60);
+    }
+
+    // ==================== 音樂結束自動切歌 ====================
+
+    Mix_HookMusicFinished(MusicFinishedCallback);
+    LOG_INFO("BGMPlayer initialized with 3 tracks");
+}
+
+// ====================== 公開介面 ======================
+
+void BGMPlayer::Play() const {
+    if (m_BGMs.empty()) return;
+    m_BGMs[m_CurrentIndex]->Play(0);
+}
+
+void BGMPlayer::Pause() const {
+    if (!m_BGMs.empty()) m_BGMs[m_CurrentIndex]->Pause();
+}
+
+void BGMPlayer::Resume() const {
+    if (!m_BGMs.empty()) m_BGMs[m_CurrentIndex]->Resume();
+}
+
+void BGMPlayer::SetVolume(int volume) const {
+    for (auto& bgm : m_BGMs) {
+        bgm->SetVolume(volume);
+    }
+}
+
+int BGMPlayer::GetVolume() const {
+    return m_BGMs.empty() ? 0 : m_BGMs[m_CurrentIndex]->GetVolume();
+}
+
+void BGMPlayer::Next() {
+    if (m_BGMs.empty()) return;
+    m_CurrentIndex = (m_CurrentIndex + 1) % m_BGMs.size();
+    m_BGMs[m_CurrentIndex]->Play(0);
+}
+
+// ==================== 靜態回呼 ====================
+void BGMPlayer::MusicFinishedCallback() {
+    if (s_Instance) {
+        s_Instance->Next();
+    }
+}
 </file>
 
 <file path="Character.cpp">
@@ -3108,8 +3241,8 @@ Scene* KeyboardConfigScene::Update() {
     }
 
     // ── ENTER 確認 ────────────────────────────────────────────────────────
-    if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
-        if (m_SelectedRow == ROW_OK || m_OkText->IsLeftClicked()) {
+    if (Util::Input::IsKeyDown(Util::Keycode::RETURN) || Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        if (m_SelectedRow == ROW_OK) {
             // 有衝突時禁止 OK（3P-8P）
             if (m_CurrentPlayer >= 1 && HasConflicts()) {
                 LOG_INFO("KeyboardConfigScene: OK blocked due to key conflict");
@@ -3124,7 +3257,7 @@ Scene* KeyboardConfigScene::Update() {
             LOG_INFO("KeyboardConfigScene: CANCEL => OptionMenuScene");
             return m_OptionScene;
         }
-        else if (m_SelectedRow == ROW_DEFAULT || m_DefaultText->IsLeftClicked()) {
+        else if (m_SelectedRow == ROW_DEFAULT) {
             ApplyDefault();
             UpdateValueTexts();
         }
@@ -3861,6 +3994,12 @@ MenuScene::MenuScene(GameContext&      ctx,
     m_ExitGameButton->SetZIndex(20);
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
 
+    m_blue_cat_run_img = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Character/blue_cat/blue_cat_run_img.png");
+    m_blue_cat_run_img->SetZIndex(10);
+    m_blue_cat_run_img->SetScale({1.2f, 1.2f});
+    m_blue_cat_run_img->SetPosition({0.0f, -74.0f});
+
     m_LeftTriButton = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
@@ -3889,6 +4028,7 @@ void MenuScene::OnEnter() {
 
     m_Ctx.Root.AddChild(m_MenuFrame);
     m_Ctx.Root.AddChild(m_ExitGameButton);
+    m_Ctx.Root.AddChild(m_blue_cat_run_img);
     m_Ctx.Root.AddChild(m_LeftTriButton);
     m_Ctx.Root.AddChild(m_RightTriButton);
     m_Ctx.Root.AddChild(m_ExitGameText);
@@ -3905,12 +4045,15 @@ void MenuScene::OnEnter() {
     m_ExitGameButton->SetVisible(true);
     m_MenuFrame->SetVisible(true);
 
+    m_Agents.clear();
     for (auto& cat : m_Ctx.StartupCats) {
-        if (cat != nullptr) {
-            cat->SetInputEnabled(false);
-        }
-    }
+        if (cat == nullptr) continue;
+        cat->SetInputEnabled(false);
 
+        PhysicsAgent agent;
+        agent.actor = cat;
+        m_Agents.push_back(agent);
+    }
     ShowCurrentOption();
 }
 
@@ -3919,19 +4062,18 @@ void MenuScene::OnExit() {
 
     m_Ctx.Root.RemoveChild(m_MenuFrame);
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
+    m_Ctx.Root.RemoveChild(m_blue_cat_run_img);
     m_Ctx.Root.RemoveChild(m_LeftTriButton);
     m_Ctx.Root.RemoveChild(m_RightTriButton);
     m_Ctx.Root.RemoveChild(m_ExitGameText);
     m_Ctx.Root.RemoveChild(m_OptionText);
     m_Ctx.Root.RemoveChild(m_LocalPlayText);
+
+    m_Agents.clear();
 }
 
 Scene* MenuScene::Update() {
-    for (auto& cat : m_Ctx.StartupCats) {
-        if (cat != nullptr) {
-            cat->Update(m_Ctx.Floor);
-        }
-    }
+    m_Physics.Update(m_Agents, m_Ctx.Floor);
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
@@ -4278,6 +4420,10 @@ Scene* OptionMenuScene::Update() {
     }
 
     // ── OK 點擊（滑鼠） ─────────────────────────────────────────────────────
+    if (m_KbConfigOpen->IsLeftClicked()) {
+        LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (mouse) => KeyboardConfigScene");
+        return m_KeyboardConfigScene;
+    }
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;    // ← 新增
         LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
@@ -4510,7 +4656,7 @@ void OptionMenuScene::UpdateChoiceFrame() {
     default:
         break;
     }
-    LOG_INFO("UpdateChoiceFrame") ;
+    // LOG_INFO("UpdateChoiceFrame") ;
 }
 </file>
 
@@ -5324,14 +5470,18 @@ m_LeftTriButton      （◀ 按鈕）
 m_RightTriButton     （▶ 按鈕）
 ```
 
-`ExitConfirmScene`、`OptionMenuScene`、`LocalPlayScene` 透過 getter 取得這些物件的 `shared_ptr`，在自己的 `OnEnter` 加入渲染樹、`OnExit` 移除，但**不擁有所有權**。
+`AppStart.cpp` 呼叫這些 getter，並透過**建構子參數**將 `shared_ptr` 注入各 Scene。Scene 在建構時就持有這些物件，`OnEnter` / `OnExit` 只負責 `AddChild` / `RemoveChild`，不需要再呼叫 getter。
 
 ```
-MenuScene::GetMenuFrame()       → ExitConfirmScene, LocalPlayScene 借用
-MenuScene::GetExitGameButton()  → ExitConfirmScene, OptionMenuScene, KeyboardConfigScene 借用
-MenuScene::GetLeftTriButton()   → LocalPlayScene 借用
-MenuScene::GetRightTriButton()  → LocalPlayScene 借用
+AppStart 呼叫 getter → 建構子注入 → Scene 持有 shared_ptr
+
+MenuScene::GetMenuFrame()       → 注入 ExitConfirmScene, LocalPlayScene
+MenuScene::GetExitGameButton()  → 注入 ExitConfirmScene, OptionMenuScene, KeyboardConfigScene
+MenuScene::GetLeftTriButton()   → 注入 LocalPlayScene
+MenuScene::GetRightTriButton()  → 注入 LocalPlayScene
 ```
+
+各 Scene 在 `OnEnter` 加入渲染樹、`OnExit` 移除，但**不擁有所有權**。
 
 > **未來新增選單子場景**（例如 `OnlinePlayScene`）：同樣從 `MenuScene` 取得這四個物件，在 `OnEnter`/`OnExit` 配對加入/移除，借用結束後還原 scale/position。
 
@@ -5372,6 +5522,7 @@ Util::GameObject          （PTSD 引擎基底，持有 m_Drawable、m_Transform
 | `IsMouseHovering()` | AABB 滑鼠懸停偵測 |
 | `IsLeftClicked()` | 滑鼠左鍵點擊偵測 |
 | `IfCollides(other)` | 簡易距離碰撞（50px 閾值，**目前僅作示意，實際碰撞已由 `CharacterPhysicsSystem` 接管**） |
+| `IsStandingOn(other, surfaceOffset)` | 判斷自身是否站在 `other` 表面上（`this->y <= other->y + surfaceOffset`），為舊版輔助方法，新場景應使用 `PhysicsState::supportIndex` |
 
 > `m_Transform` 是 `public`（PTSD 引擎設計如此），可直接修改 `scale.x` 實現翻轉，但建議優先使用 `SetScale()`。
 
@@ -6236,41 +6387,22 @@ CharacterPhysicsSystem  (純算法，Scene 持有一個)
 
 ### 1. PlayerCat（CHARACTER）
 
-**需要補充實作 IPhysicsBody：**
+`PlayerCat` 已完整實作 `IPhysicsBody`（`PlayerCat.hpp`）：
 
 ```cpp
-// 在 PlayerCat.hpp 繼承 IPhysicsBody
 class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
-public:
-    BodyType  GetBodyType()  const override { return BodyType::CHARACTER; }
-    glm::vec2 GetPosition()  const override { return m_Transform.translation; }
-    void      SetPosition(const glm::vec2& p) override { m_Transform.translation = p; }
-    glm::vec2 GetHalfSize()  const override {
-        return glm::abs(GetScaledSize()) * 0.5f;
-    }
-    glm::vec2 GetVelocity()  const override { return m_Velocity; }
-    void      SetVelocity(const glm::vec2& v) override { m_Velocity = v; }
-
-    bool IsSolid()      const override { return true; }
-    bool IsKinematic()  const override { return false; }
-    bool UseGravity()   const override { return true; }
-
-    // OnCollision：可在這裡處理「被敵人碰到扣血」等效果
-    void OnCollision(const CollisionInfo& info) override;
-
-    // PhysicsUpdate 留空：CHARACTER 的移動由 CharacterPhysicsSystem 負責
+    // 已實作：GetBodyType / GetPosition / SetPosition / GetHalfSize
+    //         GetVelocity / SetVelocity / IsSolid / IsKinematic / UseGravity
+    // OnCollision：目前為空，未來可在此處理「被敵人碰到扣血」等效果
+    // PhysicsUpdate：留空，CHARACTER 的移動由 CharacterPhysicsSystem 負責
 };
 ```
 
-**PhysicsAgent 調整：**
-```cpp
-struct PhysicsAgent {
-    std::shared_ptr<PlayerCat> actor;  // PlayerCat 同時 IS-A IPhysicsBody
-    PhysicsState               state;
-};
+`PhysicsAgent` 的結構即為 `shared_ptr<PlayerCat> actor + PhysicsState state`，與 `IPhysicsBody` 整合方式如下：
 
-// Scene::OnEnter 登記方式
-m_World.Register(agent.actor);   // actor 已實作 IPhysicsBody
+```cpp
+// 未來 LevelScene::OnEnter 登記方式（目前 LocalPlayGameScene 尚未使用 m_World）
+m_World.Register(agent.actor);   // actor 已實作 IPhysicsBody，直接傳入即可
 ```
 
 ---

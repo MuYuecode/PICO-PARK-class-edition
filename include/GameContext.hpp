@@ -2,6 +2,7 @@
 #define PICOPART_GAMECONTEXT_HPP
 
 #include "pch.hpp" // IWYU pragma: export
+#include "BGMPlayer.hpp"
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
 #include "PlayerCat.hpp"
@@ -13,6 +14,7 @@ struct GameContext {
     // 永久留在渲染樹的物件（所有場景都看得到）
     std::shared_ptr<Character>  WhiteBackground;
     std::shared_ptr<Character>  Floor;
+    std::shared_ptr<BGMPlayer>  BGMPlayer;
 
     // [新增] Header 在 TitleScene 和 MenuScene 都要顯示，
     // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除。
