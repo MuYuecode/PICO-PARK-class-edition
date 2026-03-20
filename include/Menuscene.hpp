@@ -5,6 +5,7 @@
 #include "Character.hpp"
 #include "GameText.hpp"
 #include "UI_Triangle_Button.hpp"
+#include "CharacterPhysicsSystem.hpp"
 
 class ExitConfirmScene;
 class OptionMenuScene;
@@ -39,12 +40,16 @@ public:
 private:
     std::shared_ptr<Character>          m_MenuFrame;
     std::shared_ptr<Character>          m_ExitGameButton;
+    std::shared_ptr<Character>          m_blue_cat_run_img;
     std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
     std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
 
     std::shared_ptr<GameText> m_ExitGameText;
     std::shared_ptr<GameText> m_OptionText;
     std::shared_ptr<GameText> m_LocalPlayText;
+
+    CharacterPhysicsSystem    m_Physics;
+    std::vector<PhysicsAgent> m_Agents;
 
     int m_SelectedIndex = 0;
 

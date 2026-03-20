@@ -282,6 +282,10 @@ Scene* OptionMenuScene::Update() {
     }
 
     // ── OK 點擊（滑鼠） ─────────────────────────────────────────────────────
+    if (m_KbConfigOpen->IsLeftClicked()) {
+        LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (mouse) => KeyboardConfigScene");
+        return m_KeyboardConfigScene;
+    }
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;    // ← 新增
         LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
@@ -514,5 +518,5 @@ void OptionMenuScene::UpdateChoiceFrame() {
     default:
         break;
     }
-    LOG_INFO("UpdateChoiceFrame") ;
+    // LOG_INFO("UpdateChoiceFrame") ;
 }

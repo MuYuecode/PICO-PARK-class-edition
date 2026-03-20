@@ -53,6 +53,8 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         include/IPhysicsBody.hpp
         include/PhysicsWorld.hpp
         src/PhysicsWorld.cpp
+        include/BGMPlayer.hpp
+        src/BGMPlayer.cpp
 )
 
 if(MSVC)

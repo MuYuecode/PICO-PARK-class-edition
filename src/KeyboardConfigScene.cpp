@@ -310,8 +310,8 @@ Scene* KeyboardConfigScene::Update() {
     }
 
     // ── ENTER 確認 ────────────────────────────────────────────────────────
-    if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
-        if (m_SelectedRow == ROW_OK || m_OkText->IsLeftClicked()) {
+    if (Util::Input::IsKeyDown(Util::Keycode::RETURN) || Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        if (m_SelectedRow == ROW_OK) {
             // 有衝突時禁止 OK（3P-8P）
             if (m_CurrentPlayer >= 1 && HasConflicts()) {
                 LOG_INFO("KeyboardConfigScene: OK blocked due to key conflict");
@@ -326,7 +326,7 @@ Scene* KeyboardConfigScene::Update() {
             LOG_INFO("KeyboardConfigScene: CANCEL => OptionMenuScene");
             return m_OptionScene;
         }
-        else if (m_SelectedRow == ROW_DEFAULT || m_DefaultText->IsLeftClicked()) {
+        else if (m_SelectedRow == ROW_DEFAULT) {
             ApplyDefault();
             UpdateValueTexts();
         }

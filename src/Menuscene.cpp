@@ -29,6 +29,12 @@ MenuScene::MenuScene(GameContext&      ctx,
     m_ExitGameButton->SetZIndex(20);
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
 
+    m_blue_cat_run_img = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Character/blue_cat/blue_cat_run_img.png");
+    m_blue_cat_run_img->SetZIndex(10);
+    m_blue_cat_run_img->SetScale({1.2f, 1.2f});
+    m_blue_cat_run_img->SetPosition({0.0f, -74.0f});
+
     m_LeftTriButton = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
@@ -57,6 +63,7 @@ void MenuScene::OnEnter() {
 
     m_Ctx.Root.AddChild(m_MenuFrame);
     m_Ctx.Root.AddChild(m_ExitGameButton);
+    m_Ctx.Root.AddChild(m_blue_cat_run_img);
     m_Ctx.Root.AddChild(m_LeftTriButton);
     m_Ctx.Root.AddChild(m_RightTriButton);
     m_Ctx.Root.AddChild(m_ExitGameText);
@@ -73,12 +80,15 @@ void MenuScene::OnEnter() {
     m_ExitGameButton->SetVisible(true);
     m_MenuFrame->SetVisible(true);
 
+    m_Agents.clear();
     for (auto& cat : m_Ctx.StartupCats) {
-        if (cat != nullptr) {
-            cat->SetInputEnabled(false);
-        }
-    }
+        if (cat == nullptr) continue;
+        cat->SetInputEnabled(false);
 
+        PhysicsAgent agent;
+        agent.actor = cat;
+        m_Agents.push_back(agent);
+    }
     ShowCurrentOption();
 }
 
@@ -87,19 +97,18 @@ void MenuScene::OnExit() {
 
     m_Ctx.Root.RemoveChild(m_MenuFrame);
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
+    m_Ctx.Root.RemoveChild(m_blue_cat_run_img);
     m_Ctx.Root.RemoveChild(m_LeftTriButton);
     m_Ctx.Root.RemoveChild(m_RightTriButton);
     m_Ctx.Root.RemoveChild(m_ExitGameText);
     m_Ctx.Root.RemoveChild(m_OptionText);
     m_Ctx.Root.RemoveChild(m_LocalPlayText);
+
+    m_Agents.clear();
 }
 
 Scene* MenuScene::Update() {
-    for (auto& cat : m_Ctx.StartupCats) {
-        if (cat != nullptr) {
-            cat->Update(m_Ctx.Floor);
-        }
-    }
+    m_Physics.Update(m_Agents, m_Ctx.Floor);
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
