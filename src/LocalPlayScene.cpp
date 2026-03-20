@@ -25,12 +25,14 @@ LocalPlayScene::LocalPlayScene(GameContext& ctx,
                                std::shared_ptr<Character>          exitGameButton,
                                std::shared_ptr<UI_Triangle_Button> leftTriButton,
                                std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                               std::shared_ptr<Character>          blueCatRunImg,  // ← 新增
                                KeyboardConfigScene* kbConfigScene)
     : Scene(ctx)
     , m_MenuFrame(std::move(menuFrame))
     , m_ExitGameButton(std::move(exitGameButton))
     , m_LeftTriButton(std::move(leftTriButton))
     , m_RightTriButton(std::move(rightTriButton))
+    , m_BlueCatRunImg(std::move(blueCatRunImg))   // ← 新增
     , m_MenuScene(menuScene)
     , m_KbConfigScene(kbConfigScene)
 {
@@ -57,6 +59,7 @@ void LocalPlayScene::OnEnter() {
     m_Ctx.Root.AddChild(m_ExitGameButton);
     m_Ctx.Root.AddChild(m_LeftTriButton);
     m_Ctx.Root.AddChild(m_RightTriButton);
+    m_Ctx.Root.AddChild(m_BlueCatRunImg);
 
     // 本場景私有物件
     m_Ctx.Root.AddChild(m_PlayerCountText);
@@ -66,6 +69,11 @@ void LocalPlayScene::OnEnter() {
     m_MenuFrame->SetVisible(true);
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_MenuFrame->SetPosition({0.0f, -105.0f});
+
+    m_BlueCatRunImg->SetVisible(true);                            // ← 新增
+    m_BlueCatRunImg->SetZIndex(10);                               // ← 新增
+    m_BlueCatRunImg->SetScale({1.2f, 1.2f});                      // ← 新增
+    m_BlueCatRunImg->SetPosition({0.0f, -74.0f});                 // ← 新增
 
     m_ExitGameButton->SetVisible(true);
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
@@ -98,6 +106,7 @@ void LocalPlayScene::OnExit() {
 
     m_Ctx.Root.RemoveChild(m_LeftTriButton);
     m_Ctx.Root.RemoveChild(m_RightTriButton);
+    m_Ctx.Root.RemoveChild(m_BlueCatRunImg);   // ← 新增
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
     m_Ctx.Root.RemoveChild(m_MenuFrame);
 }

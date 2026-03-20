@@ -36,6 +36,7 @@ public:
     std::shared_ptr<Character> GetExitGameButton() const { return m_ExitGameButton; }
     std::shared_ptr<UI_Triangle_Button> GetLeftTriButton()  const { return m_LeftTriButton;  }  // ← 新增
     std::shared_ptr<UI_Triangle_Button> GetRightTriButton() const { return m_RightTriButton; }  // ← 新增
+    std::shared_ptr<Character> GetBlueCatRunImg()  const { return m_blue_cat_run_img; }
 
 private:
     std::shared_ptr<Character>          m_MenuFrame;

@@ -63,11 +63,11 @@ void App::Start() {
     // ── Step 1：GameContext ───────────────────────────────────────────────────
     m_Ctx = std::make_unique<GameContext>(m_Root);
 
-    m_Ctx->WhiteBackground = std::make_shared<Character>(
+    m_Ctx->Background = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/white_background.png");
-    m_Ctx->WhiteBackground->SetZIndex(-10);
-    m_Ctx->WhiteBackground->SetScale({100.0f, 100.0f});
-    m_Root.AddChild(m_Ctx->WhiteBackground);
+    m_Ctx->Background->SetZIndex(-10);
+    m_Ctx->Background->SetScale({100.0f, 100.0f});
+    m_Root.AddChild(m_Ctx->Background);
 
     m_Ctx->Floor = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/background_floor.png");
@@ -80,6 +80,18 @@ void App::Start() {
     m_Ctx->Header->SetZIndex(0);
     m_Ctx->Header->SetPosition({0.0f, 135.0f});
     m_Root.AddChild(m_Ctx->Header);
+
+    m_Ctx->Door = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    m_Ctx->Door->SetScale({0.148f, 0.161f});   // ← 新增這一行
+    m_Ctx->Door->SetZIndex(5.0f);
+    {
+        const float floorY     = m_Ctx->Floor->GetPosition().y;
+        const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
+        const float doorHalfH  = m_Ctx->Door->GetScaledSize().y  / 2.0f;
+        m_Ctx->Door->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
+    }
+    m_Root.AddChild(m_Ctx->Door);
 
     m_Ctx->BGMPlayer = std::make_unique<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
@@ -174,6 +186,7 @@ void App::Start() {
         menuScene->GetExitGameButton(),
         menuScene->GetLeftTriButton(),
         menuScene->GetRightTriButton(),
+        menuScene->GetBlueCatRunImg(),   // ← 新增
         kbConfigScene.get());
 
     auto localPlayGameScene = std::make_unique<LocalPlayGameScene>(

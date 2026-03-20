@@ -78,7 +78,23 @@ void LocalPlayGameScene::OnEnter() {
     }
 
     SpawnPlayers(playerCount);
-    ApplyInitialFormation();
+
+
+    // open door
+    m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+
+    // add people count
+    m_EnteredCount = 0;
+    const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
+    const float     doorHalfH = m_Ctx.Door->GetScaledSize().y / 2.0f;
+
+    m_DoorCountText = std::make_shared<GameText>(
+        "0/" + std::to_string(playerCount),
+        40,
+        Util::Color::FromRGB(0, 0, 0, 255));
+    m_DoorCountText->SetZIndex(30.0f);
+    m_DoorCountText->SetPosition({doorPos.x+10.0f, doorPos.y + doorHalfH + 25.0f});
+    m_Ctx.Root.AddChild(m_DoorCountText);
 
     LOG_INFO("LocalPlayGameScene::OnEnter players={}", playerCount);
 }
@@ -92,6 +108,14 @@ void LocalPlayGameScene::OnExit() {
             m_Ctx.Root.RemoveChild(pb.agent.actor);
         }
     }
+
+    // close door and people count
+    m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    if (m_DoorCountText != nullptr) {
+        m_Ctx.Root.RemoveChild(m_DoorCountText);
+        m_DoorCountText = nullptr;
+    }
+
     m_Players.clear();
 
     for (auto& cat : m_Ctx.StartupCats) {
@@ -133,6 +157,39 @@ Scene* LocalPlayGameScene::Update() {
             st.supportIndex = -1;
         }
     }
+
+    // door detect
+    const glm::vec2 doorPos   = m_Ctx.Door->GetPosition();
+    const glm::vec2 doorSize  = m_Ctx.Door->GetScaledSize();
+    const float halfW = doorSize.x / 2.0f + 10.0f;  // 擴大 10.0f
+    const float halfH = doorSize.y / 2.0f + 10.0f;
+
+    for (auto& pb : m_Players) {
+        if (pb.entered)                  continue;
+        if (pb.agent.actor == nullptr)   continue;
+
+        const glm::vec2 pos = pb.agent.actor->GetPosition();
+        const bool inRange  = (std::abs(pos.x - doorPos.x) <= halfW &&
+                               std::abs(pos.y - doorPos.y) <= halfH);
+
+        const bool pressedUp = (pb.key.up != Util::Keycode::UNKNOWN) &&
+                                Util::Input::IsKeyDown(pb.key.up);
+
+        if (inRange && pressedUp) {
+            pb.entered = true;
+            ++m_EnteredCount;
+            pb.agent.actor->SetVisible(false);
+            pb.agent.actor->SetInputEnabled(false);
+            pb.agent.actor->SetPosition({640, -360});
+            UpdateDoorCountText();
+
+            if (m_EnteredCount >= m_Ctx.SelectedPlayerCount) {
+                // 全員進入 → 切換到 LevelSelectScene
+                return m_LevelSelectScene;   // 尚未實作時回傳 nullptr
+            }
+        }
+    }
+    // ====
 
     // ── 攤平成 vector<PhysicsAgent>（System 需要整體視野）────────────────
     std::vector<PhysicsAgent> agents;
@@ -190,6 +247,18 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
                  pb.key.right == Util::Keycode::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default2P;
         }
+
+        // 複製 StartupCats[i] 的位置
+        if (i < static_cast<int>(m_Ctx.StartupCats.size()) &&
+            m_Ctx.StartupCats[i] != nullptr) {
+            cat->SetPosition(m_Ctx.StartupCats[i]->GetPosition());
+            } else {
+                // Fallback：StartupCats 不夠用時放在地板上
+                const float floorY     = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetPosition().y : -340.0f;
+                const float floorHalfH = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetScaledSize().y / 2.0f : 0.0f;
+                const float charHalfH  = cat->GetScaledSize().y / 2.0f;
+                cat->SetPosition({0.0f, floorY + floorHalfH + charHalfH});
+            }
 
         m_Players.push_back(pb);
         m_Ctx.Root.AddChild(cat);
@@ -264,4 +333,11 @@ void LocalPlayGameScene::UpdateCooperativePower() {
     }
 
     m_Ctx.CooperativePushPower = bestGroup;
+}
+
+void LocalPlayGameScene::UpdateDoorCountText() {
+    if (m_DoorCountText == nullptr) return;
+    m_DoorCountText->SetText(
+        std::to_string(m_EnteredCount) + "/" +
+        std::to_string(m_Ctx.SelectedPlayerCount));
 }

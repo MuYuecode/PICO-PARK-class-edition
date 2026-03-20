@@ -39,6 +39,7 @@ public:
                    std::shared_ptr<Character>          exitGameButton,
                    std::shared_ptr<UI_Triangle_Button> leftTriButton,
                    std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                   std::shared_ptr<Character>          blueCatRunImg,  // ← 新增
                    KeyboardConfigScene* kbConfigScene);
     ~LocalPlayScene() override = default;
 
@@ -61,6 +62,7 @@ private:
     std::shared_ptr<Character>          m_ExitGameButton;
     std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
     std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
+    std::shared_ptr<Character>          m_BlueCatRunImg;   // ← 新增
 
     // ── 本場景私有 UI ────────────────────────────────────────────────────────
     std::shared_ptr<GameText> m_PlayerCountText;  // "nPLAYER GAME"
