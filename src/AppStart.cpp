@@ -64,7 +64,7 @@ void App::Start() {
     m_Ctx = std::make_unique<GameContext>(m_Root);
 
     m_Ctx->WhiteBackground = std::make_shared<Character>(
-        GA_RESOURCE_DIR "/Image/Background/white_background.jpg");
+        GA_RESOURCE_DIR "/Image/Background/white_background.png");
     m_Ctx->WhiteBackground->SetZIndex(-10);
     m_Ctx->WhiteBackground->SetScale({100.0f, 100.0f});
     m_Root.AddChild(m_Ctx->WhiteBackground);

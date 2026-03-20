@@ -115,6 +115,7 @@ private:
     // ── 選單值狀態 ─────────────────────────────────────────────────────────
     // 可擴充：在 s_BgColorOptions 中新增顏色字串即可
     static const std::vector<std::string> s_BgColorOptions;
+    static const std::vector<std::string> s_BgColorPaths;   // ← 新增：對應的圖片路徑
 
     // ── 游標列（0 = KEYBOARD_CONFIG … 6 = CANCEL）─────────────────────────
     int m_SelectedRow   = 0;

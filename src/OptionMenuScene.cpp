@@ -16,7 +16,14 @@
 // ────────────────────────────────────────────────────────────────────────────
 const std::vector<std::string> OptionMenuScene::s_BgColorOptions = {
     "WHITE",
-    // "BLACK",   ← 示例：未來可新增其他顏色
+    "CREAM",
+    "DARK",
+};
+
+const std::vector<std::string> OptionMenuScene::s_BgColorPaths =  {
+    GA_RESOURCE_DIR "/Image/Background/white_background.png",
+    GA_RESOURCE_DIR "/Image/Background/cream_background.png",
+    GA_RESOURCE_DIR "/Image/Background/dark_background.png",
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -280,6 +287,7 @@ Scene* OptionMenuScene::Update() {
     {
         // 玩家取消：把音量還原成上次 OK 確認的值，預覽的調整全部作廢
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+        m_Ctx.WhiteBackground->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
         LOG_INFO("OptionMenuScene: cancelled => MenuScene");
         return m_MenuScene;
     }
@@ -292,6 +300,7 @@ Scene* OptionMenuScene::Update() {
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+        m_Ctx.WhiteBackground->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);  // ← 新增
         LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
         return m_MenuScene;
     }
@@ -363,9 +372,12 @@ Scene* OptionMenuScene::Update() {
         case 5:
             m_Applied = m_Pending;
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+            m_Ctx.WhiteBackground->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);  // ← 新增
             LOG_INFO("OptionMenuScene: OK (keyboard) => MenuScene");
             return m_MenuScene;
         case 6:
+            m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+            m_Ctx.WhiteBackground->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);  // ← 新增
             LOG_INFO("OptionMenuScene: CANCEL (keyboard) => MenuScene");
             return m_MenuScene;
         default:
@@ -399,6 +411,7 @@ void OptionMenuScene::AdjustLeft(int row) {
                           + static_cast<int>(s_BgColorOptions.size()) - 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorLeftBtn->Press(75.0f);
+        m_Ctx.WhiteBackground->SetImage(s_BgColorPaths[m_Pending.bgColorIndex]);
         break;
     case 2:  // BGM VOLUME（下限 0）
         if (m_Pending.bgmVolume > 0) {
@@ -443,6 +456,7 @@ void OptionMenuScene::AdjustRight(int row) {
         m_Pending.bgColorIndex = (m_Pending.bgColorIndex + 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorRightBtn->Press(75.0f);
+        m_Ctx.WhiteBackground->SetImage(s_BgColorPaths[m_Pending.bgColorIndex]);
         break;
     case 2:  // BGM VOLUME（上限 20）
         if (m_Pending.bgmVolume < 20) {
