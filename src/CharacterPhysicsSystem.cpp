@@ -30,11 +30,9 @@ void CharacterPhysicsSystem::Update(std::vector<PhysicsAgent>& agents,
         }
 
         // ── 2. 跳躍 ───────────────────────────────────────────────────────
-        // 按鍵讀取由場景負責設定 state.moveDir；跳躍同理。
-        // 這裡只處理「已請求跳躍」且條件符合的情況。
-        // ※ 呼叫前 Scene 必須把 wantJump 寫入 agent.state，
-        //   或直接在 Update 前設好 velocityY。
-        // （見下方 NOTE）
+        if (self.state.beingStoodOn && self.state.velocityY > 0.0f) {
+            self.state.velocityY = 0.0f;
+        }
 
         // ── 3. 水平移動 ───────────────────────────────────────────────────
         const float moveSpeed = (self.state.grounded && sup >= 0)
@@ -115,6 +113,11 @@ float CharacterPhysicsSystem::ResolveHorizontal(int idx,
             targetX = std::max(targetX, other.x + minDist);
         }
     }
+    // 畫面左右邊界：角色中心不可超出「半畫面寬 - 角色半寬」
+    // 這樣角色的邊緣恰好停在畫面邊緣，而不是中心點停在邊緣
+    const float boundX = kScreenHalfW - HalfWidth();
+    targetX = std::clamp(targetX, -boundX, boundX);
+
     return targetX;
 }
 

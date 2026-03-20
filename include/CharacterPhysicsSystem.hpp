@@ -49,6 +49,10 @@ public:
     static constexpr float kJumpForce        = 11.0f;
     static constexpr float kGravity          = 0.75f;
 
+    // 畫面邊界（1280×720，以原點為中心）
+    static constexpr float kScreenHalfW = 640.0f;   // ← 原本推算錯誤的 400.0f
+    static constexpr float kScreenHalfH = 360.0f;   // ← 原本推算錯誤的 300.0f
+
     // ── 主要更新介面 ──────────────────────────────────────────────────────
     // 每 frame 呼叫一次；內部依序處理：
     //   1. 攜帶（被踩角色跟隨支撐者移動）

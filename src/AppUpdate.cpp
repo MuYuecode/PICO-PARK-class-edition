@@ -6,8 +6,10 @@ void App::Update() {
         LOG_ERROR("m_CurrentScene is nullptr!");
         return;
     }
- 
+
+    m_Ctx->BGMPlayer->Update();
     Scene* next = m_CurrentScene->Update();
+
 
     if (next != nullptr && next != m_CurrentScene) {
         TransitionTo(next);

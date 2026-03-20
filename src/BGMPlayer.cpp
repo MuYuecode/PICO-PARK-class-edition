@@ -29,7 +29,8 @@ BGMPlayer::BGMPlayer() {
 
 void BGMPlayer::Play() const {
     if (m_BGMs.empty()) return;
-    m_BGMs[m_CurrentIndex]->Play(0);
+    m_BGMs[m_CurrentIndex]->Play(1);
+    LOG_INFO("BGM play");
 }
 
 void BGMPlayer::Pause() const {
@@ -53,12 +54,17 @@ int BGMPlayer::GetVolume() const {
 void BGMPlayer::Next() {
     if (m_BGMs.empty()) return;
     m_CurrentIndex = (m_CurrentIndex + 1) % m_BGMs.size();
-    m_BGMs[m_CurrentIndex]->Play(0);
+    m_BGMs[m_CurrentIndex]->Play(1);
 }
 
 // ==================== 靜態回呼 ====================
 void BGMPlayer::MusicFinishedCallback() {
-    if (s_Instance) {
-        s_Instance->Next();
+    s_ShouldPlayNext = true ;
+}
+
+void BGMPlayer::Update() {
+    if (s_ShouldPlayNext) {
+        s_ShouldPlayNext = false ;
+        Next() ;
     }
 }
