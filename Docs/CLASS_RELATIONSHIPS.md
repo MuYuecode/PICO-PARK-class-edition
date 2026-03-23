@@ -25,10 +25,11 @@ Util::GameObject          （PTSD 引擎 — 所有可渲染物件的根）
 ├── Character              Character.hpp / Character.cpp
 │   └── UI_Triangle_Button UI_Triangle_Button.hpp / .cpp
 │
-└── AnimatedCharacter      AnimatedCharacter.hpp / AnimatedCharacter.cpp
-    └── PlayerCat          PlayerCat.hpp / PlayerCat.cpp
-        └── [待實作]
-            IPhysicsBody   IPhysicsBody.hpp         ← 介面，多重繼承
+├── AnimatedCharacter      AnimatedCharacter.hpp / AnimatedCharacter.cpp
+│   └── PlayerCat          PlayerCat.hpp / PlayerCat.cpp
+│           └── IPhysicsBody   IPhysicsBody.hpp    ← 已實作多重繼承
+│
+└── GameText               GameText.hpp / GameText.cpp
 
 Scene                      Scene.hpp                ← 純虛擬抽象類別
 ├── TitleScene             Titlescene.hpp / .cpp
@@ -55,7 +56,7 @@ Scene                      Scene.hpp                ← 純虛擬抽象類別
 ### 2.2 `UI_Triangle_Button`（`UI_Triangle_Button.hpp`）
 
 - **IS-A** `Character`：繼承圖片顯示與滑鼠偵測。
-- **擴充**：新增「按下 / 正常」兩張圖片的切換邏輯與計時器。
+- **擴充**：新增「按下 / 正常」兩張圖片的切換邏輯與計時器（`m_PressTimer`）。
 - **使用 `Character::SetImage()`** 熱替換圖片來實作視覺回饋，不需要重新建立物件。
 
 ### 2.3 `AnimatedCharacter`（`AnimatedCharacter.hpp`）
@@ -67,20 +68,21 @@ Scene                      Scene.hpp                ← 純虛擬抽象類別
 ### 2.4 `PlayerCat`（`PlayerCat.hpp`）
 
 - **IS-A** `AnimatedCharacter`：繼承動畫播放機制。
-- **擴充**：持有多組動畫 clip（stand / run / jump_rise / jump_fall / land / push），實作多動畫狀態機。
-- **待實作 IS-A** `IPhysicsBody`（多重繼承）：讓 `PhysicsWorld` 能以統一介面管理；見 `PHYSICS_DESIGN.md § 1`。
+- **IS-A** `IPhysicsBody`（多重繼承，**已完整實作**）：讓 `PhysicsWorld` 能以統一介面管理。
+- **擴充**：持有六組動畫 clip（stand / run / jump_rise / jump_fall / land / push），實作多動畫狀態機。
 
-```
-// 多重繼承示意（待實作）
+```cpp
+// 多重繼承（已實作）
 class PlayerCat : public AnimatedCharacter, public IPhysicsBody { ... };
 //                      ↑ 渲染能力              ↑ 物理介面
 ```
+
+`IPhysicsBody` 已實作的方法：`GetBodyType`、`GetPosition`、`SetPosition`、`GetHalfSize`、`GetVelocity`、`SetVelocity`、`IsSolid`（true）、`IsKinematic`（false）、`UseGravity`（true）、`OnCollision`（空實作，待擴充）。
 
 ### 2.5 `GameText`（`GameText.hpp`）
 
 - **IS-A** `Util::GameObject`：`m_Drawable` 為 `Util::Text`。
 - 與 `Character` / `AnimatedCharacter` 平行，三者都是 `GameObject` 的具體化，只是 `Drawable` 型別不同。
-- 此部分已在 `ARCHITECTURE.md § 5.4` 說明。
 
 ---
 
@@ -100,7 +102,6 @@ protected:
 ```
 
 - **抽象基底類別（ABC）**：三個純虛擬函式強制子類別實作完整的生命週期介面。
-- 子類別無法跳過 `OnExit` 不實作，編譯器會報錯——這是 ABC 相較於空虛擬函式的優勢。
 - `m_Ctx` 以 **reference** 持有，保證非空且不可重新指向，明確表達「借用不擁有」的語意。
 
 ### 3.2 具體場景的依賴關係
@@ -125,29 +126,29 @@ App（unique_ptr 擁有者）
 ├── KeyboardConfigScene ─────────────→ OptionMenuScene*
 │
 ├── LocalPlayScene ──────────────────→ MenuScene*
+│                                   → KeyboardConfigScene*（讀取 configuredCount）
 │                                   → LocalPlayGameScene*
 │
-└── LocalPlayGameScene ──────────────→ LocalPlayScene*
+└── LocalPlayGameScene ──────────────→ LocalPlayScene*（ESC 返回）
                                     → KeyboardConfigScene*（讀取按鍵設定）
 ```
 
-`LocalPlayGameScene` 額外依賴 `KeyboardConfigScene`（唯讀，取得已設定的按鍵綁定），但不負責切換到它。
-
 ### 3.3 借用模式（MenuScene 共用 UI 物件）
 
-`MenuScene` **擁有**四個 UI 物件（`unique_ptr` 語意的 `shared_ptr`），子場景以 getter **借用**：
+`MenuScene` **擁有**五個 UI 物件（`shared_ptr` 語意），子場景以 getter **借用**：
 
 ```
-MenuScene（擁有者）         子場景（借用者，不擁有）
-─────────────────────────  ──────────────────────────────────────
-m_MenuFrame            →   ExitConfirmScene, LocalPlayScene
-m_ExitGameButton       →   ExitConfirmScene, OptionMenuScene, KeyboardConfigScene
-m_LeftTriButton        →   LocalPlayScene
-m_RightTriButton       →   LocalPlayScene
+MenuScene（擁有者）           子場景（借用者，不擁有）
+─────────────────────────    ──────────────────────────────────────
+m_MenuFrame              →   ExitConfirmScene, LocalPlayScene
+m_ExitGameButton         →   ExitConfirmScene, OptionMenuScene, KeyboardConfigScene
+m_LeftTriButton          →   LocalPlayScene
+m_RightTriButton         →   LocalPlayScene
+m_blue_cat_run_img       →   LocalPlayScene
 ```
 
 - 借用者在 `OnEnter` 加入渲染樹，`OnExit` 移除，**不 `delete`、不 `reset()`**。
-- 這是 **組合優於繼承** 的實踐：子場景不繼承 `MenuScene`，而是在需要時借用其資源。
+- 借用結束（`OnExit`）後需還原 position / scale，避免下次借用時繼承到修改後的值。
 
 ---
 
@@ -158,7 +159,7 @@ m_RightTriButton       →   LocalPlayScene
 ```
 LocalPlayGameScene
 │
-├── HAS-A  CharacterPhysicsSystem   m_Physics    （純算法，無狀態）
+├── HAS-A  CharacterPhysicsSystem   m_Physics    （純靜態算法，無成員狀態）
 │
 ├── HAS-A  vector<PlayerBinding>    m_Players
 │              │
@@ -166,9 +167,11 @@ LocalPlayGameScene
 │                    ├── PhysicsAgent  agent
 │                    │     ├── shared_ptr<PlayerCat>  actor
 │                    │     └── PhysicsState            state
-│                    └── PlayerKeyConfig               key
+│                    ├── PlayerKeyConfig               key
+│                    └── bool                          entered（是否已進門）
 │
 └── 透過 GameContext::Floor（shared_ptr<Character>）取得地板參考
+    透過 GameContext::Door（shared_ptr<Character>）控制門的圖片
 ```
 
 ### 4.2 `PhysicsState`（`CharacterPhysicsSystem.hpp`）
@@ -183,7 +186,7 @@ struct PhysicsState {
     int   moveDir;         // 輸入方向（-1/0/+1）
     bool  grounded;        // 是否接地
     bool  prevGrounded;    // 上幀接地狀態（落地偵測）
-    bool  beingStoodOn;    // 有人踩在自己頭上（禁止跳躍用）
+    bool  beingStoodOn;    // 有人踩在自己頭上（下幀跳躍判斷用）
 };
 ```
 
@@ -200,24 +203,30 @@ struct PhysicsAgent {
 ```
 
 - **Data Transfer Object（DTO）**：將 actor 與 state 打包，讓 `CharacterPhysicsSystem::Update` 能以統一視角處理所有角色。
-- `CharacterPhysicsSystem` 接收 `vector<PhysicsAgent>&` 而非直接存取 `m_Players`，保持系統與場景的解耦。
 
 ### 4.4 `CharacterPhysicsSystem`（`CharacterPhysicsSystem.hpp`）
 
 ```cpp
 class CharacterPhysicsSystem {
 public:
-    void  Update(vector<PhysicsAgent>&, const shared_ptr<Character>& floor) const;
-    float ResolveHorizontal(int idx, float targetX,
-                            const vector<PhysicsAgent>&) const;
+    // 所有方法均為 static，無成員變數
+    static void  Update(vector<PhysicsAgent>&, const shared_ptr<Character>& floor);
+    static float ResolveHorizontal(int idx, float targetX,
+                                   const vector<PhysicsAgent>&);
+    static void  ApplyJump(PhysicsState& state);
+    // ...
 private:
-    // ... 全部 const 方法，無成員變數
+    static float HalfWidth();
+    static float HalfHeight();
+    static void  ResolveVertical(...);
+    static void  UpdateAnimState(...);
+    static bool  IsBeingPushed(...);  // 已定義但目前未使用於 Update 流程
 };
 ```
 
-- **Stateless Service（無狀態服務）**：所有方法均為 `const`，不持有任何執行期狀態。
-- 多個 Scene（`LocalPlayGameScene`、未來的 `LevelScene`）可共用**同一個 System 類別**而不相互干擾。
-- 與 `PhysicsWorld` 的分工：`CharacterPhysicsSystem` 只處理 CHARACTER 間的細緻推擠與踩頭；跨類型互動（角色 vs 箱子 vs 敵人）由 `PhysicsWorld` 負責。詳見 `PHYSICS_DESIGN.md`。
+- **Stateless Service（純靜態服務）**：所有方法均為 `static`，不持有任何執行期狀態。
+- 多個 Scene 可共用**同一個 System 類別**而不相互干擾。
+- 與 `PhysicsWorld` 的分工：`CharacterPhysicsSystem` 只處理 CHARACTER 間的細緻推擠與踩頭；跨類型互動（角色 vs 箱子 vs 敵人）由 `PhysicsWorld` 負責。
 
 ---
 
@@ -229,7 +238,8 @@ private:
 main.cpp
     └── App.hpp
             ├── Scene.hpp ──────── GameContext.hpp ─── Character.hpp
-            │                                       └── PlayerCat.hpp
+            │                                       ├── PlayerCat.hpp
+            │                                       └── BGMPlayer.hpp
             ├── TitleScene / MenuScene / ... （各 Scene 子類別）
             │       └── 都 #include Scene.hpp
             │
@@ -245,16 +255,21 @@ LocalPlayGameScene.hpp
     └── Scene.hpp
 
 PlayerCat.hpp
-    └── AnimatedCharacter.hpp
-            └── （PTSD Util::Animation）
+    ├── AnimatedCharacter.hpp
+    └── IPhysicsBody.hpp           ← 多重繼承
 
-Character.hpp
-    └── （PTSD Util::Image）
+CatAssets.hpp                      （header-only，工具函式）
+    └── PlayerCat.hpp              （使用 CatAnimPaths）
+
+AppUtil.hpp
+    ├── Character.hpp
+    ├── GameText.hpp
+    └── Util/Keycode.hpp
 ```
 
 **設計原則**：
 - `CharacterPhysicsSystem` **不** `#include` 任何 Scene，保持單向依賴。
-- `GameContext` 只 `#include` 它需要的具體物件型別（`Character`、`PlayerCat`），不依賴 Scene。
+- `GameContext` 只 `#include` 它需要的具體物件型別（`Character`、`PlayerCat`、`BGMPlayer`），不依賴 Scene。
 - Scene 依賴 `GameContext` 而非直接依賴其他 Scene 的完整 header（只持有 raw pointer，可用前向宣告）。
 
 ---
@@ -265,9 +280,11 @@ Character.hpp
 |------|----------|------|
 | **Template Method** | `Scene` ABC | `OnEnter` / `OnExit` / `Update` 三步驟固定，子類別填入細節 |
 | **State Machine** | `App::State`、`PlayerCat` 動畫狀態 | App 用 enum 狀態機切換 START/UPDATE/END；PlayerCat 用 `CatAnimState` 切換動畫 clip |
-| **Stateless Service** | `CharacterPhysicsSystem` | 無成員變數的純算法類別，可被多個 Scene 複用 |
+| **Stateless Service** | `CharacterPhysicsSystem` | 所有方法為 `static` 的純算法類別，可被多個 Scene 複用 |
 | **Data Transfer Object** | `PhysicsAgent`、`PhysicsState` | 打包資料跨越 Scene ↔ System 邊界 |
 | **Borrowing（借用模式）** | MenuScene 共用 UI 物件 | `shared_ptr` 擁有者固定，借用者在 OnEnter/OnExit 配對使用 |
-| **Dependency Injection** | `PushableBox::SetWorld()`、Scene 建構子傳入 raw pointer | 避免全域存取，依賴由外部注入 |
+| **Dependency Injection** | Scene 建構子傳入 raw pointer | 避免全域存取，依賴由外部注入 |
 | **Abstract Base Class** | `Scene`、`IPhysicsBody` | 強制子類別實作完整介面，編譯期保證 |
 | **Composition over Inheritance** | 子場景借用 MenuScene 的 UI，而非繼承 MenuScene | 避免深層繼承樹，降低耦合 |
+| **Pending / Applied 兩層資料** | `KeyboardConfigScene`、`OptionMenuScene` | 操作中只改 Pending，確認後才寫入 Applied |
+| **Header-only Utility** | `CatAssets.hpp` | inline 函式集中管理資源路徑，不需編譯單元 |

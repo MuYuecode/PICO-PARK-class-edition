@@ -44,8 +44,8 @@ The content is organized as follows:
   AnimatedCharacter.hpp
   App.hpp
   AppUtil.hpp
-  BackgroundImage.hpp
   BGMPlayer.hpp
+  CatAssets.hpp
   Character.hpp
   CharacterPhysicsSystem.hpp
   Exitconfirmscene.hpp
@@ -57,7 +57,6 @@ The content is organized as follows:
   LocalPlayScene.hpp
   Menuscene.hpp
   OptionMenuScene.hpp
-  PhaseResourceManger.hpp
   PhysicsWorld.hpp
   PlayerCat.hpp
   Scene.hpp
@@ -81,7 +80,6 @@ The content is organized as follows:
   main.cpp
   Menuscene.cpp
   OptionMenuScene.cpp
-  PhaseManager.cpp
   PhysicsWorld.cpp
   PlayerCat.cpp
   Titlescene.cpp
@@ -102,6 +100,8 @@ The content is organized as follows:
   Font/TerminusTTFWindows-Bold-4.49.3.ttf
   Image/Background/background_floor.png
   Image/Background/Choice_Frame.png
+  Image/Background/cream_background.png
+  Image/Background/dark_background.png
   Image/Background/door_close.png
   Image/Background/door_open.png
   Image/Background/header.png
@@ -110,7 +110,7 @@ The content is organized as follows:
   Image/Background/Option_Choice_Frame.png
   Image/Background/Option_HLine.png
   Image/Background/Option_Menu_Frame.png
-  Image/Background/white_background.jpg
+  Image/Background/white_background.png
   Image/Button/ExitGameButton.png
   Image/Button/Left_Tri_Button_Full.png
   Image/Button/Left_Tri_Button.png
@@ -339,12 +339,12 @@ public:
         return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetState() == Util::Animation::State::PLAY;
     }
 
-    void SetLooping(bool looping) {
-        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
+    void SetLooping(bool looping) const {
+        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable) ;
         temp->SetLooping(looping);
     }
 
-    void Play() {
+    void Play() const {
         auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
         temp->Play();
     }
@@ -359,12 +359,9 @@ public:
 #ifndef APP_HPP
 #define APP_HPP
 
-#include "pch.hpp"
 #include "Util/Renderer.hpp"
-#include "Character.hpp"
-#include "PlayerCat.hpp"
 #include "GameContext.hpp"
-#include "Scene.hpp"  // Scene 是完整型別，unique_ptr<Scene> 不需要子類別定義
+#include "Scene.hpp"
 
 // 前向宣告只保留「AppStart.cpp 需要呼叫 setter 時」用到的型別
 class TitleScene;
@@ -372,20 +369,18 @@ class MenuScene;
 class ExitConfirmScene;
 class OptionMenuScene;
 class KeyboardConfigScene;
-class LocalPlayScene;   // ← 取代 PlayerSelectScene
+class LocalPlayScene;
 class LocalPlayGameScene;
 
 class App {
 public:
     enum class State { START, UPDATE, END };
 
-    State GetCurrentState() const { return m_CurrentState; }
+    [[nodiscard]] State GetCurrentState() const { return m_CurrentState; }
 
     void Start();
     void Update();
     void End();
-    // ~App() 不再需要特別宣告，
-    // 因為 unique_ptr<Scene> 使用完整型別，= default 在這裡就夠了
 
 private:
     void TransitionTo(Scene* next);
@@ -395,16 +390,12 @@ private:
 
     std::unique_ptr<GameContext> m_Ctx;
 
-    // 改成 unique_ptr<Scene>：
-    //   - Scene 已有 virtual destructor，多型 delete 正確
-    //   - App.hpp 不再依賴子類別的完整定義
-    //   - 消除 "incomplete type" 錯誤
     std::unique_ptr<Scene> m_TitleScene;
     std::unique_ptr<Scene> m_MenuScene;
     std::unique_ptr<Scene> m_ExitConfirmScene;
     std::unique_ptr<Scene> m_OptionMenuScene;
     std::unique_ptr<Scene> m_KeyboardConfigScene;
-    std::unique_ptr<Scene> m_LocalPlayScene;   // ← 新增
+    std::unique_ptr<Scene> m_LocalPlayScene;
     std::unique_ptr<Scene> m_LocalPlayGameScene;
 
     Scene* m_CurrentScene = nullptr;
@@ -423,64 +414,31 @@ private:
 #include "Util/Keycode.hpp"
 
 namespace AppUtil {
-
-    /**
-     * @brief 計算文字置左對齊時的中心 X 座標
-     */
+    // 計算文字靠左對齊時的 X 座標
     inline float AlignLeft(const GameText& text, float boundaryX) {
         return boundaryX + text.GetSize().x / 2.0f;
     }
 
-    /**
-     * @brief 計算文字置右對齊時的中心 X 座標
-     */
+    // 計算文字靠右對齊時的 X 座標
     inline float AlignRight(const GameText& text, float boundaryX) {
         return boundaryX - text.GetSize().x / 2.0f;
     }
 
-    /**
-     * @brief 將 Keycode 轉成玩家看得懂的顯示字串
-     *        UNKNOWN → "-"
-     */
+    // 將 Keycode 轉成玩家看得懂的顯示字串
     std::string KeycodeToString(Util::Keycode key);
 
-    /**
-     * @brief 回傳這一幀剛被按下的第一個可綁定按鍵
-     *        若無任何按鍵被按下，回傳 Util::Keycode::UNKNOWN
-     */
+    // 回傳這一幀剛被按下的第一個可綁定按鍵
     Util::Keycode GetAnyKeyDown();
+
+    // 共用判斷，是否有滑鼠在物件上
+    bool IsMouseHovering(const Util::GameObject& obj);
+
+    // 共用判斷，物件是否被滑鼠點擊
+    bool IsLeftClicked(const Util::GameObject& obj);
 
 } // namespace AppUtil
 
 #endif // APP_UTIL_HPP
-</file>
-
-<file path="BackgroundImage.hpp">
-#ifndef BACKGROUND_IMAGE_HPP
-#define BACKGROUND_IMAGE_HPP
-
-#include "Util/GameObject.hpp"
-#include "Util/Image.hpp"
-
-class BackgroundImage : public Util::GameObject {
-
-public:
-    BackgroundImage() : GameObject(
-            std::make_unique<Util::Image>(GA_RESOURCE_DIR"/Image/Background/phase0.png"), -10) {
-    }
-
-    void NextPhase(const int phase) {
-        auto temp = std::dynamic_pointer_cast<Util::Image>(m_Drawable);
-        temp->SetImage(ImagePath(phase));
-    }
-
-private:
-    inline std::string ImagePath(const int phase) {
-        return GA_RESOURCE_DIR"/Image/Background/phase" + std::to_string(phase) + ".png";
-    }
-};
-
-#endif //BACKGROUND_IMAGE_HPP
 </file>
 
 <file path="BGMPlayer.hpp">
@@ -493,19 +451,9 @@ private:
 
 #include "Util/BGM.hpp"
 #include <vector>
-#include <string>
 #include <memory>
 
-/**
- * @class BGMPlayer
- * @brief 專門管理背景音樂輪播的 OOP 封裝類別
- *
- * 功能：
- * - 自動載入 Resources/BGM/ 資料夾下的三首歌
- * - 自動輪播
- * - 預設音量 50% (64)
- * - 可隨時暫停、繼續、調整音量
- */
+
 class BGMPlayer {
 public:
     BGMPlayer();
@@ -515,11 +463,15 @@ public:
     void Resume() const;              // 繼續
     void SetVolume(int volume) const; // 0 ~ 128
     void Next() ;                     // 手動切下一首
+    void Update();                    // 更新
 
     [[nodiscard]] int GetVolume() const; // 取得目前播放的曲目名稱
 
+    static inline bool s_ShouldPlayNext = false;
+
 private:
     static void MusicFinishedCallback();
+
 
     std::vector<std::unique_ptr<Util::BGM>> m_BGMs ;
     std::size_t m_CurrentIndex = 0;
@@ -529,6 +481,66 @@ private:
 
 
 #endif //PICOPART_BGMPLAYER_HPP
+</file>
+
+<file path="CatAssets.hpp">
+//
+// Created by cody2 on 2026/3/23.
+//
+
+//
+// CatAssets.hpp
+// 貓咪資源路徑工具（統一出口）
+//
+// 解決【重複 1】：AppStart.cpp 與 LocalPlayGameScene.cpp 各自實作
+// BuildCatFramePath / BuildCatFramePaths / BuildCatAnimPaths 的問題。
+// 兩處改為共同 #include 此標頭，並呼叫對應的函式。
+//
+#ifndef CAT_ASSETS_HPP
+#define CAT_ASSETS_HPP
+
+#include <string>
+#include <vector>
+#include "PlayerCat.hpp"   // CatAnimPaths
+
+namespace CatAssets {
+// 建立單幀路徑
+// e.g. BuildFramePath("blue", "stand", 1)
+//      → ".../Image/Character/blue_cat/blue_cat_stand_1.png"
+inline std::string BuildFramePath(const std::string& color,
+                                  const std::string& action,
+                                  int frameNum) {
+    return std::string(GA_RESOURCE_DIR) +
+           "/Image/Character/" + color + "_cat/" +
+           color + "_cat_" + action + "_" + std::to_string(frameNum) + ".png";
+}
+
+// 建立多幀路徑（frame 1 ~ numFrames）
+inline std::vector<std::string> BuildFramePaths(const std::string& color,
+                                                 const std::string& action,
+                                                 int numFrames) {
+    std::vector<std::string> paths;
+    paths.reserve(static_cast<size_t>(numFrames));
+    for (int f = 1; f <= numFrames; ++f) {
+        paths.push_back(BuildFramePath(color, action, f));
+    }
+    return paths;
+}
+// 完整動畫幀數版本
+//   stand : 8 幀   run : 9 幀   push : 3 幀
+inline CatAnimPaths BuildFullAnimPaths(const std::string& color) {
+    CatAnimPaths p;
+    p.stand     = BuildFramePaths(color, "stand", 8);
+    p.run       = BuildFramePaths(color, "run",   9);
+    p.jump_rise = { BuildFramePath(color, "jump", 1) };
+    p.jump_fall = { BuildFramePath(color, "jump", 2) };
+    p.land      = { BuildFramePath(color, "land", 1) };
+    p.push      = BuildFramePaths(color, "push",  3);
+    return p;
+}
+} // namespace CatAssets
+
+#endif // CAT_ASSETS_HPP
 </file>
 
 <file path="Character.hpp">
@@ -546,44 +558,23 @@ public:
     explicit Character(const std::string& ImagePath);
 
     Character(const Character&) = delete;
-
     Character(Character&&) = delete;
-
     Character& operator=(const Character&) = delete;
-
     Character& operator=(Character&&) = delete;
 
     [[nodiscard]] const std::string& GetImagePath() const { return m_ImagePath; }
-
     [[nodiscard]] const glm::vec2& GetPosition() const { return m_Transform.translation; }
-
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
-
-    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
+    [[nodiscard]] glm::vec2 GetSize() const { return GetScaledSize(); }
 
     void SetImage(const std::string& ImagePath);
-
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
-
     void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
 
-    [[nodiscard]] bool IfCollides(const std::shared_ptr<Character>& other) const {
-        float distance = glm::distance(this->GetPosition(), other->GetPosition());
-        return distance < 50.0f;
-    }
-
-    [[nodiscard]] bool IsStandingOn(const std::shared_ptr<Character>& other, float surfaceOffset) const {
-        return this->GetPosition().y <= (other->GetPosition().y + surfaceOffset);
-    }
-
-    // ==========================================
-    // 新增：偵測滑鼠是否懸停在圖片範圍內
-    // ==========================================
+    // 偵測滑鼠是否在物件範圍內
     [[nodiscard]] bool IsMouseHovering() const;
 
-    // ==========================================
-    // 新增：偵測文字是否被滑鼠左鍵點擊
-    // ==========================================
+    // 偵測物件是否被滑鼠左鍵點擊
     [[nodiscard]] bool IsLeftClicked() const;
 
 private:
@@ -609,9 +600,7 @@ private:
 #include "PlayerCat.hpp"
 #include "Character.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PhysicsState：每隻角色的物理狀態（純資料，由 Scene 持有）
-// ─────────────────────────────────────────────────────────────────────────────
 struct PhysicsState {
     float velocityY     = 0.0f;
     float lastDeltaX    = 0.0f;
@@ -619,30 +608,23 @@ struct PhysicsState {
     int   moveDir       = 0;    // -1 / 0 / +1
     bool  grounded      = true;
     bool  prevGrounded  = true; // 前一幀是否接地（落地偵測用）
-
     bool  beingStoodOn  = false; // 有其他角色踩在自己頭上
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PhysicsAgent：actor + 物理狀態打包成一組（Scene 持有 vector<PhysicsAgent>）
-// ─────────────────────────────────────────────────────────────────────────────
 struct PhysicsAgent {
     std::shared_ptr<PlayerCat> actor;
     PhysicsState               state;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // CharacterPhysicsSystem：純算法，無成員狀態
-//
 // 使用方式（Scene::Update 中）：
 //   m_Physics.Update(m_Agents, m_Ctx.Floor);
-//
 // 動畫狀態由 System 內部直接呼叫 agent.actor->SetCatAnimState()，
 // 場景完全不需要自行判斷動畫。
-// ─────────────────────────────────────────────────────────────────────────────
 class CharacterPhysicsSystem {
 public:
-    // ── 物理常數（public，供 Scene 需要時讀取）────────────────────────────
+    // 物理常數 public，供 Scene 需要時讀取
     static constexpr float kGroundMoveSpeed  = 5.0f;
     static constexpr float kRunOnPlayerSpeed = 6.2f;
     static constexpr float kJumpForce        = 11.0f;
@@ -652,49 +634,48 @@ public:
     static constexpr float kScreenHalfW = 640.0f;   // ← 原本推算錯誤的 400.0f
     static constexpr float kScreenHalfH = 360.0f;   // ← 原本推算錯誤的 300.0f
 
-    // ── 主要更新介面 ──────────────────────────────────────────────────────
+    static void ApplyJump(PhysicsState& state) {
+        state.velocityY    = kJumpForce;
+        state.grounded     = false;
+        state.supportIndex = -1;
+    }
+
+    // 主要更新介面
     // 每 frame 呼叫一次；內部依序處理：
     //   1. 攜帶（被踩角色跟隨支撐者移動）
     //   2. 水平移動 + 碰撞解析
     //   3. 垂直物理（重力 + 地板 + 踩頭）
     //   4. 動畫狀態切換
-    void Update(std::vector<PhysicsAgent>& agents,
-                const std::shared_ptr<Character>& floor) const;
+    static void Update(std::vector<PhysicsAgent>& agents,
+                const std::shared_ptr<Character>& floor) ;
 
-    // ── 單一角色的水平位移（不含物理，只移動 + 碰撞限制）─────────────────
+    // 單一角色的水平位移(不含物理，只移動 + 碰撞限制)
     // 供需要「只移動一隻」的場景使用
-    float ResolveHorizontal(int idx,
-                            float targetX,
-                            const std::vector<PhysicsAgent>& agents) const;
+    static float ResolveHorizontal(int idx,
+                                          float targetX,
+                                          const std::vector<PhysicsAgent>& agents) ;
 
 private:
-    // ── 幾何工具 ─────────────────────────────────────────────────────────
-    float HalfWidth() const;
-    float HalfHeight() const;
+    // 角色尺寸(假設所有角色尺寸相同，且不會變動)
+    static float HalfWidth()  ;
+    static float HalfHeight() ;
 
-    // 動態站立偏移：floor 半高 + 角色半高（修正問題 1）
-    float StandOffset(int idx,
-                      const std::vector<PhysicsAgent>& agents,
-                      const std::shared_ptr<Character>& floor) const;
+    // 動態站立偏移：floor 半高 + 角色半高
+    static float StandOffset(const std::shared_ptr<Character>& floor) ;
 
-    // ── 物理解析（private，由 Update 統一呼叫）───────────────────────────
-    bool  HasHeadBlock(int idx,
-                       const std::vector<PhysicsAgent>& agents,
-                       const std::shared_ptr<Character>& floor) const;
-
-    void  ResolveVertical(int idx,
+    // 物理解析(private，由 Update 統一呼叫)
+    static void  ResolveVertical(int idx,
                           std::vector<PhysicsAgent>& agents,
-                          const std::shared_ptr<Character>& floor) const;
+                          const std::shared_ptr<Character>& floor);
 
-    bool  IsBeingPushed(int idx,
-                        const std::vector<PhysicsAgent>& agents,
-                        const std::shared_ptr<Character>& floor) const;
+    static bool  IsBeingPushed(int idx,
+                                      const std::vector<PhysicsAgent>& agents,
+                                      const std::shared_ptr<Character>& floor) ;
 
-    // ── 動畫決策（private，由 Update 統一呼叫）───────────────────────────
-    void  UpdateAnimState(int idx,
-                          std::vector<PhysicsAgent>& agents,
-                          bool isPushing,
-                          bool beingPushed) const;
+    // 動畫決策(private，由 Update 統一呼叫)
+    static void  UpdateAnimState(int idx,
+                          const std::vector<PhysicsAgent>& agents,
+                          bool isPushing) ;
 };
 
 #endif // CHARACTER_PHYSICS_SYSTEM_HPP
@@ -710,20 +691,7 @@ private:
 
 class MenuScene;
 
-/**
- * @brief 退出確認對話框場景（原 STATE_01_1_1 / _01_1_2）
- *
- * 職責：
- *   - 顯示「EXIT GAME ?」文字、YES / NO 選項與選擇框
- *   - 管理游標在 YES / NO 之間切換（A/D 鍵或滑鼠 hover）
- *   - 確認離開（YES + ENTER）→ 設定 m_Ctx.ShouldQuit = true
- *   - 取消（NO + ENTER 或 ESC 或 X 按鈕）→ 返回 MenuScene
- *
- * 設計重點：
- *   - 選單框的縮放（SetScale）只在 OnEnter / OnExit 做，
- *     不再散落在各個 if/else 裡。
- *   - 唯一的狀態是 m_IsYesSelected（bool），比原本兩個 sub-state 更清楚。
- */
+// 是否退出遊戲
 class ExitConfirmScene : public Scene {
 public:
     ExitConfirmScene(GameContext& ctx,
@@ -736,34 +704,23 @@ public:
     void   OnExit()  override;
     Scene* Update()  override;
 
-    // ---- setter：解決 App::Start() 裡的循環指標問題 ----
-    // ExitConfirmScene 需要 MenuScene 指標，但 MenuScene 也需要
-    // ExitConfirmScene 指標，建立順序上無法兩邊同時傳齊。
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
 
 private:
-    // ---- 此場景私有的 UI 元件 ----
     std::shared_ptr<GameText>  m_ExitGame1Text;
     std::shared_ptr<GameText>  m_YesText;
     std::shared_ptr<GameText>  m_NoText;
     std::shared_ptr<Character> m_ChoiceFrame;
 
-    // ---- 與 MenuScene 共用的元件（借用，不持有所有權）----
-    // 原本的程式碼會修改 MenuFrame 的 scale 和 ExitGameButton 的 position，
-    // 這裡繼續借用這兩個物件來做同樣的事。
     std::shared_ptr<Character> m_MenuFrame;
     std::shared_ptr<Character> m_ExitGameButton;
 
-    // ---- 切換目標 ----
-    // 宣告順序必須與 constructor 初始化清單順序一致，否則產生 -Wreorder 警告
     MenuScene* m_MenuScene = nullptr;
 
-    // ---- 內部狀態 ----
-    // true = 游標在 YES，false = 游標在 NO
     bool m_IsYesSelected = true;
 
-    // ---- 輔助函式 ----
-    void UpdateChoiceFramePosition();
+    // 輔助函式
+    void UpdateChoiceFramePosition() const;
 };
 
 #endif // EXIT_CONFIRM_SCENE_HPP
@@ -773,7 +730,6 @@ private:
 #ifndef PICOPART_GAMECONTEXT_HPP
 #define PICOPART_GAMECONTEXT_HPP
 
-#include "pch.hpp" // IWYU pragma: export
 #include "BGMPlayer.hpp"
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
@@ -784,21 +740,26 @@ struct GameContext {
     Util::Renderer& Root;
 
     // 永久留在渲染樹的物件（所有場景都看得到）
-    std::shared_ptr<Character>  WhiteBackground;
+    std::shared_ptr<Character>  Background;
     std::shared_ptr<Character>  Floor;
     std::shared_ptr<BGMPlayer>  BGMPlayer;
 
-    // [新增] Header 在 TitleScene 和 MenuScene 都要顯示，
-    // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除。
-    std::shared_ptr<Character>  Header;
+    // 在多個 Scene 都要顯示
+    // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除
+    std::shared_ptr<Character> Header;
+    std::shared_ptr<Character> Door;
 
     std::vector<std::shared_ptr<PlayerCat>> StartupCats;
-
-    // Local-play shared runtime data for upcoming level logic.
+    
     int SelectedPlayerCount = 2;
     int CooperativePushPower = 1;
 
     bool ShouldQuit = false;
+
+    // character color
+    static constexpr std::array<const char*, 8> kCatColorOrder = {
+        "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"
+    };
 
     explicit GameContext(Util::Renderer& root)
         : Root(root) {}
@@ -833,34 +794,19 @@ public:
     }
 
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
-
-    void SetVisible(bool visible) { m_Visible = visible; }
+    [[nodiscard]] glm::vec2 GetPosition() const { return m_Transform.translation; }
+    [[nodiscard]] glm::vec2 GetSize() const { return GetScaledSize(); }
 
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
-
-    void SetColor(const Util::Color& color) {
-        auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable);
-        if (t) t->SetColor(color);
-    }
-
+    // 重新設定顏色 用於表達不同意義
+    void SetColor(const Util::Color& color) const ;
     // 重新設定文字 用於選單值變更時更新顯示
-    void SetText(const std::string& text) {
-        auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable);
-        if (t) t->SetText(text);
-    }
+    void SetText(const std::string& text) const ;
 
-    [[nodiscard]] const glm::vec2 GetPosition() const { return m_Transform.translation; }
-
-    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
-
-    // ==========================================
     // 新增：偵測滑鼠是否懸停在文字範圍內
-    // ==========================================
     [[nodiscard]] bool IsMouseHovering() const;
 
-    // ==========================================
     // 新增：偵測文字是否被滑鼠左鍵點擊
-    // ==========================================
     [[nodiscard]] bool IsLeftClicked() const;
 };
 
@@ -878,9 +824,7 @@ public:
 
 class IPhysicsBody;
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 物理物件類型
-// ─────────────────────────────────────────────────────────────────────────────
 enum class BodyType {
     CHARACTER,              // 玩家角色（PlayerCat）
     PUSHABLE_BOX,           // 有條件可被推動的箱子
@@ -891,67 +835,61 @@ enum class BodyType {
     BULLET,                 // 子彈
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 碰撞資訊（傳入 OnCollision 的完整情境）
-// ─────────────────────────────────────────────────────────────────────────────
+// 碰撞資訊(傳入 OnCollision 的完整情境)
 struct CollisionInfo {
-    IPhysicsBody* other    = nullptr;  // 碰到誰
+    IPhysicsBody* other    = nullptr;      // 碰到誰
     glm::vec2     normal   = {0, 0};   // 碰撞法向量（從 other 指向 self）
-    float         depth    = 0.0f;     // 穿透深度
+    float         depth    = 0.0f;         // 穿透深度
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // IPhysicsBody：所有可參與物理互動的物件必須實作此介面
-//
 // 設計原則：
 //   - 介面只定義「PhysicsWorld 需要知道的最小資訊」
 //   - 具體的動畫、渲染、AI 邏輯留在子類別
 //   - PhysicsUpdate() 是物件的「自驅動」邏輯（敵人移動、平台軌跡等）
 //   - OnCollision()   是物件對「外部碰撞事件」的反應
-// ─────────────────────────────────────────────────────────────────────────────
 class IPhysicsBody {
 public:
     virtual ~IPhysicsBody() = default;
 
-    // ── 身分識別 ─────────────────────────────────────────────────────────
-    virtual BodyType GetBodyType() const = 0;
+    // 身分識別
+    [[nodiscard]] virtual BodyType GetBodyType() const = 0;
 
-    // ── 位置與尺寸（AABB 碰撞基礎）───────────────────────────────────────
-    virtual glm::vec2 GetPosition() const = 0;
-    virtual void      SetPosition(const glm::vec2& pos) = 0;
+    // 位置與尺寸(AABB 碰撞基礎)
+    [[nodiscard]] virtual glm::vec2 GetPosition() const = 0;
+    virtual void          SetPosition(const glm::vec2& pos) = 0;
 
-    // 回傳碰撞箱半寬、半高（不一定等於圖片大小）
-    virtual glm::vec2 GetHalfSize() const = 0;
+    // 回傳碰撞箱半寬、半高(不一定等於圖片大小)
+    [[nodiscard]] virtual glm::vec2 GetHalfSize() const = 0;
 
-    // ── 速度 ─────────────────────────────────────────────────────────────
-    virtual glm::vec2 GetVelocity() const = 0;
+    // 速度
+    [[nodiscard]] virtual glm::vec2 GetVelocity() const = 0;
     virtual void      SetVelocity(const glm::vec2& vel) = 0;
 
-    // ── 物理屬性 ─────────────────────────────────────────────────────────
+    // 物理屬性
 
-    // 是否為實體（true = 阻擋其他物體穿越，false = 可穿透，如子彈觸發區）
-    virtual bool IsSolid() const = 0;
+    // 是否為實體(true = 阻擋其他物體穿越，false = 可穿透，如子彈觸發區)
+    [[nodiscard]] virtual bool IsSolid() const = 0;
 
-    // 是否由外部控制位置（true = PhysicsWorld 不對其施加重力/推力）
+    // 是否由外部控制位置(true = PhysicsWorld 不對其施加重力/推力)
     // 平台、固定敵人路徑皆為 true；玩家、箱子為 false
-    virtual bool IsKinematic() const = 0;
+    [[nodiscard]] virtual bool IsKinematic() const = 0;
 
-    // 是否受重力影響（角色/箱子=true，平台/子彈=false）
-    virtual bool UseGravity() const = 0;
+    // 是否受重力影響(角色/箱子=true，平台/子彈=false)
+    [[nodiscard]] virtual bool UseGravity() const = 0;
 
-    // ── 生命週期 ─────────────────────────────────────────────────────────
-
+    // 生命週期
     // 每 frame 由 PhysicsWorld 呼叫，物件可在此更新自身狀態
-    // （敵人 AI、平台軌跡計算、子彈移動等）
-    // 若需查詢其他物件，應透過 PhysicsWorld 的查詢工具（CountCharactersPushing 等），而非直接存取其他 body 的位置
+    // (敵人 AI、平台軌跡計算、子彈移動等)
+    // 若需查詢其他物件，應透過 PhysicsWorld 的查詢工具(CountCharactersPushing 等)，而非直接存取其他 body 的位置
     virtual void PhysicsUpdate() {}
 
     // 碰撞解析完成後，PhysicsWorld 通知此物件與誰發生了碰撞
     // 子類別在這裡實作「碰到玩家扣血」「碰到子彈改變狀態」等邏輯
     virtual void OnCollision(const CollisionInfo& /*info*/) {}
 
-    // ── 啟用 / 停用 ──────────────────────────────────────────────────────
-    virtual bool IsActive() const { return m_Active; }
+    // 啟用 / 停用
+    [[nodiscard]] virtual bool IsActive() const { return m_Active; }
     virtual void SetActive(bool active) { m_Active = active; }
 
 protected:
@@ -966,17 +904,11 @@ protected:
 // Created by cody2 on 2026/3/16.
 //
 
-//
-// Created by cody2 on 2026/3/16.
-//
-
 #ifndef PICOPART_KEYBOARDCONFIGSCENE_HPP
 #define PICOPART_KEYBOARDCONFIGSCENE_HPP
 
 #include <array>
 #include <vector>
-#include <string>
-
 #include "Scene.hpp"
 #include "Character.hpp"
 #include "GameText.hpp"
@@ -985,9 +917,7 @@ protected:
 
 class OptionMenuScene;
 
-// ────────────────────────────────────────────────────────────────────────────
-// 一位玩家的鍵盤設定組合
-// ────────────────────────────────────────────────────────────────────────────
+// 任一位玩家的鍵盤設定組合
 struct PlayerKeyConfig {
     Util::Keycode up         = Util::Keycode::UNKNOWN;
     Util::Keycode down       = Util::Keycode::UNKNOWN;
@@ -999,13 +929,10 @@ struct PlayerKeyConfig {
     Util::Keycode menu       = Util::Keycode::UNKNOWN;  // 僅 1P 有效
     Util::Keycode subMenu    = Util::Keycode::UNKNOWN;  // 僅 1P 有效
 
-    // 回傳此 config 中所有非 UNKNOWN 的按鍵（用於衝突偵測）
-    std::vector<Util::Keycode> AllKeys() const;
+    // 回傳此 config 中所有非 UNKNOWN 的按鍵(用於衝突偵測)
+    [[nodiscard]] std::vector<Util::Keycode> AllKeys() const;
 };
 
-// ────────────────────────────────────────────────────────────────────────────
-// KeyboardConfigScene
-// ────────────────────────────────────────────────────────────────────────────
 class KeyboardConfigScene : public Scene {
 public:
     KeyboardConfigScene(GameContext& ctx,
@@ -1019,17 +946,14 @@ public:
 
     void SetOptionScene(OptionMenuScene* s) { m_OptionScene = s; }
 
-    // ── 預設設定（供外部讀取，或未來存檔使用） ────────────────────────────
+    // 預設設定(供外部讀取，或未來存檔使用)
     static const PlayerKeyConfig k_Default1P;
     static const PlayerKeyConfig k_Default2P;
 
     static constexpr int MAX_PLAYERS = 8;
 
-    /**
-     * @brief 回傳已設定足夠按鍵（≥4 個非 UNKNOWN）的玩家數量。
-     *        供 LocalPlayScene 判斷是否顯示 "No keyboard config" 警告。
-     */
-    int GetConfiguredPlayerCount() const;
+    // 回傳已設定足夠按鍵(≥4 個非 UNKNOWN)的玩家數量。
+    [[nodiscard]] int GetConfiguredPlayerCount() const;
 
     [[nodiscard]] PlayerKeyConfig GetAppliedConfig(int playerIdx) const {
         if (playerIdx < 0 || playerIdx >= MAX_PLAYERS) {
@@ -1039,49 +963,47 @@ public:
     }
 
 private:
-    // ── 借用物件 ───────────────────────────────────────────────────────────
     std::shared_ptr<Character> m_ExitGameButton;
 
-    // ── 專屬框架 ───────────────────────────────────────────────────────────
+    // 框架
     std::shared_ptr<Character> m_Frame;
 
-    // ── 選擇框 ─────────────────────────────────────────────────────────────
+    // 選擇框
     std::shared_ptr<Character> m_ChoiceFrame;
 
-    // ── 橫線分隔（×3）─────────────────────────────────────────────────────
+    // 橫線分隔
     std::shared_ptr<Character> m_HLine1;
     std::shared_ptr<Character> m_HLine2;
     std::shared_ptr<Character> m_HLine3;
 
-    // ── 標題 ───────────────────────────────────────────────────────────────
+    // 標題
     std::shared_ptr<GameText> m_TitleText;
 
-    // ── PLAYER 列 ──────────────────────────────────────────────────────────
+    // PLAYER 列
     std::shared_ptr<GameText>           m_PlayerLabel;
     std::shared_ptr<UI_Triangle_Button> m_PlayerLeftBtn;
     std::shared_ptr<GameText>           m_PlayerValue;   // "1P" ~ "8P"
     std::shared_ptr<UI_Triangle_Button> m_PlayerRightBtn;
 
-    // ── 按鍵綁定列（每列：label + value）──────────────────────────────────
+    // 按鍵綁定列(每列：label + value)
     static constexpr int BIND_COUNT = 9;
     std::array<std::shared_ptr<GameText>, BIND_COUNT> m_BindLabels;
     std::array<std::shared_ptr<GameText>, BIND_COUNT> m_BindValues;
 
-    // ── 底部按鈕 ───────────────────────────────────────────────────────────
+    // 底部按鈕
     std::shared_ptr<GameText> m_OkText;
     std::shared_ptr<GameText> m_CancelText;
     std::shared_ptr<GameText> m_DefaultText;
 
-    // ── 切換目標 ───────────────────────────────────────────────────────────
     OptionMenuScene* m_OptionScene = nullptr;
 
-    // ── 設定狀態 ───────────────────────────────────────────────────────────
+    // 設定狀態
     std::array<PlayerKeyConfig, MAX_PLAYERS> m_Applied;
     PlayerKeyConfig m_Pending;
 
     int  m_CurrentPlayer = 0;
 
-    // ── 游標 ───────────────────────────────────────────────────────────────
+    // ROW
     int  m_SelectedRow  = 0;
     static constexpr int ROW_PLAYER   = 0;
     static constexpr int ROW_BIND_0   = 1;
@@ -1092,11 +1014,11 @@ private:
     static constexpr int ROW_DEFAULT  = 12;
     static constexpr int ROW_COUNT    = 13;
 
-    // ── 按鍵捕捉模式 ───────────────────────────────────────────────────────
+    // 按鍵捕捉模式
     bool m_WaitingForKey = false;
     int  m_WaitingRow    = -1;
 
-    // ── 布局常數 ───────────────────────────────────────────────────────────
+    // COLUMN
     static constexpr float COL_LABEL_X     = -295.0f;
     static constexpr float COL_LEFT_BTN_X  =  130.0f;
     static constexpr float COL_VALUE_X     =  245.0f;
@@ -1114,33 +1036,33 @@ private:
     static constexpr float ROW_Y_HLINE3   = -240.5f;
     static constexpr float ROW_Y_BTN      = -274.5f;
 
-    // ── 色彩 ───────────────────────────────────────────────────────────────
+    // COLOR
     static const Util::Color k_Black;
     static const Util::Color k_Red;
     static const Util::Color k_Grey;
 
-    // ── 輔助函式 ───────────────────────────────────────────────────────────
+    // 輔助函式
     void LoadPlayer(int playerIdx);
     void CommitPending();
     void ApplyDefault();
 
     void DecrementRow();
     void IncrementRow();
-    bool IsRowSelectable(int row) const;
+    [[nodiscard]] bool IsRowSelectable(int row) const;
 
-    void AssignKey(int bindIdx, Util::Keycode key);
-    Util::Keycode GetPendingKey(int bindIdx) const;
+    void          AssignKey(int bindIdx, Util::Keycode key);
+    [[nodiscard]] Util::Keycode GetPendingKey(int bindIdx) const;
 
-    void UpdateValueTexts();
-    void UpdateChoiceFrame();
+    void UpdateValueTexts()  const ;
+    void UpdateChoiceFrame() const ;
 
-    std::vector<Util::Keycode> GetConflicts() const;
-    bool HasConflicts() const { return !GetConflicts().empty(); }
+    [[nodiscard]] std::vector<Util::Keycode> GetConflicts() const;
+    [[nodiscard]] bool HasConflicts() const { return !GetConflicts().empty(); }
 
     static float BindRowY(int bindIdx) {
-        return ROW_Y_BIND_TOP + bindIdx * ROW_Y_STEP;
+        return ROW_Y_BIND_TOP + static_cast<float>(bindIdx) * ROW_Y_STEP;
     }
-    float RowY(int row) const;
+    static float RowY(int row) ;
 };
 
 #endif // PICOPART_KEYBOARDCONFIGSCENE_HPP
@@ -1153,7 +1075,6 @@ private:
 #include <vector>
 
 #include "Scene.hpp"
-#include "PlayerCat.hpp"
 #include "KeyboardConfigScene.hpp"
 #include "CharacterPhysicsSystem.hpp"
 
@@ -1171,24 +1092,29 @@ public:
     Scene* Update()  override;
 
 private:
-    // ── 場景私有：每位玩家多持有一份按鍵設定 ────────────────────────────
+    // 場景私有：每位玩家持有一份按鍵設定
     struct PlayerBinding {
         PhysicsAgent    agent;
         PlayerKeyConfig key;
+        bool            entered = false;   // 是否已進入門
     };
 
-    LocalPlayScene*      m_LocalPlayScene = nullptr;
-    KeyboardConfigScene* m_KbConfigScene  = nullptr;
+    std::shared_ptr<GameText> m_DoorCountText;
+    int                       m_EnteredCount = 0;
+    void                      UpdateDoorCountText() const ;
 
-    CharacterPhysicsSystem   m_Physics;
+    // 下一個場景(LevelSelectScene，尚未實作時設為 nullptr)
+    Scene*               m_LevelSelectScene = nullptr;
+    LocalPlayScene*      m_LocalPlayScene   = nullptr;
+    KeyboardConfigScene* m_KbConfigScene    = nullptr;
+
+    CharacterPhysicsSystem     m_Physics;
     std::vector<PlayerBinding> m_Players;
 
     void SpawnPlayers(int count);
     void ApplyInitialFormation();
-    void UpdateCooperativePower();
-
-    // 把 PlayerBinding 攤平成 PhysicsAgent 清單（供 System 使用）
-    std::vector<PhysicsAgent*> AgentPtrs();
+    void UpdateCooperativePower() const ;
+    void SetLevelSelectScene(Scene* s) { m_LevelSelectScene = s; }
 };
 
 #endif // PICOPART_LOCALPLAYGAMESCENE_HPP
@@ -1197,10 +1123,6 @@ private:
 <file path="LocalPlayScene.hpp">
 //
 // Created by cody2 on 2026/3/17.
-//
-
-//
-// Created for LocalPlayScene
 //
 
 #ifndef PICOPART_LOCALPLAYSCENE_HPP
@@ -1216,18 +1138,7 @@ class MenuScene;
 class KeyboardConfigScene;
 class LocalPlayGameScene;
 
-/**
- * @brief 本機多人遊玩人數選擇場景
- *
- * 從 MenuScene 的 LOCAL PLAY 選項進入。
- * 借用 MenuScene 的 m_MenuFrame、m_ExitGameButton、
- * m_LeftTriButton、m_RightTriButton（位置大小不變）。
- *
- * 中央顯示 "nPLAYER GAME"（n = 2-8）。
- * 若 n 超過 KeyboardConfigScene 中已設定按鍵的玩家數：
- *   - 主文字變紅色
- *   - 上方顯示較小的紅色文字 "No keyboard config"
- */
+// 選擇人數
 class LocalPlayScene : public Scene {
 public:
     LocalPlayScene(GameContext& ctx,
@@ -1236,6 +1147,7 @@ public:
                    std::shared_ptr<Character>          exitGameButton,
                    std::shared_ptr<UI_Triangle_Button> leftTriButton,
                    std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                   std::shared_ptr<Character>          blueCatRunImg,
                    KeyboardConfigScene* kbConfigScene);
     ~LocalPlayScene() override = default;
 
@@ -1246,8 +1158,8 @@ public:
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
     void SetGameScene(LocalPlayGameScene* s) { m_GameScene = s; }
 
-    /** 回傳目前選擇的玩家人數（2-8） */
-    int GetPlayerCount() const { return m_PlayerCount; }
+    // 回傳目前選擇的遊玩人數
+    [[nodiscard]]int GetPlayerCount() const { return m_PlayerCount; }
 
     static constexpr int MIN_PLAYERS = 2;
     static constexpr int MAX_PLAYERS = 8;
@@ -1258,26 +1170,24 @@ private:
     std::shared_ptr<Character>          m_ExitGameButton;
     std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
     std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
+    std::shared_ptr<Character>          m_BlueCatRunImg;
 
-    // ── 本場景私有 UI ────────────────────────────────────────────────────────
     std::shared_ptr<GameText> m_PlayerCountText;  // "nPLAYER GAME"
     std::shared_ptr<GameText> m_NoConfigText;     // "No keyboard config"
 
-    // ── 狀態 ────────────────────────────────────────────────────────────────
+    // 狀態
     int m_PlayerCount = MIN_PLAYERS;
 
-    // ── 切換目標 ────────────────────────────────────────────────────────────
+    // 切換目標
     MenuScene*           m_MenuScene     = nullptr;
     KeyboardConfigScene* m_KbConfigScene = nullptr;
     LocalPlayGameScene*  m_GameScene     = nullptr;
 
-    // ── 色彩常數 ────────────────────────────────────────────────────────────
+    // COLOR
     static const Util::Color k_Black;
     static const Util::Color k_Red;
 
-    // ── 輔助 ─────────────────────────────────────────────────────────────────
-    /** 根據 m_PlayerCount 更新文字內容與顏色 */
-    void UpdateDisplay();
+    void UpdateDisplay() const ;
 };
 
 #endif // PICOPART_LOCALPLAYSCENE_HPP
@@ -1315,13 +1225,11 @@ public:
     void SetOptionScene(OptionMenuScene* s)       { m_OptionScene = s; }
     void SetLocalPlayScene(LocalPlayScene* s)     { m_LocalPlayScene = s; }
 
-    // [新增] ExitConfirmScene 需要借用這兩個物件（修改 scale / position），
-    // 而且需要知道它們是「已在渲染樹中的那組」，所以透過 getter 共享。
-    // AppStart 先建立 MenuScene，再把這兩個物件傳給 ExitConfirmScene。
-    std::shared_ptr<Character> GetMenuFrame()      const { return m_MenuFrame; }
-    std::shared_ptr<Character> GetExitGameButton() const { return m_ExitGameButton; }
-    std::shared_ptr<UI_Triangle_Button> GetLeftTriButton()  const { return m_LeftTriButton;  }  // ← 新增
-    std::shared_ptr<UI_Triangle_Button> GetRightTriButton() const { return m_RightTriButton; }  // ← 新增
+    [[nodiscard]] std::shared_ptr<Character> GetMenuFrame()      const { return m_MenuFrame; }
+    [[nodiscard]] std::shared_ptr<Character> GetExitGameButton() const { return m_ExitGameButton; }
+    [[nodiscard]] std::shared_ptr<UI_Triangle_Button> GetLeftTriButton()  const { return m_LeftTriButton;  }  // ← 新增
+    [[nodiscard]] std::shared_ptr<UI_Triangle_Button> GetRightTriButton() const { return m_RightTriButton; }  // ← 新增
+    [[nodiscard]] std::shared_ptr<Character> GetBlueCatRunImg()  const { return m_blue_cat_run_img; }
 
 private:
     std::shared_ptr<Character>          m_MenuFrame;
@@ -1342,10 +1250,10 @@ private:
     Scene*             m_TitleScene        = nullptr;
     ExitConfirmScene*  m_ExitConfirmScene  = nullptr;
     OptionMenuScene*   m_OptionScene       = nullptr;
-    LocalPlayScene*    m_LocalPlayScene    = nullptr;  // ← 取代 PlayerSelectScene
+    LocalPlayScene*    m_LocalPlayScene    = nullptr;
 
-    void ShowCurrentOption();
-    void HideAllOptions();
+    void ShowCurrentOption() const;
+    void HideAllOptions() const;
 };
 
 #endif // MENU_SCENE_HPP
@@ -1371,8 +1279,7 @@ class MenuScene;
 class KeyboardConfigScene;
 
 /**
- * @brief 遊戲設定選單場景
- *
+ * 遊戲設定選單場景
  * 選單結構（由上至下）：
  *   OPTION（標題，置中）
  *   KEYBOARD CONFIG  |  OPEN
@@ -1388,7 +1295,7 @@ class KeyboardConfigScene;
  *   S / ↓  : 游標下移
  *   A / 左鍵點擊左方按鈕 : 目前列左調整
  *   D / 左鍵點擊右方按鈕 : 目前列右調整
- *   ENTER  : 確認（KEYBOARD CONFIG 開啟子頁；OK/CANCEL 離開）
+ *   ENTER  : 確認(KEYBOARD CONFIG 開啟子頁；OK/CANCEL/ESC 離開)
  *   ESC / X 按鈕 / CANCEL : 取消並返回 MenuScene
  *
  * m_ChoiceFrame 永遠圍住當前選中列的「值」區域（OPEN 或中間文字）。
@@ -1414,68 +1321,51 @@ public:
         bool dispNumber   = false;
     };
 
-    Settings m_Applied;   // 真正生效的設定（OK 才寫入）
+    Settings m_Applied;   // 真正生效的設定(OK 才寫入)
     Settings m_Pending;   // 選單開啟期間的暫時操作(會顯示在選單UI上)
 
 private:
-    // ── 與 MenuScene 共用（借用，不持有所有權）────────────────────────────
     std::shared_ptr<Character> m_ExitGameButton;
 
-    // ── 大框架 ─────────────────────────────────────────────────────────────
     std::shared_ptr<Character> m_OptionMenuFrame;
-
-    // ── 選擇框 ─────────────────────────────────────────────────────────────
     std::shared_ptr<Character> m_ChoiceFrame;
-
-    // ── 標題 ───────────────────────────────────────────────────────────────
     std::shared_ptr<GameText> m_TitleText;           // "OPTION"
 
-    // ── KEYBOARD CONFIG 列 ─────────────────────────────────────────────────
     std::shared_ptr<GameText> m_KbConfigLabel;       // "KEYBOARD CONFIG"
     std::shared_ptr<GameText> m_KbConfigOpen;        // "OPEN"
 
-    // ── BG COLOR 列 ────────────────────────────────────────────────────────
     std::shared_ptr<GameText>           m_BgColorLabel;
     std::shared_ptr<UI_Triangle_Button> m_BgColorLeftBtn;
     std::shared_ptr<GameText>           m_BgColorValue;
     std::shared_ptr<UI_Triangle_Button> m_BgColorRightBtn;
 
-    // ── BGM VOLUME 列 ──────────────────────────────────────────────────────
     std::shared_ptr<GameText>           m_BgmVolumeLabel;
     std::shared_ptr<UI_Triangle_Button> m_BgmVolumeLeftBtn;
     std::shared_ptr<GameText>           m_BgmVolumeValue;
     std::shared_ptr<UI_Triangle_Button> m_BgmVolumeRightBtn;
 
-    // ── SE VOLUME 列 ───────────────────────────────────────────────────────
     std::shared_ptr<GameText>           m_SeVolumeLabel;
     std::shared_ptr<UI_Triangle_Button> m_SeVolumeLeftBtn;
     std::shared_ptr<GameText>           m_SeVolumeValue;
     std::shared_ptr<UI_Triangle_Button> m_SeVolumeRightBtn;
 
-    // ── DISP NUMBER 列 ─────────────────────────────────────────────────────
     std::shared_ptr<GameText>           m_DispNumberLabel;
     std::shared_ptr<UI_Triangle_Button> m_DispNumberLeftBtn;
     std::shared_ptr<GameText>           m_DispNumberValue;
     std::shared_ptr<UI_Triangle_Button> m_DispNumberRightBtn;
 
-    // ── 底部按鈕 ───────────────────────────────────────────────────────────
     std::shared_ptr<GameText> m_OkText;
     std::shared_ptr<GameText> m_CancelText;
 
-    // ── 切換目標 ───────────────────────────────────────────────────────────
     MenuScene* m_MenuScene = nullptr;
     KeyboardConfigScene* m_KeyboardConfigScene = nullptr;
 
-    // ── 選單值狀態 ─────────────────────────────────────────────────────────
-    // 可擴充：在 s_BgColorOptions 中新增顏色字串即可
+    // 在 s_BgColorOptions 中新增顏色字串即可
     static const std::vector<std::string> s_BgColorOptions;
+    static const std::vector<std::string> s_BgColorPaths;
 
-    // ── 游標列（0 = KEYBOARD_CONFIG … 6 = CANCEL）─────────────────────────
     int m_SelectedRow   = 0;
-
     static constexpr int ROW_COUNT = 7;
-
-    // ── 列 Y 座標（螢幕空間，中心點）──────────────────────────────────────
     static constexpr float ROW_Y_KB    =  145.0f;
     static constexpr float ROW_Y_BG    =  60.0f;
     static constexpr float ROW_Y_BGM   = -25.0f;
@@ -1483,57 +1373,27 @@ private:
     static constexpr float ROW_Y_DISP  = -195.0f;
     static constexpr float ROW_Y_BTN   = -260.0f;
 
-    // ── 欄 X 座標（螢幕空間，中心點）──────────────────────────────────────
-    // 左方標籤欄
     static constexpr float COL_LABEL_X      = -330.0f;
-    // 右方：左三角按鈕、中間值文字、右三角按鈕
     static constexpr float COL_LEFT_BTN_X   =  100.0f;
     static constexpr float COL_VALUE_X      =  230.0f;
     static constexpr float COL_RIGHT_BTN_X  =  330.0f;
-    // 底部 OK / CANCEL（對稱排列）
     static constexpr float COL_OK_X         = -130.0f;
     static constexpr float COL_CANCEL_X     =  130.0f;
 
-    // ── 輔助函式 ───────────────────────────────────────────────────────────
-    void UpdateChoiceFrame();
-    void UpdateValueTexts();
+    // 輔助函式
+    void UpdateChoiceFrame() const;
+    void UpdateValueTexts() const;
 
     void DecrementRow();
     void IncrementRow();
     void AdjustLeft(int row);
     void AdjustRight(int row);
+
+    // row 5/6 OK, CANCEL 互換邏輯
+    void SwapOkCancel();
 };
 
 #endif //PICOPART_OPTIONMENUSCENE_HPP
-</file>
-
-<file path="PhaseResourceManger.hpp">
-#ifndef PHASE_MANGER_HPP
-#define PHASE_MANGER_HPP
-
-#include "Util/GameObject.hpp"
-#include "Character.hpp"
-#include "BackgroundImage.hpp"
-
-class PhaseResourceManger {
-public:
-    PhaseResourceManger();
-
-    // [[nodiscard]] std::vector<std::shared_ptr<Util::GameObject>> GetChildren() const {
-    //     return {m_TaskText, m_Background};
-    // }
-
-    void NextPhase();
-
-private:
-    // std::shared_ptr<TaskText> m_TaskText;
-    // std::shared_ptr<BackgroundImage> m_Background;
-
-    int m_Phase = 1;
-};
-
-
-#endif //PHASE_MANGER_HPP
 </file>
 
 <file path="PhysicsWorld.hpp">
@@ -1545,13 +1405,10 @@ private:
 
 #include <memory>
 #include <vector>
-#include <functional>
 
 #include "IPhysicsBody.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 繩索約束（成對記錄，由 PhysicsWorld 統一解析）
-// ─────────────────────────────────────────────────────────────────────────────
 struct RopeConstraint {
     IPhysicsBody* bodyA    = nullptr;
     IPhysicsBody* bodyB    = nullptr;
@@ -1568,7 +1425,6 @@ struct RopeConstraint {
     //       B.velocity += dir * 力 * (1 - friction)
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PhysicsWorld：物理物件的協調者
 //
 // 職責：
@@ -1583,7 +1439,6 @@ struct RopeConstraint {
 //   - 玩家輸入（Scene 的責任）
 //   - 動畫切換（各物件自行處理）
 //   - 渲染（GameObject / Renderer 的責任）
-// ─────────────────────────────────────────────────────────────────────────────
 class PhysicsWorld {
 public:
     PhysicsWorld()  = default;
@@ -1592,56 +1447,54 @@ public:
     PhysicsWorld(const PhysicsWorld&)            = delete;
     PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-    // ── 登記 / 移除 ───────────────────────────────────────────────────────
-    void Register(std::shared_ptr<IPhysicsBody> body);
+    // 登記 / 移除
+    void Register(const std::shared_ptr<IPhysicsBody>& body);
     void Unregister(const IPhysicsBody* body);
     void Clear();
 
-    // ── 繩索 ─────────────────────────────────────────────────────────────
+    // 繩索
     void AddRope(IPhysicsBody* a, IPhysicsBody* b,
                  float maxLen = 200.0f, float friction = 0.5f);
     void RemoveRope(IPhysicsBody* a, IPhysicsBody* b);
 
-    // ── 主要更新（每 frame 由 Scene 呼叫一次）────────────────────────────
+    // 主要更新(每 frame 由 Scene 呼叫一次)
     void Update();
 
-    // ════════════════════════════════════════════════════════════════════════
-    // 查詢工具（供各 System / 物件的 PhysicsUpdate 使用）
-    // ════════════════════════════════════════════════════════════════════════
+    // 查詢工具(供各 System / 物件的 PhysicsUpdate 使用)
 
     // 計算「有幾個 CHARACTER body 正在往 dir 方向推 target」
     // dir: +1 = 向右推（body 在 target 左側往右移），-1 = 向左推
     // 用於：PushableBox 判斷是否達到 n 人推動條件
-    int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
+    // int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
 
     // 計算「有幾個 body 站在 target 頂部」
     // 用於：ConditionalPlatform 判斷是否達到 n 人站上條件
-    int CountBodiesOnTop(const IPhysicsBody* target) const;
+    // int CountBodiesOnTop(const IPhysicsBody* target) const;
 
     // 回傳所有與 target 的 AABB 有重疊的 body
     // 用於：Bullet 碰撞偵測、敵人傷害範圍
-    std::vector<IPhysicsBody*> QueryOverlapping(const IPhysicsBody* target) const;
+    // std::vector<IPhysicsBody*> QueryOverlapping(const IPhysicsBody* target) const;
 
     // 回傳所有指定類型的 body
-    std::vector<IPhysicsBody*> GetBodiesOfType(BodyType type) const;
+    [[nodiscard]] std::vector<IPhysicsBody*> GetBodiesOfType(BodyType type) const;
 
     // 取得與指定 body 連結的所有繩索
     std::vector<RopeConstraint*> GetRopesOf(const IPhysicsBody* body);
 
 private:
-    // ── 工具 ─────────────────────────────────────────────────────────────
-    bool AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) const;
-    bool IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const;
+    // 工具
+    static bool AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) ;
+    // bool IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const;
 
-    // 清理已失效的弱引用（每 N frame 執行一次）
+    // 清理已失效的弱引用(每 N frame 執行一次)
     void PurgeExpired();
 
-    // ── 內部更新步驟 ──────────────────────────────────────────────────────
-    void StepPhysicsUpdate();   // 呼叫所有 body 的 PhysicsUpdate()
-    void StepRopes();           // 解析繩索約束
-    void StepCollisions();      // 廣播 AABB 碰撞事件
+    // 內部更新步驟
+    void StepPhysicsUpdate() const ;   // 呼叫所有 body 的 PhysicsUpdate()
+    // void StepRopes();           // 解析繩索約束
+    // void StepCollisions();      // 廣播 AABB 碰撞事件
 
-    // ── 資料 ─────────────────────────────────────────────────────────────
+    // 資料
     std::vector<std::weak_ptr<IPhysicsBody>> m_Bodies;
     std::vector<RopeConstraint>              m_Ropes;
 
@@ -1667,9 +1520,7 @@ private:
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 角色動畫狀態
-// ─────────────────────────────────────────────────────────────────────────────
 enum class CatAnimState {
     STAND,      // 站立（循環）
     RUN,        // 跑步（循環）
@@ -1679,9 +1530,7 @@ enum class CatAnimState {
     PUSH,       // 推動（循環）
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 各動畫所需的圖片路徑集合
-// ─────────────────────────────────────────────────────────────────────────────
 struct CatAnimPaths {
     std::vector<std::string> stand;      // e.g. { blue_cat_stand_1.png, stand_2.png }
     std::vector<std::string> run;        // e.g. { run_1.png, run_2.png }
@@ -1691,9 +1540,7 @@ struct CatAnimPaths {
     std::vector<std::string> push;       // e.g. { push_1.png, push_2.png }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PlayerCat
-// ─────────────────────────────────────────────────────────────────────────────
 class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
 public:
     PlayerCat(const CatAnimPaths& animPaths,
@@ -1701,19 +1548,15 @@ public:
               Util::Keycode rightKey,
               Util::Keycode jumpKey);
 
-    // 舊版簡易物理 Update（PlayerCat 自行處理重力與地板碰撞）
-    // 修正問題 1：standOffset 改為 floor 半高 + 角色半高（動態）
-    void Update(std::shared_ptr<Character>& floor);
-
-    // ── 動畫狀態管理 ─────────────────────────────────────────────────────
+    // 動畫狀態管理
     void SetCatAnimState(CatAnimState newState);
     [[nodiscard]] CatAnimState GetCatAnimState() const { return m_CurrentAnimState; }
 
-    // ── 輸入控制 ─────────────────────────────────────────────────────────
+    // 輸入控制
     void SetInputEnabled(bool enabled)         { m_InputEnabled = enabled; }
     [[nodiscard]] bool GetInputEnabled() const { return m_InputEnabled;    }
 
-    // ── IPhysicsBody 實作 / 位置 / 縮放 ──────────────────────────────────
+    // IPhysicsBody 實作 / 位置 / 縮放
     void SetPosition(const glm::vec2& pos) override { m_Transform.translation = pos; }
     void SetScale(const glm::vec2& scale)   { m_Transform.scale = scale; }
     void SetVelocity(const glm::vec2& vel) override { m_Velocity = vel; }
@@ -1722,12 +1565,13 @@ public:
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
     [[nodiscard]] glm::vec2 GetHalfSize() const override { return glm::abs(GetScaledSize()) * 0.5f; }
     [[nodiscard]] glm::vec2 GetVelocity() const override { return m_Velocity; }
+
     [[nodiscard]] bool IsSolid() const override { return true; }
     [[nodiscard]] bool IsKinematic() const override { return false; }
     [[nodiscard]] bool UseGravity() const override { return true; }
     void OnCollision(const CollisionInfo& /*info*/) override {}
 
-    // ── 按鍵讀取（供 TitleScene / LocalPlayGameScene 使用）────────────────
+    // 按鍵讀取(供 TitleScene / LocalPlayGameScene 使用)
     [[nodiscard]] Util::Keycode GetLeftKey()  const { return m_LeftKey;  }
     [[nodiscard]] Util::Keycode GetRightKey() const { return m_RightKey; }
     [[nodiscard]] Util::Keycode GetJumpKey()  const { return m_JumpKey;  }
@@ -1735,7 +1579,7 @@ public:
 private:
     void BuildClips(const CatAnimPaths& paths);
 
-    // ── 六種動畫 clip ─────────────────────────────────────────────────────
+    // 六種動畫 clip
     std::shared_ptr<Util::Animation> m_StandAnim;
     std::shared_ptr<Util::Animation> m_RunAnim;
     std::shared_ptr<Util::Animation> m_JumpRiseAnim;  // jump_1
@@ -1745,19 +1589,13 @@ private:
 
     CatAnimState m_CurrentAnimState = CatAnimState::STAND;
 
-    // ── 按鍵 ─────────────────────────────────────────────────────────────
+    // 按鍵
     bool          m_InputEnabled = true;
     Util::Keycode m_LeftKey;
     Util::Keycode m_RightKey;
     Util::Keycode m_JumpKey;
 
-    // ── 物理狀態（PlayerCat::Update 使用）────────────────────────────────
-    float     m_MoveSpeed   = 5.0f;
-    glm::vec2 m_Velocity    = {0.0f, 0.0f};
-    float     m_JumpForce   = 11.0f;
-    float     m_Gravity     = 0.75f;
-    bool      m_IsGrounded  = true;
-    bool      m_WasGrounded = true;  // 前幀接地狀態，用於落地偵測
+    glm::vec2 m_Velocity = {0.0f, 0.0f};
 };
 
 #endif // PLAYER_CAT_HPP
@@ -1776,18 +1614,18 @@ private:
 /**
  * @brief 所有場景的抽象基底類別
  *
- * ── 生命週期 ──────────────────────────────────────────────────────────────
+ * 生命週期
  *
  *   App::Start()    → 建立所有 Scene 物件（此時不呼叫 OnEnter）
  *   TransitionTo(X) → 先呼叫前一個場景的 OnExit()，再呼叫 X 的 OnEnter()
  *   每個 frame      → Update() 被呼叫，回傳下一個場景的指標
  *
- * ── Update() 回傳值約定 ────────────────────────────────────────────────────
+ * Update() 回傳值約定
  *
  *   nullptr   → 繼續待在這個場景，不切換
  *   Scene*    → 切換到該場景（指標由 App 持有，Scene 只借用，不能 delete）
  *
- * ── 重要：AddChild / RemoveChild 的使用規則 ───────────────────────────────
+ * AddChild / RemoveChild 的使用規則
  *
  *   OnEnter() 裡呼叫 m_Ctx.Root.AddChild(xxx)   → 加入渲染樹
  *   OnExit()  裡呼叫 m_Ctx.Root.RemoveChild(xxx) → 從渲染樹移除
@@ -1795,7 +1633,7 @@ private:
  *   「一定要配對」，否則同一個 shared_ptr 會在渲染清單裡出現兩次，
  *   造成每次進入場景就多渲染一個重疊的圖層。
  *
- * ── 所有權 ────────────────────────────────────────────────────────────────
+ * 所有權
  *
  *   App 以 unique_ptr<Scene> 持有所有場景（負責生命週期）
  *   Scene 之間互傳的是 raw pointer（non-owning），絕對不能 delete
@@ -1812,10 +1650,7 @@ public:
     Scene(Scene&&)                 = delete;
     Scene& operator=(Scene&&)      = delete;
 
-    // -----------------------------------------------------------------------
     // 純虛擬介面
-    // -----------------------------------------------------------------------
-
     /**
      * @brief 進入此場景時呼叫一次
      * - 呼叫 m_Ctx.Root.AddChild() 把需要的物件加入渲染樹
@@ -1867,14 +1702,14 @@ public:
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
 
 private:
-    // ── UI ───────────────────────────────────────────────────────────────
+    // UI
     std::shared_ptr<GameText> m_TitleSub;
     std::shared_ptr<GameText> m_PressEnterText;
 
     float      m_FlashTimer = 0.0f;
     MenuScene* m_MenuScene  = nullptr;
 
-    // ── 物理系統（算法）與代理人（資料）─────────────────────────────────
+    // 物理系統(算法)與代理人(資料)
     CharacterPhysicsSystem      m_Physics;
     std::vector<PhysicsAgent>   m_Agents;
 };
@@ -1896,15 +1731,15 @@ private:
 class UI_Triangle_Button : public Character {
 public:
     // 傳入兩種狀態的圖片路徑
-    UI_Triangle_Button(const std::string& normalImagePath, const std::string& pressedImagePath);
+    UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath);
 
     // 必須在每一幀呼叫此方法，用來更新按鈕內部的計時器邏輯
     void UpdateButton();
 
-    // 觸發「按下」狀態，並設定維持時間 (預設 200 毫秒)
-    void Press(float durationMs = 200.0f);
+    // 觸發「按下」狀態，並設定維持時間 (預設 75 毫秒)
+    void Press(float durationMs = 75.0f);
 
-    // 強制重置按鈕為未按下狀態 (用於選單切換時清空殘留狀態)
+    // 強制重置按鈕為未按下狀態(用於選單切換時清空殘留狀態)
     void ResetState();
 
 private:
@@ -1919,7 +1754,6 @@ private:
 <file path="AnimatedCharacter.cpp">
 #include "AnimatedCharacter.hpp"
 
-
 AnimatedCharacter::AnimatedCharacter(const std::vector<std::string>& AnimationPaths) {
     m_Drawable = std::make_shared<Util::Animation>(AnimationPaths, false, 500, false, 0);
 }
@@ -1931,14 +1765,7 @@ bool AnimatedCharacter::IfAnimationEnds() const {
 </file>
 
 <file path="AppEnd.cpp">
-// 必須 include 所有 Scene 的完整 header。
-// 這樣 unique_ptr<TitleScene> 等在 App destructor 展開時
-// 能看到完整型別，才能正確呼叫 delete。
 #include "App.hpp"
-#include "TitleScene.hpp"
-#include "MenuScene.hpp"
-#include "ExitConfirmScene.hpp"
-#include "OptionMenuScene.hpp"
 #include "Util/Logger.hpp"
  
 void App::End() {
@@ -1956,67 +1783,23 @@ void App::End() {
 #include "KeyboardConfigScene.hpp"
 #include "LocalPlayScene.hpp"
 #include "LocalPlayGameScene.hpp"
+#include "CatAssets.hpp"
 #include "Util/Logger.hpp"
-
 #include <array>
 #include <cmath>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 工具：建立單幀路徑 / 多幀路徑
-// ─────────────────────────────────────────────────────────────────────────────
-static std::string BuildCatFramePath(const std::string& color,
-                                     const std::string& action,
-                                     int frameNum) {
-    return std::string(GA_RESOURCE_DIR) +
-           "/Image/Character/" + color + "_cat/" +
-           color + "_cat_" + action + "_" + std::to_string(frameNum) + ".png";
-}
-
-static std::vector<std::string> BuildCatFramePaths(const std::string& color,
-                                                    const std::string& action,
-                                                    int numFrames) {
-    std::vector<std::string> paths;
-    paths.reserve(static_cast<size_t>(numFrames));
-    for (int f = 1; f <= numFrames; ++f) {
-        paths.push_back(BuildCatFramePath(color, action, f));
-    }
-    return paths;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 建立一隻貓的完整動畫路徑集合
-//   stand : stand_1, stand_2
-//   run   : run_1, run_2
-//   jump_rise : jump_1         ← 起跳到最高點
-//   jump_fall : jump_2         ← 最高點到落地前
-//   land  : land_1
-//   push  : push_1, push_2
-// ─────────────────────────────────────────────────────────────────────────────
-static CatAnimPaths BuildCatAnimPaths(const std::string& color) {
-    CatAnimPaths p;
-    p.stand     = BuildCatFramePaths(color, "stand", 8);
-    p.run       = BuildCatFramePaths(color, "run",   9);
-    p.jump_rise = { BuildCatFramePath(color, "jump", 1) };  // jump_1 只有一幀
-    p.jump_fall = { BuildCatFramePath(color, "jump", 2) };  // jump_2 只有一幀
-    p.land      = { BuildCatFramePath(color, "land", 1) };  // land_1 只有一幀
-    p.push      = BuildCatFramePaths(color, "push",  3);
-    return p;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // App::Start
-// ─────────────────────────────────────────────────────────────────────────────
 void App::Start() {
     LOG_TRACE("Start");
 
-    // ── Step 1：GameContext ───────────────────────────────────────────────────
+    // GameContext
     m_Ctx = std::make_unique<GameContext>(m_Root);
 
-    m_Ctx->WhiteBackground = std::make_shared<Character>(
-        GA_RESOURCE_DIR "/Image/Background/white_background.jpg");
-    m_Ctx->WhiteBackground->SetZIndex(-10);
-    m_Ctx->WhiteBackground->SetScale({100.0f, 100.0f});
-    m_Root.AddChild(m_Ctx->WhiteBackground);
+    m_Ctx->Background = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/white_background.png");
+    m_Ctx->Background->SetZIndex(-10);
+    m_Ctx->Background->SetScale({100.0f, 100.0f});
+    m_Root.AddChild(m_Ctx->Background);
 
     m_Ctx->Floor = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/background_floor.png");
@@ -2030,18 +1813,26 @@ void App::Start() {
     m_Ctx->Header->SetPosition({0.0f, 135.0f});
     m_Root.AddChild(m_Ctx->Header);
 
+    m_Ctx->Door = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    m_Ctx->Door->SetScale({0.148f, 0.161f});   // ← 新增這一行
+    m_Ctx->Door->SetZIndex(5.0f);
+    {
+        const float floorY     = m_Ctx->Floor->GetPosition().y;
+        const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
+        const float doorHalfH  = m_Ctx->Door->GetScaledSize().y  / 2.0f;
+        m_Ctx->Door->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
+    }
+    m_Root.AddChild(m_Ctx->Door);
+
     m_Ctx->BGMPlayer = std::make_unique<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
 
-    // ── 建立 8 隻裝飾貓（StartupCats）────────────────────────────────────────
-    static const std::array<const char*, 8> kColorOrder = {
-        "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"
-    };
-
+    // 建立 8 隻貓
     m_Ctx->StartupCats.clear();
-    m_Ctx->StartupCats.reserve(kColorOrder.size());
+    m_Ctx->StartupCats.reserve(GameContext::kCatColorOrder.size());
 
-    for (int i = 0; i < static_cast<int>(kColorOrder.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(GameContext::kCatColorOrder.size()); ++i) {
         Util::Keycode left  = Util::Keycode::UNKNOWN;
         Util::Keycode right = Util::Keycode::UNKNOWN;
         Util::Keycode jump  = Util::Keycode::UNKNOWN;
@@ -2058,7 +1849,7 @@ void App::Start() {
         }
 
         auto cat = std::make_shared<PlayerCat>(
-            BuildCatAnimPaths(kColorOrder[static_cast<size_t>(i)]),
+            CatAssets::BuildFullAnimPaths(GameContext::kCatColorOrder[static_cast<size_t>(i)]),
             left, right, jump);
         cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
         cat->SetInputEnabled(i < 2);
@@ -2066,14 +1857,12 @@ void App::Start() {
         m_Ctx->StartupCats.push_back(cat);
     }
 
-    // ── 計算初始位置 ──────────────────────────────────────────────────────────
-    // 問題 1 修正：spawnY 用 floor 半高 + 角色半高（動態，每隻貓各自計算）
-    // 問題 2 修正：spacing 係數 0.42 → 0.84（乘 2 倍），避免碰撞箱重疊
+    // 計算初始位置
     const float floorY      = m_Ctx->Floor->GetPosition().y;
     const float floorHalfH  = m_Ctx->Floor->GetScaledSize().y / 2.0f;
 
-    const float spacing     = 75.0f;
-    const float centerBlank = spacing * 2.0f;
+    constexpr float spacing     = 75.0f;
+    constexpr float centerBlank = spacing * 2.0f;
 
     for (int i = 0; i < static_cast<int>(m_Ctx->StartupCats.size()); ++i) {
         auto& cat = m_Ctx->StartupCats[i];
@@ -2094,7 +1883,7 @@ void App::Start() {
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 
-    // ── Step 2：場景建立 ──────────────────────────────────────────────────────
+    // 場景建立
     auto titleScene = std::make_unique<TitleScene>(*m_Ctx, nullptr);
 
     auto menuScene = std::make_unique<MenuScene>(
@@ -2123,6 +1912,7 @@ void App::Start() {
         menuScene->GetExitGameButton(),
         menuScene->GetLeftTriButton(),
         menuScene->GetRightTriButton(),
+        menuScene->GetBlueCatRunImg(),   // ← 新增
         kbConfigScene.get());
 
     auto localPlayGameScene = std::make_unique<LocalPlayGameScene>(
@@ -2160,8 +1950,10 @@ void App::Update() {
         LOG_ERROR("m_CurrentScene is nullptr!");
         return;
     }
- 
+
+    m_Ctx->BGMPlayer->Update();
     Scene* next = m_CurrentScene->Update();
+
 
     if (next != nullptr && next != m_CurrentScene) {
         TransitionTo(next);
@@ -2193,145 +1985,157 @@ void App::TransitionTo(Scene* next) {
 
 namespace AppUtil {
 
-// ────────────────────────────────────────────────────────────────────────────
-// KeycodeToString
-// ────────────────────────────────────────────────────────────────────────────
-std::string KeycodeToString(Util::Keycode key) {
-    using K = Util::Keycode;
-    switch (key) {
-    // 字母
-    case K::A: return "A"; case K::B: return "B"; case K::C: return "C";
-    case K::D: return "D"; case K::E: return "E"; case K::F: return "F";
-    case K::G: return "G"; case K::H: return "H"; case K::I: return "I";
-    case K::J: return "J"; case K::K: return "K"; case K::L: return "L";
-    case K::M: return "M"; case K::N: return "N"; case K::O: return "O";
-    case K::P: return "P"; case K::Q: return "Q"; case K::R: return "R";
-    case K::S: return "S"; case K::T: return "T"; case K::U: return "U";
-    case K::V: return "V"; case K::W: return "W"; case K::X: return "X";
-    case K::Y: return "Y"; case K::Z: return "Z";
-    // 數字
-    case K::NUM_1: return "1"; case K::NUM_2: return "2";
-    case K::NUM_3: return "3"; case K::NUM_4: return "4";
-    case K::NUM_5: return "5"; case K::NUM_6: return "6";
-    case K::NUM_7: return "7"; case K::NUM_8: return "8";
-    case K::NUM_9: return "9"; case K::NUM_0: return "0";
-    // 特殊鍵
-    case K::RETURN:    return "ENTER";
-    case K::ESCAPE:    return "ESCAPE";
-    case K::BACKSPACE: return "BACKSPACE";
-    case K::TAB:       return "TAB";
-    case K::SPACE:     return "SPACE";
-    // 符號
-    case K::MINUS:        return "-";
-    case K::EQUALS:       return "=";
-    case K::LEFTBRACKET:  return "[";
-    case K::RIGHTBRACKET: return "]";
-    case K::BACKSLASH:    return "\\";
-    case K::SEMICOLON:    return ";";
-    case K::APOSTROPHE:   return "'";
-    case K::GRAVE:        return "`";
-    case K::COMMA:        return ",";
-    case K::PERIOD:       return ".";
-    case K::SLASH:        return "/";
-    // 方向鍵
-    case K::UP:    return "UP";
-    case K::DOWN:  return "DOWN";
-    case K::LEFT:  return "LEFT";
-    case K::RIGHT: return "RIGHT";
-    // 功能鍵
-    case K::F1:  return "F1";  case K::F2:  return "F2";
-    case K::F3:  return "F3";  case K::F4:  return "F4";
-    case K::F5:  return "F5";  case K::F6:  return "F6";
-    case K::F7:  return "F7";  case K::F8:  return "F8";
-    case K::F9:  return "F9";  case K::F10: return "F10";
-    case K::F11: return "F11"; case K::F12: return "F12";
-    // 導覽鍵
-    case K::INSERT:   return "INSERT";
-    case K::HOME:     return "HOME";
-    case K::PAGEUP:   return "PAGE UP";
-    case K::DELETE:   return "DELETE";
-    case K::END:      return "END";
-    case K::PAGEDOWN: return "PAGE DOWN";
-    // 修飾鍵
-    case K::LCTRL:  return "L CTRL";
-    case K::RCTRL:  return "R CONTROL";
-    case K::LSHIFT: return "L SHIFT";
-    case K::RSHIFT: return "R SHIFT";
-    case K::LALT:   return "L ALT";
-    case K::RALT:   return "R ALT";
-    // 小鍵盤
-    case K::KP_0: return "KP 0"; case K::KP_1: return "KP 1";
-    case K::KP_2: return "KP 2"; case K::KP_3: return "KP 3";
-    case K::KP_4: return "KP 4"; case K::KP_5: return "KP 5";
-    case K::KP_6: return "KP 6"; case K::KP_7: return "KP 7";
-    case K::KP_8: return "KP 8"; case K::KP_9: return "KP 9";
-    case K::KP_ENTER:    return "KP ENTER";
-    case K::KP_PLUS:     return "KP +";
-    case K::KP_MINUS:    return "KP -";
-    case K::KP_MULTIPLY: return "KP *";
-    case K::KP_DIVIDE:   return "KP /";
-    case K::KP_PERIOD:   return "KP .";
-    // 其他
-    case K::CAPSLOCK:    return "CAPS LOCK";
-    case K::PRINTSCREEN: return "PRINT SCREEN";
-    case K::SCROLLLOCK:  return "SCROLL LOCK";
-    case K::PAUSE:       return "PAUSE";
-    case K::AC_BACK:     return "BACK";
-    case K::MENU:        return "MENU";
-    // UNKNOWN
-    case K::UNKNOWN: return "-";
-    default:         return "?";
-    }
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// GetAnyKeyDown
-// 掃描常用可綁定按鍵，回傳這一幀剛被按下的第一個按鍵
-// ────────────────────────────────────────────────────────────────────────────
-Util::Keycode GetAnyKeyDown() {
-    using K = Util::Keycode;
-
-    // 依「常用程度」排序，確保最常見的鍵優先被偵測到
-    static const std::vector<Util::Keycode> k_Bindable = {
+    // KeycodeToString
+    std::string KeycodeToString(Util::Keycode key) {
+        using K = Util::Keycode;
+        switch (key) {
         // 字母
-        K::A, K::B, K::C, K::D, K::E, K::F, K::G, K::H, K::I, K::J,
-        K::K, K::L, K::M, K::N, K::O, K::P, K::Q, K::R, K::S, K::T,
-        K::U, K::V, K::W, K::X, K::Y, K::Z,
-        // 數字列
-        K::NUM_1, K::NUM_2, K::NUM_3, K::NUM_4, K::NUM_5,
-        K::NUM_6, K::NUM_7, K::NUM_8, K::NUM_9, K::NUM_0,
-        // 特殊
-        K::SPACE, K::RETURN, K::TAB, K::ESCAPE, K::BACKSPACE,
-        // 方向鍵
-        K::UP, K::DOWN, K::LEFT, K::RIGHT,
-        // 功能鍵
-        K::F1, K::F2,  K::F3,  K::F4,  K::F5,  K::F6,
-        K::F7, K::F8,  K::F9,  K::F10, K::F11, K::F12,
-        // 修飾鍵
-        K::LCTRL, K::RCTRL, K::LSHIFT, K::RSHIFT, K::LALT, K::RALT,
-        // 導覽
-        K::INSERT, K::HOME, K::PAGEUP, K::DELETE, K::END, K::PAGEDOWN,
+        case K::A: return "A"; case K::B: return "B"; case K::C: return "C";
+        case K::D: return "D"; case K::E: return "E"; case K::F: return "F";
+        case K::G: return "G"; case K::H: return "H"; case K::I: return "I";
+        case K::J: return "J"; case K::K: return "K"; case K::L: return "L";
+        case K::M: return "M"; case K::N: return "N"; case K::O: return "O";
+        case K::P: return "P"; case K::Q: return "Q"; case K::R: return "R";
+        case K::S: return "S"; case K::T: return "T"; case K::U: return "U";
+        case K::V: return "V"; case K::W: return "W"; case K::X: return "X";
+        case K::Y: return "Y"; case K::Z: return "Z";
+        // 數字
+        case K::NUM_1: return "1"; case K::NUM_2: return "2";
+        case K::NUM_3: return "3"; case K::NUM_4: return "4";
+        case K::NUM_5: return "5"; case K::NUM_6: return "6";
+        case K::NUM_7: return "7"; case K::NUM_8: return "8";
+        case K::NUM_9: return "9"; case K::NUM_0: return "0";
+        // 特殊鍵
+        case K::RETURN:    return "ENTER";
+        case K::ESCAPE:    return "ESCAPE";
+        case K::BACKSPACE: return "BACKSPACE";
+        case K::TAB:       return "TAB";
+        case K::SPACE:     return "SPACE";
         // 符號
-        K::MINUS, K::EQUALS, K::LEFTBRACKET, K::RIGHTBRACKET,
-        K::BACKSLASH, K::SEMICOLON, K::APOSTROPHE, K::GRAVE,
-        K::COMMA, K::PERIOD, K::SLASH,
-        // 其他
-        K::CAPSLOCK, K::PRINTSCREEN, K::SCROLLLOCK, K::PAUSE,
-        K::AC_BACK, K::MENU,
+        case K::MINUS:        return "-";
+        case K::EQUALS:       return "=";
+        case K::LEFTBRACKET:  return "[";
+        case K::RIGHTBRACKET: return "]";
+        case K::BACKSLASH:    return "\\";
+        case K::SEMICOLON:    return ";";
+        case K::APOSTROPHE:   return "'";
+        case K::GRAVE:        return "`";
+        case K::COMMA:        return ",";
+        case K::PERIOD:       return ".";
+        case K::SLASH:        return "/";
+        // 方向鍵
+        case K::UP:    return "UP";
+        case K::DOWN:  return "DOWN";
+        case K::LEFT:  return "LEFT";
+        case K::RIGHT: return "RIGHT";
+        // 功能鍵
+        case K::F1:  return "F1";  case K::F2:  return "F2";
+        case K::F3:  return "F3";  case K::F4:  return "F4";
+        case K::F5:  return "F5";  case K::F6:  return "F6";
+        case K::F7:  return "F7";  case K::F8:  return "F8";
+        case K::F9:  return "F9";  case K::F10: return "F10";
+        case K::F11: return "F11"; case K::F12: return "F12";
+        // 導覽鍵
+        case K::INSERT:   return "INSERT";
+        case K::HOME:     return "HOME";
+        case K::PAGEUP:   return "PAGE UP";
+        case K::DELETE:   return "DELETE";
+        case K::END:      return "END";
+        case K::PAGEDOWN: return "PAGE DOWN";
+        // 修飾鍵
+        case K::LCTRL:  return "L CTRL";
+        case K::RCTRL:  return "R CONTROL";
+        case K::LSHIFT: return "L SHIFT";
+        case K::RSHIFT: return "R SHIFT";
+        case K::LALT:   return "L ALT";
+        case K::RALT:   return "R ALT";
         // 小鍵盤
-        K::KP_0, K::KP_1, K::KP_2, K::KP_3, K::KP_4,
-        K::KP_5, K::KP_6, K::KP_7, K::KP_8, K::KP_9,
-        K::KP_ENTER, K::KP_PLUS, K::KP_MINUS,
-        K::KP_MULTIPLY, K::KP_DIVIDE, K::KP_PERIOD,
-    };
-
-    for (auto key : k_Bindable) {
-        if (Util::Input::IsKeyDown(key)) return key;
+        case K::KP_0: return "KP 0"; case K::KP_1: return "KP 1";
+        case K::KP_2: return "KP 2"; case K::KP_3: return "KP 3";
+        case K::KP_4: return "KP 4"; case K::KP_5: return "KP 5";
+        case K::KP_6: return "KP 6"; case K::KP_7: return "KP 7";
+        case K::KP_8: return "KP 8"; case K::KP_9: return "KP 9";
+        case K::KP_ENTER:    return "KP ENTER";
+        case K::KP_PLUS:     return "KP +";
+        case K::KP_MINUS:    return "KP -";
+        case K::KP_MULTIPLY: return "KP *";
+        case K::KP_DIVIDE:   return "KP /";
+        case K::KP_PERIOD:   return "KP .";
+        // 其他
+        case K::CAPSLOCK:    return "CAPS LOCK";
+        case K::PRINTSCREEN: return "PRINT SCREEN";
+        case K::SCROLLLOCK:  return "SCROLL LOCK";
+        case K::PAUSE:       return "PAUSE";
+        case K::AC_BACK:     return "BACK";
+        case K::MENU:        return "MENU";
+        // UNKNOWN
+        case K::UNKNOWN: return "-";
+        default:         return "?";
+        }
     }
-    return Util::Keycode::UNKNOWN;
-}
 
-} // namespace AppUtil
+    // GetAnyKeyDown
+    // 掃描常用可綁定按鍵，回傳這一幀剛被按下的第一個按鍵
+    Util::Keycode GetAnyKeyDown() {
+        using K = Util::Keycode;
+
+        // 依「常用程度」排序，確保最常見的鍵優先被偵測到
+        static const std::vector<Util::Keycode> k_Bindable = {
+            // 字母
+            K::A, K::B, K::C, K::D, K::E, K::F, K::G, K::H, K::I, K::J,
+            K::K, K::L, K::M, K::N, K::O, K::P, K::Q, K::R, K::S, K::T,
+            K::U, K::V, K::W, K::X, K::Y, K::Z,
+            // 數字列
+            K::NUM_1, K::NUM_2, K::NUM_3, K::NUM_4, K::NUM_5,
+            K::NUM_6, K::NUM_7, K::NUM_8, K::NUM_9, K::NUM_0,
+            // 特殊
+            K::SPACE, K::RETURN, K::TAB, K::ESCAPE, K::BACKSPACE,
+            // 方向鍵
+            K::UP, K::DOWN, K::LEFT, K::RIGHT,
+            // 功能鍵
+            K::F1, K::F2,  K::F3,  K::F4,  K::F5,  K::F6,
+            K::F7, K::F8,  K::F9,  K::F10, K::F11, K::F12,
+            // 修飾鍵
+            K::LCTRL, K::RCTRL, K::LSHIFT, K::RSHIFT, K::LALT, K::RALT,
+            // 導覽
+            K::INSERT, K::HOME, K::PAGEUP, K::DELETE, K::END, K::PAGEDOWN,
+            // 符號
+            K::MINUS, K::EQUALS, K::LEFTBRACKET, K::RIGHTBRACKET,
+            K::BACKSLASH, K::SEMICOLON, K::APOSTROPHE, K::GRAVE,
+            K::COMMA, K::PERIOD, K::SLASH,
+            // 其他
+            K::CAPSLOCK, K::PRINTSCREEN, K::SCROLLLOCK, K::PAUSE,
+            K::AC_BACK, K::MENU,
+            // 小鍵盤
+            K::KP_0, K::KP_1, K::KP_2, K::KP_3, K::KP_4,
+            K::KP_5, K::KP_6, K::KP_7, K::KP_8, K::KP_9,
+            K::KP_ENTER, K::KP_PLUS, K::KP_MINUS,
+            K::KP_MULTIPLY, K::KP_DIVIDE, K::KP_PERIOD,
+        };
+
+        for (auto key : k_Bindable) {
+            if (Util::Input::IsKeyDown(key)) return key;
+        }
+        return Util::Keycode::UNKNOWN;
+    }
+
+    bool IsMouseHovering(const Util::GameObject& obj) {
+    const glm::vec2 mousePos   = Util::Input::GetCursorPosition();
+    const glm::vec2 myPos      = obj.m_Transform.translation;
+    const glm::vec2 mySize     = obj.GetScaledSize();
+    const float     halfWidth  = mySize.x / 2.0f;
+    const float     halfHeight = mySize.y / 2.0f;
+
+    return (mousePos.x >= myPos.x - halfWidth  &&
+            mousePos.x <= myPos.x + halfWidth  &&
+            mousePos.y >= myPos.y - halfHeight &&
+            mousePos.y <= myPos.y + halfHeight);
+    }
+
+    bool IsLeftClicked(const Util::GameObject& obj) {
+        return Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB) && IsMouseHovering(obj);
+    }
+}
 </file>
 
 <file path="BGMPlayer.cpp">
@@ -2366,7 +2170,7 @@ BGMPlayer::BGMPlayer() {
 
 void BGMPlayer::Play() const {
     if (m_BGMs.empty()) return;
-    m_BGMs[m_CurrentIndex]->Play(0);
+    m_BGMs[m_CurrentIndex]->Play(1);
     LOG_INFO("BGM play");
 }
 
@@ -2391,13 +2195,18 @@ int BGMPlayer::GetVolume() const {
 void BGMPlayer::Next() {
     if (m_BGMs.empty()) return;
     m_CurrentIndex = (m_CurrentIndex + 1) % m_BGMs.size();
-    m_BGMs[m_CurrentIndex]->Play(0);
+    m_BGMs[m_CurrentIndex]->Play(1);
 }
 
 // ==================== 靜態回呼 ====================
 void BGMPlayer::MusicFinishedCallback() {
-    if (s_Instance) {
-        s_Instance->Next();
+    s_ShouldPlayNext = true ;
+}
+
+void BGMPlayer::Update() {
+    if (s_ShouldPlayNext) {
+        s_ShouldPlayNext = false ;
+        Next() ;
     }
 }
 </file>
@@ -2405,10 +2214,8 @@ void BGMPlayer::MusicFinishedCallback() {
 <file path="Character.cpp">
 #include "Character.hpp"
 #include "Util/Image.hpp"
+#include "AppUtil.hpp"
 
-// 新增這兩行來獲取滑鼠輸入
-#include "Util/Input.hpp"
-#include "Util/Keycode.hpp"
 
 Character::Character(const std::string& ImagePath) {
     SetImage(ImagePath);
@@ -2417,41 +2224,15 @@ Character::Character(const std::string& ImagePath) {
 
 void Character::SetImage(const std::string& ImagePath) {
     m_ImagePath = ImagePath;
-
     m_Drawable = std::make_shared<Util::Image>(m_ImagePath);
 }
 
-// ==========================================
-// 實作：偵測滑鼠是否懸停
-// ==========================================
 bool Character::IsMouseHovering() const {
-    // 取得滑鼠當前座標
-    glm::vec2 mousePos = Util::Input::GetCursorPosition();
-
-    // 取得文字物件自身的中心座標
-    glm::vec2 myPos = this->GetPosition();
-    glm::vec2 mySize = this->GetSize();
-    float halfWidth = mySize.x/2 ;
-    float halfHeight = mySize.y/2 ;
-
-    // 進行 AABB (矩形範圍) 碰撞計算
-    return (mousePos.x >= myPos.x - halfWidth &&
-            mousePos.x <= myPos.x + halfWidth &&
-            mousePos.y >= myPos.y - halfHeight &&
-            mousePos.y <= myPos.y + halfHeight);
+    return AppUtil::IsMouseHovering(*this);
 }
 
-// ==========================================
-// 實作：偵測是否被左鍵點擊
-// ==========================================
 bool Character::IsLeftClicked() const {
-    // 先確認滑鼠左鍵有被按下
-    if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-        // 直接重複利用上面寫好的懸停判斷，只要在範圍內就是被點擊了！
-
-        return IsMouseHovering();
-    }
-    return false;
+    return AppUtil::IsLeftClicked(*this);
 }
 </file>
 
@@ -2459,17 +2240,13 @@ bool Character::IsLeftClicked() const {
 //
 // Created by cody2 on 2026/3/19.
 //
-
 #include "CharacterPhysicsSystem.hpp"
-
 #include <algorithm>
 #include <cmath>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Update：主要更新介面
-// ─────────────────────────────────────────────────────────────────────────────
+// 主要更新介面
 void CharacterPhysicsSystem::Update(std::vector<PhysicsAgent>& agents,
-                                     const std::shared_ptr<Character>& floor) const {
+                                     const std::shared_ptr<Character>& floor) {
     const int n = static_cast<int>(agents.size());
 
     for (int i = 0; i < n; ++i) {
@@ -2478,7 +2255,7 @@ void CharacterPhysicsSystem::Update(std::vector<PhysicsAgent>& agents,
 
         self.state.prevGrounded = self.state.grounded;
 
-        // ── 1. 攜帶：被踩角色跟隨支撐者水平移動 ──────────────────────────
+        // 被踩角色跟隨支撐者水平移動
         const int sup = self.state.supportIndex;
         if (self.state.grounded && sup >= 0 && sup < n &&
             agents[sup].actor != nullptr) {
@@ -2487,12 +2264,12 @@ void CharacterPhysicsSystem::Update(std::vector<PhysicsAgent>& agents,
                                      self.actor->GetPosition().y});
         }
 
-        // ── 2. 跳躍 ───────────────────────────────────────────────────────
+        // 頭頂阻擋
         if (self.state.beingStoodOn && self.state.velocityY > 0.0f) {
             self.state.velocityY = 0.0f;
         }
 
-        // ── 3. 水平移動 ───────────────────────────────────────────────────
+        // 水平移動
         const float moveSpeed = (self.state.grounded && sup >= 0)
                                     ? kRunOnPlayerSpeed
                                     : kGroundMoveSpeed;
@@ -2512,34 +2289,27 @@ void CharacterPhysicsSystem::Update(std::vector<PhysicsAgent>& agents,
 
         self.actor->SetPosition({resolvedX, self.actor->GetPosition().y});
 
-        // ── 4. 垂直物理 ───────────────────────────────────────────────────
+        // 垂直物理
         ResolveVertical(i, agents, floor);
 
         self.state.lastDeltaX = self.actor->GetPosition().x - prevX;
 
-        // ── 5. 被推偵測 ───────────────────────────────────────────────────
-        const bool beingPushed = IsBeingPushed(i, agents, floor);
-
-        // ── 6. 動畫狀態 ───────────────────────────────────────────────────
-        UpdateAnimState(i, agents, isPushing, beingPushed);
+        // 動畫狀態
+        UpdateAnimState(i, agents, isPushing);
     }
 
-    // ── 7. 計算 beingStoodOn（供下一幀跳躍判斷用）────────────────────────
-    // 先全部重置
+    // 計算 beingStoodOn(供下一幀跳躍判斷用)
     for (int i = 0; i < n; ++i) agents[i].state.beingStoodOn = false;
-    // 若 j 以 sup 為支撐，則 sup 正被踩
     for (int j = 0; j < n; ++j) {
-        const int sup = agents[j].state.supportIndex;
-        if (sup >= 0 && sup < n) agents[sup].state.beingStoodOn = true;
+        const int s = agents[j].state.supportIndex;
+        if (s >= 0 && s < n) agents[s].state.beingStoodOn = true;
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ResolveHorizontal（public，供 Scene 個別呼叫）
-// ─────────────────────────────────────────────────────────────────────────────
-float CharacterPhysicsSystem::ResolveHorizontal(int idx,
+// ResolveHorizontal(public，供 Scene 個別呼叫)
+float CharacterPhysicsSystem::ResolveHorizontal(const int idx,
                                                   float targetX,
-                                                  const std::vector<PhysicsAgent>& agents) const {
+                                                  const std::vector<PhysicsAgent>& agents) {
     if (idx < 0 || idx >= static_cast<int>(agents.size()) ||
         agents[idx].actor == nullptr) {
         return targetX;
@@ -2551,15 +2321,13 @@ float CharacterPhysicsSystem::ResolveHorizontal(int idx,
     for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
         if (j == idx || agents[j].actor == nullptr) continue;
 
-        // ── 修正問題 3/4：跳過垂直堆疊關係（踩頭），避免支撐者被誤判為水平障礙 ──
-        // idx 站在 j 上，或 j 站在 idx 上，均不做水平碰撞
+        // 跳過垂直堆疊關係（踩頭），避免支撐者被誤判為水平障礙
         if (agents[idx].state.supportIndex == j) continue;
         if (agents[j].state.supportIndex == idx) continue;
 
         const glm::vec2 other   = agents[j].actor->GetPosition();
         const float     vertGap = std::abs(other.y - mePos.y);
-        // 縮小垂直容差（原 50.0f 超過兩人半高差 46.0f，導致踩頭時支撐者被納入水平碰撞）
-        const float vertTolerance = HalfHeight() * 1.4f; // ≈ 32.2f，安全低於 46.0f
+        const float vertTolerance = HalfHeight() * 1.4f; // ≈ 32.2f
         if (vertGap >= vertTolerance) continue;
 
         const float minDist = HalfWidth() + HalfWidth();
@@ -2571,73 +2339,31 @@ float CharacterPhysicsSystem::ResolveHorizontal(int idx,
             targetX = std::max(targetX, other.x + minDist);
         }
     }
-    // 畫面左右邊界：角色中心不可超出「半畫面寬 - 角色半寬」
-    // 這樣角色的邊緣恰好停在畫面邊緣，而不是中心點停在邊緣
+
     const float boundX = kScreenHalfW - HalfWidth();
     targetX = std::clamp(targetX, -boundX, boundX);
 
     return targetX;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HalfWidth
-// ─────────────────────────────────────────────────────────────────────────────
-float CharacterPhysicsSystem::HalfWidth() const {
-    // 固定碰撞半寬，避免動畫切換導致寬度變動而發生推擠 Bug
-    return 18.0f;
-}
+// HalfWidth / HalfHeight（固定碰撞尺寸，避免動畫切換導致尺寸突變）
+float CharacterPhysicsSystem::HalfWidth()  { return 18.0f; }
+float CharacterPhysicsSystem::HalfHeight() { return 23.0f; }
 
-float CharacterPhysicsSystem::HalfHeight() const {
-    return 23.0f;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // StandOffset（動態：floor 半高 + 角色半高）
-// 修正問題 1：角色腳底正確接觸地板/對方頭頂
-// ─────────────────────────────────────────────────────────────────────────────
-float CharacterPhysicsSystem::StandOffset(int idx,
-                                           const std::vector<PhysicsAgent>& agents,
-                                           const std::shared_ptr<Character>& floor) const {
+float CharacterPhysicsSystem::StandOffset(const std::shared_ptr<Character>& floor) {
     const float floorHalfH = (floor != nullptr)
                                  ? std::abs(floor->GetScaledSize().y) / 2.0f
                                  : 0.0f;
-    // 固定角色物理半高，不要使用 GetScaledSize()，避免切換動畫時高度突變導致穿板！
+    // 固定角色物理半高，不要使用 GetScaledSize()，避免切換動畫時高度突變導致穿板
     const float catHalfH = HalfHeight();
     return floorHalfH + catHalfH;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HasHeadBlock：頭上是否有人站著（被踩 → 不能跳）
-// ─────────────────────────────────────────────────────────────────────────────
-bool CharacterPhysicsSystem::HasHeadBlock(int idx,
-                                           const std::vector<PhysicsAgent>& agents,
-                                           const std::shared_ptr<Character>& floor) const {
-    if (idx < 0 || idx >= static_cast<int>(agents.size()) || agents[idx].actor == nullptr) {
-        return false;
-    }
-
-    const glm::vec2 mePos    = agents[idx].actor->GetPosition();
-    const float expectedHeadY = mePos.y + HalfHeight()*2.0f ;
-
-    for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
-        if (j == idx || agents[j].actor == nullptr) continue;
-
-        const glm::vec2 other      = agents[j].actor->GetPosition();
-        const float     bandX      = (HalfWidth() + HalfWidth()) * 0.6f;
-        const bool      horizOk    = std::abs(other.x - mePos.x) < bandX;
-        const bool      heightOk   = (other.y > expectedHeadY - 6.0f) &&
-                                     (other.y < expectedHeadY + 18.0f);
-        if (horizOk && heightOk) return true;
-    }
-    return false;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // ResolveVertical：重力 + 地板碰撞 + 踩在角色頭上
-// ─────────────────────────────────────────────────────────────────────────────
 void CharacterPhysicsSystem::ResolveVertical(int idx,
                                               std::vector<PhysicsAgent>& agents,
-                                              const std::shared_ptr<Character>& floor) const {
+                                              const std::shared_ptr<Character>& floor) {
     auto& self = agents[idx];
     if (self.actor == nullptr) return;
 
@@ -2649,9 +2375,9 @@ void CharacterPhysicsSystem::ResolveVertical(int idx,
     float bestLandingY = -1e9f;
     int   bestSupport  = -2;   // -2=none, -1=floor, >=0=another character
 
-    // 地板
+    // 地板（StandOffset 已精簡簽名，不再傳入 idx/agents）
     if (floor != nullptr) {
-        const float landingY = floor->GetPosition().y + StandOffset(idx, agents, floor);
+        const float landingY = floor->GetPosition().y + StandOffset(floor);
         if (oldY >= landingY - 1.0f && targetY <= landingY) {
             bestLandingY = landingY;
             bestSupport  = -1;
@@ -2663,12 +2389,11 @@ void CharacterPhysicsSystem::ResolveVertical(int idx,
     for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
         if (j == idx || agents[j].actor == nullptr) continue;
 
-        const glm::vec2 other    = agents[j].actor->GetPosition();
-        const float     bandX    = (HalfWidth() + HalfWidth()) * 0.6f;
+        const glm::vec2 other = agents[j].actor->GetPosition();
+        const float bandX     = (HalfWidth() + HalfWidth()) * 0.6f;
         if (std::abs(other.x - mePos.x) >= bandX) continue;
 
-        // 修正：站在別人頭上，Y 座標應該是「對方的 Y + 兩人的半高總和(56.0f)」
-        const float landingY = other.y + HalfHeight()*2.0f ;
+        const float landingY = other.y + HalfHeight() * 2.0f;
 
         if (oldY >= landingY - 1.0f && targetY <= landingY && landingY > bestLandingY) {
             bestLandingY = landingY;
@@ -2689,12 +2414,9 @@ void CharacterPhysicsSystem::ResolveVertical(int idx,
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// IsBeingPushed：自己沒動，但旁邊有人正在推（用於推動動畫）
-// ─────────────────────────────────────────────────────────────────────────────
 bool CharacterPhysicsSystem::IsBeingPushed(int idx,
                                             const std::vector<PhysicsAgent>& agents,
-                                            const std::shared_ptr<Character>& floor) const {
+                                            const std::shared_ptr<Character>& /*floor*/) {
     if (idx < 0 || idx >= static_cast<int>(agents.size()) || agents[idx].actor == nullptr) {
         return false;
     }
@@ -2703,39 +2425,27 @@ bool CharacterPhysicsSystem::IsBeingPushed(int idx,
 
     for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
         if (j == idx || agents[j].actor == nullptr) continue;
-        if (agents[j].state.moveDir == 0) continue; // j 靜止，不算推
+        if (agents[j].state.moveDir == 0) continue;
 
         const glm::vec2 other   = agents[j].actor->GetPosition();
         const float     vertGap = std::abs(other.y - mePos.y);
-
-        // 修正：同一水平面的判斷不該依賴含有地板厚度的 StandOffset，用角色的物理半高即可
         if (vertGap >= HalfHeight()) continue;
 
         const float minDist = HalfWidth() + HalfWidth();
         const float dx      = mePos.x - other.x;
 
-        // j 在 me 左邊往右推
         if (agents[j].state.moveDir > 0 && dx > 0.0f && std::abs(dx) <= minDist * 1.1f)
             return true;
-        // j 在 me 右邊往左推
         if (agents[j].state.moveDir < 0 && dx < 0.0f && std::abs(dx) <= minDist * 1.1f)
             return true;
     }
     return false;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UpdateAnimState：依物理狀態切換動畫
-//   空中 → JUMP_RISE（上升）/ JUMP_FALL（下降）
-//   落地瞬間 → LAND（播完自動回 STAND/RUN）
-//   推動 → PUSH
-//   移動 → RUN
-//   靜止 → STAND
-// ─────────────────────────────────────────────────────────────────────────────
+// UpdateAnimState
 void CharacterPhysicsSystem::UpdateAnimState(int idx,
-                                              std::vector<PhysicsAgent>& agents,
-                                              bool isPushing,
-                                              bool beingPushed) const {
+                                              const std::vector<PhysicsAgent>& agents,
+                                              bool isPushing) {
     auto& self = agents[idx];
     if (self.actor == nullptr) return;
 
@@ -2745,20 +2455,14 @@ void CharacterPhysicsSystem::UpdateAnimState(int idx,
     CatAnimState next;
 
     if (!self.state.grounded) {
-        // 空中：依速度方向
         next = (self.state.velocityY > 0.0f)
                    ? CatAnimState::JUMP_RISE
                    : CatAnimState::JUMP_FALL;
     }
-    else if (justLanded) {
+    else if (justLanded || (cur == CatAnimState::LAND && !self.actor->IfAnimationEnds())) {
         next = CatAnimState::LAND;
     }
-    else if (cur == CatAnimState::LAND && !self.actor->IfAnimationEnds()) {
-        next = CatAnimState::LAND; // LAND 播放中不打斷
-    }
     else if (isPushing) {
-        // 修正問題 2：只有主動推動者（isPushing）才切換成 PUSH 動畫；
-        // 被推的一方（beingPushed）保持原本動畫，不強制改成 PUSH。
         next = CatAnimState::PUSH;
     }
     else if (self.state.moveDir != 0) {
@@ -2885,7 +2589,7 @@ Scene* ExitConfirmScene::Update() {
     return nullptr;
 }
 
-void ExitConfirmScene::UpdateChoiceFramePosition() {
+void ExitConfirmScene::UpdateChoiceFramePosition() const {
     if (m_IsYesSelected) {
         m_ChoiceFrame->SetPosition({-120.0f, -180.0f});
     }
@@ -2901,38 +2605,26 @@ void ExitConfirmScene::UpdateChoiceFramePosition() {
 //
 
 #include "GameText.hpp"
-#include "Util/Input.hpp"
-#include "Util/Keycode.hpp"
+#include "AppUtil.hpp"
 
-// ==========================================
-// 實作：偵測滑鼠是否懸停
-// ==========================================
-bool GameText::IsMouseHovering() const {
-    // 取得滑鼠當前座標
-    glm::vec2 mousePos = Util::Input::GetCursorPosition();
-
-    // 取得文字物件自身的中心座標
-    glm::vec2 myPos = this->GetPosition();
-    glm::vec2 mySize = this->GetSize();
-    float halfWidth = mySize.x/2 ;
-    float halfHeight = mySize.y/2 ;
-    // 進行 AABB (矩形範圍) 碰撞計算
-    return (mousePos.x >= myPos.x - halfWidth &&
-            mousePos.x <= myPos.x + halfWidth &&
-            mousePos.y >= myPos.y - halfHeight &&
-            mousePos.y <= myPos.y + halfHeight);
+void GameText::SetColor(const Util::Color& color) const {
+    if (auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable)) {
+        t->SetColor(color);
+    }
 }
 
-// ==========================================
-// 實作：偵測是否被左鍵點擊
-// ==========================================
-bool GameText::IsLeftClicked() const {
-    // 先確認滑鼠左鍵有被按下
-    if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-        // 直接重複利用上面寫好的懸停判斷，只要在範圍內就是被點擊了！
-        return IsMouseHovering();
+void GameText::SetText(const std::string& text) const {
+    if (auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable)) {
+        t->SetText(text);
     }
-    return false;
+}
+
+bool GameText::IsMouseHovering() const {
+    return AppUtil::IsMouseHovering(*this);
+}
+
+bool GameText::IsLeftClicked() const {
+    return AppUtil::IsLeftClicked(*this);
 }
 </file>
 
@@ -2948,9 +2640,7 @@ bool GameText::IsLeftClicked() const {
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-// ────────────────────────────────────────────────────────────────────────────
 // 靜態常數
-// ────────────────────────────────────────────────────────────────────────────
 const Util::Color KeyboardConfigScene::k_Black = Util::Color::FromRGB(0,   0,   0,   255);
 const Util::Color KeyboardConfigScene::k_Red   = Util::Color::FromRGB(220, 50,  50,  255);
 const Util::Color KeyboardConfigScene::k_Grey  = Util::Color::FromRGB(150, 150, 150, 255);
@@ -2981,9 +2671,19 @@ const PlayerKeyConfig KeyboardConfigScene::k_Default2P = {
     Util::Keycode::UNKNOWN    // SUB MENU: -
 };
 
-// ────────────────────────────────────────────────────────────────────────────
+static constexpr std::array<Util::Keycode PlayerKeyConfig::*, 9> kBindFields = {
+    &PlayerKeyConfig::up,
+    &PlayerKeyConfig::down,
+    &PlayerKeyConfig::left,
+    &PlayerKeyConfig::right,
+    &PlayerKeyConfig::jump,
+    &PlayerKeyConfig::cancel,
+    &PlayerKeyConfig::shot,
+    &PlayerKeyConfig::menu,
+    &PlayerKeyConfig::subMenu,
+};
+
 // PlayerKeyConfig::AllKeys
-// ────────────────────────────────────────────────────────────────────────────
 std::vector<Util::Keycode> PlayerKeyConfig::AllKeys() const {
     std::vector<Util::Keycode> result;
     for (auto k : {up, down, left, right, jump, cancel, shot, menu, subMenu}) {
@@ -2992,9 +2692,6 @@ std::vector<Util::Keycode> PlayerKeyConfig::AllKeys() const {
     return result;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 建構子
-// ────────────────────────────────────────────────────────────────────────────
 KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
                                          OptionMenuScene* optionScene,
                                          std::shared_ptr<Character> exitGameButton)
@@ -3007,19 +2704,19 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_Applied[1] = k_Default2P;
     // 3P-8P：全 UNKNOWN
 
-    // ── 框架 ──────────────────────────────────────────────────────────────
+    // 框架
     m_Frame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
     m_Frame->SetZIndex(25);
     m_Frame->SetPosition({0.0f, -5.0f});
 
-    // ── 選擇框 ────────────────────────────────────────────────────────────
+    // 選擇框
     m_ChoiceFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png");
     m_ChoiceFrame->SetZIndex(30);
     m_ChoiceFrame->SetScale({0.46f, 1.0f}) ;
 
-    // ── 橫線（需要資源 Option_HLine.png：約 650×4px 橘色橫線）────────────
+    // 橫線
     auto makeHLine = [&](float y) {
         auto line = std::make_shared<Character>(
             GA_RESOURCE_DIR "/Image/Background/Option_HLine.png");
@@ -3031,12 +2728,10 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_HLine2 = makeHLine(ROW_Y_HLINE2);
     m_HLine3 = makeHLine(ROW_Y_HLINE3);
 
-    // ── 標題 ──────────────────────────────────────────────────────────────
     m_TitleText = std::make_shared<GameText>("KEYBOARD CONFIG", 55, k_Black);
     m_TitleText->SetZIndex(35);
     m_TitleText->SetPosition({0.0f, ROW_Y_TITLE});
 
-    // ── PLAYER 列 ─────────────────────────────────────────────────────────
     m_PlayerLabel = std::make_shared<GameText>("PLAYER", 45, k_Black);
     m_PlayerLabel->SetZIndex(35);
     m_PlayerLabel->SetPosition({AppUtil::AlignLeft(*m_PlayerLabel, COL_LABEL_X), ROW_Y_PLAYER});
@@ -3057,8 +2752,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_PlayerRightBtn->SetZIndex(35);
     m_PlayerRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_PLAYER});
 
-    // ── 綁定列（UP ~ SUB MENU）────────────────────────────────────────────
-    static const std::array<const char*, BIND_COUNT> labels = {
+    static constexpr std::array<const char*, BIND_COUNT> labels = {
         "UP", "DOWN", "LEFT", "RIGHT", "JUMP",
         "CANCEL", "SHOT/SELECT", "MENU", "SUB MENU"
     };
@@ -3074,7 +2768,6 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
         m_BindValues[i]->SetPosition({COL_VALUE_X, y});
     }
 
-    // ── 底部按鈕 ──────────────────────────────────────────────────────────
     m_OkText      = std::make_shared<GameText>("OK",      45, k_Black);
     m_CancelText  = std::make_shared<GameText>("CANCEL",  45, k_Black);
     m_DefaultText = std::make_shared<GameText>("DEFAULT", 45, k_Black);
@@ -3086,9 +2779,6 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_DefaultText->SetPosition({COL_DEFAULT_X, ROW_Y_BTN});
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::OnEnter() {
     LOG_INFO("KeyboardConfigScene::OnEnter");
 
@@ -3126,9 +2816,6 @@ void KeyboardConfigScene::OnEnter() {
     UpdateChoiceFrame();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::OnExit() {
     LOG_INFO("KeyboardConfigScene::OnExit");
 
@@ -3154,14 +2841,11 @@ void KeyboardConfigScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Update
-// ────────────────────────────────────────────────────────────────────────────
 Scene* KeyboardConfigScene::Update() {
     m_PlayerLeftBtn->UpdateButton();
     m_PlayerRightBtn->UpdateButton();
 
-    // ── 按鍵捕捉模式 ──────────────────────────────────────────────────────
+    // 按鍵捕捉模式
     if (m_WaitingForKey) {
         Util::Keycode pressed = AppUtil::GetAnyKeyDown();
         if (pressed != Util::Keycode::UNKNOWN) {
@@ -3174,7 +2858,7 @@ Scene* KeyboardConfigScene::Update() {
         return nullptr;
     }
 
-    // ── ESC / X 按鈕 / CANCEL → 不儲存，返回 OptionMenuScene ──────────────
+    // ESC / X 按鈕 / CANCEL 不儲存，返回 OptionMenuScene
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()              ||
         m_CancelText->IsLeftClicked())
@@ -3183,7 +2867,7 @@ Scene* KeyboardConfigScene::Update() {
         return m_OptionScene;
     }
 
-    // ── 游標移動 W/S ──────────────────────────────────────────────────────
+    // 游標移動 W/S
     if (Util::Input::IsKeyDown(Util::Keycode::W) ||
         Util::Input::IsKeyDown(Util::Keycode::UP))
     {
@@ -3195,7 +2879,7 @@ Scene* KeyboardConfigScene::Update() {
         IncrementRow();
     }
 
-    // ── 滑鼠 hover 自動切換游標 ───────────────────────────────────────────
+    // 滑鼠 hover 自動切換游標
     auto hoverTo = [&](const std::shared_ptr<GameText>& t, int row) {
         if (IsRowSelectable(row) && t->IsMouseHovering() && m_SelectedRow != row) {
             m_SelectedRow = row;
@@ -3210,7 +2894,7 @@ Scene* KeyboardConfigScene::Update() {
     hoverTo(m_CancelText,  ROW_CANCEL);
     hoverTo(m_DefaultText, ROW_DEFAULT);
 
-    // ── A/D 或點擊按鈕 ────────────────────────────────────────────────────
+    // A/D 或點擊按鈕
     bool pressedLeft  = Util::Input::IsKeyDown(Util::Keycode::A) ||
                         Util::Input::IsKeyDown(Util::Keycode::LEFT) ;
     bool pressedRight = Util::Input::IsKeyDown(Util::Keycode::D) ||
@@ -3248,7 +2932,7 @@ Scene* KeyboardConfigScene::Update() {
         if (pressedRight) { m_SelectedRow = ROW_OK; UpdateChoiceFrame(); }
     }
 
-    // ── ENTER 確認 ────────────────────────────────────────────────────────
+    // ENTER 確認
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN) || Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
         if (m_SelectedRow == ROW_OK) {
             // 有衝突時禁止 OK（3P-8P）
@@ -3296,34 +2980,26 @@ Scene* KeyboardConfigScene::Update() {
     return nullptr;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
 // 私有：載入玩家設定到 m_Pending
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::LoadPlayer(int playerIdx) {
     m_Pending = m_Applied[playerIdx];
     // 更新 PLAYER 值文字
     m_PlayerValue->SetText(std::to_string(playerIdx + 1) + "P");
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：m_Pending → m_Applied[m_CurrentPlayer]
-// ────────────────────────────────────────────────────────────────────────────
+// m_Pending → m_Applied[m_CurrentPlayer]
 void KeyboardConfigScene::CommitPending() {
     m_Applied[m_CurrentPlayer] = m_Pending;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
 // 私有：套用預設值到 m_Pending
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::ApplyDefault() {
     if (m_CurrentPlayer == 0)      m_Pending = k_Default1P;
     else if (m_CurrentPlayer == 1) m_Pending = k_Default2P;
     else                           m_Pending = PlayerKeyConfig{};  // 3P-8P：清空
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：判斷列是否可選（2P+ 下 MENU/SUB MENU 不可選）
-// ────────────────────────────────────────────────────────────────────────────
+// 判斷列是否可選(2P+ 下 MENU/SUB MENU 不可選)
 bool KeyboardConfigScene::IsRowSelectable(int row) const {
     if (m_CurrentPlayer > 0 &&
         (row == ROW_MENU_KEY || row == ROW_SUBMENU)) {
@@ -3332,9 +3008,7 @@ bool KeyboardConfigScene::IsRowSelectable(int row) const {
     return true;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：游標移動（自動跳過不可選列）
-// ────────────────────────────────────────────────────────────────────────────
+// 游標移動(自動跳過不可選列)
 void KeyboardConfigScene::DecrementRow() {
     int r = m_SelectedRow;
     do {
@@ -3353,42 +3027,21 @@ void KeyboardConfigScene::IncrementRow() {
     UpdateChoiceFrame();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：設定綁定值
-// ────────────────────────────────────────────────────────────────────────────
+// 設定綁定值
 void KeyboardConfigScene::AssignKey(int bindIdx, Util::Keycode key) {
-    switch (bindIdx) {
-    case 0: m_Pending.up       = key; break;
-    case 1: m_Pending.down     = key; break;
-    case 2: m_Pending.left     = key; break;
-    case 3: m_Pending.right    = key; break;
-    case 4: m_Pending.jump     = key; break;
-    case 5: m_Pending.cancel   = key; break;
-    case 6: m_Pending.shot     = key; break;
-    case 7: m_Pending.menu     = key; break;
-    case 8: m_Pending.subMenu  = key; break;
-    default: break;
+    if (bindIdx >= 0 && bindIdx < static_cast<int>(kBindFields.size())) {
+        m_Pending.*kBindFields[static_cast<size_t>(bindIdx)] = key;
     }
 }
 
 Util::Keycode KeyboardConfigScene::GetPendingKey(int bindIdx) const {
-    switch (bindIdx) {
-    case 0: return m_Pending.up;
-    case 1: return m_Pending.down;
-    case 2: return m_Pending.left;
-    case 3: return m_Pending.right;
-    case 4: return m_Pending.jump;
-    case 5: return m_Pending.cancel;
-    case 6: return m_Pending.shot;
-    case 7: return m_Pending.menu;
-    case 8: return m_Pending.subMenu;
-    default: return Util::Keycode::UNKNOWN;
+    if (bindIdx >= 0 && bindIdx < static_cast<int>(kBindFields.size())) {
+        return m_Pending.*kBindFields[static_cast<size_t>(bindIdx)];
     }
+    return Util::Keycode::UNKNOWN;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：衝突偵測（只對 3P-8P）
-// ────────────────────────────────────────────────────────────────────────────
+// 衝突偵測（只對 3P-8P）
 std::vector<Util::Keycode> KeyboardConfigScene::GetConflicts() const {
     if (m_CurrentPlayer < 1) return {};
 
@@ -3410,10 +3063,8 @@ std::vector<Util::Keycode> KeyboardConfigScene::GetConflicts() const {
     return conflicts;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：根據 m_Pending 更新所有值文字與顏色
-// ────────────────────────────────────────────────────────────────────────────
-void KeyboardConfigScene::UpdateValueTexts() {
+// 根據 m_Pending 更新所有值文字與顏色
+void KeyboardConfigScene::UpdateValueTexts() const {
     auto conflicts = GetConflicts();
 
     for (int i = 0; i < BIND_COUNT; ++i) {
@@ -3438,10 +3089,8 @@ void KeyboardConfigScene::UpdateValueTexts() {
     m_OkText->SetColor(okDisabled ? k_Grey : k_Black);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：RowY（用於 ChoiceFrame）
-// ────────────────────────────────────────────────────────────────────────────
-float KeyboardConfigScene::RowY(int row) const {
+// RowY(用於 ChoiceFrame)
+float KeyboardConfigScene::RowY(int row) {
     if (row == ROW_PLAYER)  return ROW_Y_PLAYER;
     if (row >= ROW_BIND_0 && row <= ROW_SUBMENU)
         return BindRowY(row - ROW_BIND_0);
@@ -3450,28 +3099,21 @@ float KeyboardConfigScene::RowY(int row) const {
     return 0.0f;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：更新 ChoiceFrame 位置
-// ────────────────────────────────────────────────────────────────────────────
-void KeyboardConfigScene::UpdateChoiceFrame() {
-    float x = COL_VALUE_X-10.0f;
-    if (m_SelectedRow == ROW_PLAYER) x = COL_VALUE_X-10.0f;
-    else if (m_SelectedRow == ROW_OK)      x = COL_OK_X-10.0f;
-    else if (m_SelectedRow == ROW_CANCEL)  x = COL_CANCEL_X-10.0f;
-    else if (m_SelectedRow == ROW_DEFAULT) x = COL_DEFAULT_X-10.0f;
+// 更新 ChoiceFrame 位置
+void KeyboardConfigScene::UpdateChoiceFrame() const {
+    float x = COL_VALUE_X - 10.0f;  // 預設：PLAYER 列與所有 BIND 列共用此 X
+    if      (m_SelectedRow == ROW_OK)      x = COL_OK_X      - 10.0f;
+    else if (m_SelectedRow == ROW_CANCEL)  x = COL_CANCEL_X  - 10.0f;
+    else if (m_SelectedRow == ROW_DEFAULT) x = COL_DEFAULT_X - 10.0f;
 
     m_ChoiceFrame->SetPosition({x, RowY(m_SelectedRow)});
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 新增：回傳已設定足夠按鍵的玩家數
-//
+// 回傳已設定足夠按鍵的玩家數
 // 判定標準：m_Applied[p].AllKeys().size() >= 4
 // （至少需要上下左右四個方向鍵才算「已設定」）
-//
 // 初始狀態：1P 和 2P 有預設設定 → 回傳 2
 //           3P-8P 全 UNKNOWN   → 不計入
-// ────────────────────────────────────────────────────────────────────────────
 int KeyboardConfigScene::GetConfiguredPlayerCount() const {
     int count = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
@@ -3490,50 +3132,11 @@ int KeyboardConfigScene::GetConfiguredPlayerCount() const {
 #include <array>
 #include <cmath>
 
+#include "CatAssets.hpp"       // ← 【重複 1】修正：共用路徑工具
 #include "LocalPlayScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 工具（匿名 namespace）
-// ─────────────────────────────────────────────────────────────────────────────
-namespace {
-
-std::string BuildCatFramePath(const std::string& color,
-                               const std::string& action,
-                               int frameNum) {
-    return std::string(GA_RESOURCE_DIR) +
-           "/Image/Character/" + color + "_cat/" +
-           color + "_cat_" + action + "_" + std::to_string(frameNum) + ".png";
-}
-
-std::vector<std::string> BuildCatFramePaths(const std::string& color,
-                                             const std::string& action,
-                                             int numFrames) {
-    std::vector<std::string> paths;
-    paths.reserve(static_cast<size_t>(numFrames));
-    for (int f = 1; f <= numFrames; ++f) {
-        paths.push_back(BuildCatFramePath(color, action, f));
-    }
-    return paths;
-}
-
-CatAnimPaths BuildCatAnimPaths(const std::string& color) {
-    CatAnimPaths p;
-    p.stand     = BuildCatFramePaths(color, "stand", 2);
-    p.run       = BuildCatFramePaths(color, "run",   2);
-    p.jump_rise = { BuildCatFramePath(color, "jump", 1) };
-    p.jump_fall = { BuildCatFramePath(color, "jump", 2) };
-    p.land      = { BuildCatFramePath(color, "land", 1) };
-    p.push      = BuildCatFramePaths(color, "push",  2);
-    return p;
-}
-
-} // namespace
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 建構子
-// ─────────────────────────────────────────────────────────────────────────────
 LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
                                        LocalPlayScene* localPlayScene,
                                        KeyboardConfigScene* kbConfigScene)
@@ -3541,9 +3144,6 @@ LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
     , m_LocalPlayScene(localPlayScene)
     , m_KbConfigScene(kbConfigScene) {}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ─────────────────────────────────────────────────────────────────────────────
 void LocalPlayGameScene::OnEnter() {
     int playerCount = 2;
     if (m_LocalPlayScene != nullptr) {
@@ -3564,20 +3164,37 @@ void LocalPlayGameScene::OnEnter() {
     }
 
     SpawnPlayers(playerCount);
-    ApplyInitialFormation();
+
+    m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+
+    m_EnteredCount = 0;
+    const glm::vec2 doorPos   = m_Ctx.Door->GetPosition();
+    const float     doorHalfH = m_Ctx.Door->GetScaledSize().y / 2.0f;
+
+    m_DoorCountText = std::make_shared<GameText>(
+        "0/" + std::to_string(playerCount),
+        40,
+        Util::Color::FromRGB(0, 0, 0, 255));
+    m_DoorCountText->SetZIndex(30.0f);
+    m_DoorCountText->SetPosition({doorPos.x + 10.0f, doorPos.y + doorHalfH + 25.0f});
+    m_Ctx.Root.AddChild(m_DoorCountText);
 
     LOG_INFO("LocalPlayGameScene::OnEnter players={}", playerCount);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ─────────────────────────────────────────────────────────────────────────────
 void LocalPlayGameScene::OnExit() {
     for (auto& pb : m_Players) {
         if (pb.agent.actor != nullptr) {
             m_Ctx.Root.RemoveChild(pb.agent.actor);
         }
     }
+
+    m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    if (m_DoorCountText != nullptr) {
+        m_Ctx.Root.RemoveChild(m_DoorCountText);
+        m_DoorCountText = nullptr;
+    }
+
     m_Players.clear();
 
     for (auto& cat : m_Ctx.StartupCats) {
@@ -3587,17 +3204,14 @@ void LocalPlayGameScene::OnExit() {
     LOG_INFO("LocalPlayGameScene::OnExit");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Update
-// ─────────────────────────────────────────────────────────────────────────────
 Scene* LocalPlayGameScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE)) {
         return m_LocalPlayScene;
     }
 
-    // ── 讀取輸入（Scene 的責任）──────────────────────────────────────────
+    // 讀取輸入
     for (auto& pb : m_Players) {
-        auto& st  = pb.agent.state;
+        auto& st        = pb.agent.state;
         const auto& key = pb.key;
 
         st.moveDir = 0;
@@ -3614,21 +3228,51 @@ Scene* LocalPlayGameScene::Update() {
                                Util::Input::IsKeyDown(key.jump);
 
         if (st.grounded && wantJump) {
-            st.velocityY    = CharacterPhysicsSystem::kJumpForce;
-            st.grounded     = false;
-            st.supportIndex = -1;
+            CharacterPhysicsSystem::ApplyJump(st);
         }
     }
 
-    // ── 攤平成 vector<PhysicsAgent>（System 需要整體視野）────────────────
+    // 門碰撞偵測
+    const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
+    const glm::vec2 doorSize = m_Ctx.Door->GetScaledSize();
+    const float halfW = doorSize.x / 2.0f + 10.0f;
+    const float halfH = doorSize.y / 2.0f + 10.0f;
+
+    for (auto& pb : m_Players) {
+        if (pb.entered)                  continue;
+        if (pb.agent.actor == nullptr)   continue;
+
+        const glm::vec2 pos    = pb.agent.actor->GetPosition();
+        const bool      inRange = (std::abs(pos.x - doorPos.x) <= halfW &&
+                                   std::abs(pos.y - doorPos.y) <= halfH);
+
+        const bool pressedUp = (pb.key.up != Util::Keycode::UNKNOWN) &&
+                                Util::Input::IsKeyDown(pb.key.up);
+
+        if (inRange && pressedUp) {
+            pb.entered = true;
+            ++m_EnteredCount;
+            pb.agent.actor->SetVisible(false);
+            pb.agent.actor->SetInputEnabled(false);
+            pb.agent.actor->SetPosition({640, -360});
+            UpdateDoorCountText();
+
+            if (m_EnteredCount >= m_Ctx.SelectedPlayerCount) {
+                return m_LevelSelectScene;   // 尚未實作時回傳 nullptr
+            }
+        }
+    }
+
+    // 攤平成 vector<PhysicsAgent>(System 需要整體視野)
     std::vector<PhysicsAgent> agents;
     agents.reserve(m_Players.size());
     for (auto& pb : m_Players) agents.push_back(pb.agent);
 
-    // ── 委託物理系統 ──────────────────────────────────────────────────────
-    m_Physics.Update(agents, m_Ctx.Floor);
+    // 委託物理系統
+    // m_Physics.Update(agents, m_Ctx.Floor); original
+    CharacterPhysicsSystem::Update(agents, m_Ctx.Floor);
 
-    // ── 把更新後的狀態寫回（System 修改的是副本）─────────────────────────
+    // 把更新後的狀態寫回(System 修改的是副本)
     for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
         m_Players[i].agent.state = agents[i].state;
     }
@@ -3637,22 +3281,15 @@ Scene* LocalPlayGameScene::Update() {
     return nullptr;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SpawnPlayers
-// ─────────────────────────────────────────────────────────────────────────────
 void LocalPlayGameScene::SpawnPlayers(int count) {
-    static const std::array<const char*, 8> kColorOrder = {
-        "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"
-    };
-
     m_Players.clear();
     m_Players.reserve(static_cast<size_t>(count));
 
     for (int i = 0; i < count; ++i) {
-        const std::string color = kColorOrder[static_cast<size_t>(i)];
+        const std::string color = GameContext::kCatColorOrder[static_cast<size_t>(i)];
 
         auto cat = std::make_shared<PlayerCat>(
-            BuildCatAnimPaths(color),
+            CatAssets::BuildFullAnimPaths(color),
             Util::Keycode::UNKNOWN,
             Util::Keycode::UNKNOWN,
             Util::Keycode::UNKNOWN);
@@ -3677,19 +3314,27 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
             pb.key = KeyboardConfigScene::k_Default2P;
         }
 
+        // 複製 StartupCats[i] 的位置
+        if (i < static_cast<int>(m_Ctx.StartupCats.size()) &&
+            m_Ctx.StartupCats[i] != nullptr) {
+            cat->SetPosition(m_Ctx.StartupCats[i]->GetPosition());
+        } else {
+            // Fallback：StartupCats 不夠用時放在地板上
+            const float floorY     = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetPosition().y : -340.0f;
+            const float floorHalfH = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetScaledSize().y / 2.0f : 0.0f;
+            const float charHalfH  = cat->GetScaledSize().y / 2.0f;
+            cat->SetPosition({0.0f, floorY + floorHalfH + charHalfH});
+        }
+
         m_Players.push_back(pb);
         m_Ctx.Root.AddChild(cat);
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ApplyInitialFormation
-// ─────────────────────────────────────────────────────────────────────────────
 void LocalPlayGameScene::ApplyInitialFormation() {
     const float floorY     = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetPosition().y : -340.0f;
     const float floorHalfH = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetScaledSize().y / 2.0f : 0.0f;
 
-    // spacing：角色半寬 * 1.7 * 2 = 問題 2 修正（原 0.42 已加倍至 0.84）
     const float halfW0  = (m_Players.empty() || m_Players[0].agent.actor == nullptr)
                               ? 32.0f
                               : std::max(16.0f, std::abs(m_Players[0].agent.actor->GetScaledSize().x) * 0.5f);
@@ -3711,17 +3356,14 @@ void LocalPlayGameScene::ApplyInitialFormation() {
                             : ( centerBlank * 0.5f + static_cast<float>(sideLayer) * spacing);
 
         pb.agent.actor->SetPosition({x, spawnY});
-        pb.agent.state = PhysicsState{};  // 重置所有物理狀態
+        pb.agent.state = PhysicsState{};
 
         const float faceScale = std::abs(pb.agent.actor->m_Transform.scale.x);
         pb.agent.actor->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UpdateCooperativePower
-// ─────────────────────────────────────────────────────────────────────────────
-void LocalPlayGameScene::UpdateCooperativePower() {
+void LocalPlayGameScene::UpdateCooperativePower() const {
     int bestGroup = 1;
 
     for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
@@ -3751,6 +3393,13 @@ void LocalPlayGameScene::UpdateCooperativePower() {
 
     m_Ctx.CooperativePushPower = bestGroup;
 }
+
+void LocalPlayGameScene::UpdateDoorCountText() const {
+    if (m_DoorCountText == nullptr) return;
+    m_DoorCountText->SetText(
+        std::to_string(m_EnteredCount) + "/" +
+        std::to_string(m_Ctx.SelectedPlayerCount));
+}
 </file>
 
 <file path="LocalPlayScene.cpp">
@@ -3766,45 +3415,38 @@ void LocalPlayGameScene::UpdateCooperativePower() {
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-// ────────────────────────────────────────────────────────────────────────────
-// 靜態色彩常數
-// ────────────────────────────────────────────────────────────────────────────
 const Util::Color LocalPlayScene::k_Black = Util::Color::FromRGB(0,   0,   0,   255);
 const Util::Color LocalPlayScene::k_Red   = Util::Color::FromRGB(220, 50,  50,  255);
 
-// ────────────────────────────────────────────────────────────────────────────
-// 建構子
-// ────────────────────────────────────────────────────────────────────────────
 LocalPlayScene::LocalPlayScene(GameContext& ctx,
                                MenuScene* menuScene,
                                std::shared_ptr<Character>          menuFrame,
                                std::shared_ptr<Character>          exitGameButton,
                                std::shared_ptr<UI_Triangle_Button> leftTriButton,
                                std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                               std::shared_ptr<Character>          blueCatRunImg,
                                KeyboardConfigScene* kbConfigScene)
     : Scene(ctx)
     , m_MenuFrame(std::move(menuFrame))
     , m_ExitGameButton(std::move(exitGameButton))
     , m_LeftTriButton(std::move(leftTriButton))
     , m_RightTriButton(std::move(rightTriButton))
+    , m_BlueCatRunImg(std::move(blueCatRunImg))
     , m_MenuScene(menuScene)
     , m_KbConfigScene(kbConfigScene)
 {
-    // ── 主文字："nPLAYER GAME"，與 MenuScene 選項文字同位置、同大小 ──────────
+    // 主文字："nPLAYER GAME"，與 MenuScene 選項文字同位置、同大小
     m_PlayerCountText = std::make_shared<GameText>("2PLAYER GAME", 65, k_Black);
     m_PlayerCountText->SetZIndex(20);
     m_PlayerCountText->SetPosition({0.0f, -153.0f}); // -118
 
-    // ── 警告文字：略小、紅色，顯示於主文字正上方 ──────────────────────────
+    // 警告文字：略小、紅色，顯示於主文字正上方
     m_NoConfigText = std::make_shared<GameText>("No keyboard config", 30, k_Red);
     m_NoConfigText->SetZIndex(20);
     m_NoConfigText->SetPosition({0.0f, -188.0f});
     m_NoConfigText->SetVisible(false);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ────────────────────────────────────────────────────────────────────────────
 void LocalPlayScene::OnEnter() {
     LOG_INFO("LocalPlayScene::OnEnter  players={}", m_PlayerCount);
 
@@ -3813,15 +3455,21 @@ void LocalPlayScene::OnEnter() {
     m_Ctx.Root.AddChild(m_ExitGameButton);
     m_Ctx.Root.AddChild(m_LeftTriButton);
     m_Ctx.Root.AddChild(m_RightTriButton);
+    m_Ctx.Root.AddChild(m_BlueCatRunImg);
 
     // 本場景私有物件
     m_Ctx.Root.AddChild(m_PlayerCountText);
     m_Ctx.Root.AddChild(m_NoConfigText);
 
-    // ── 確保共用元件可見且位置/縮放與 MenuScene 完全相同 ──────────────────
+    // 確保共用元件可見且位置/縮放與 MenuScene 完全相同
     m_MenuFrame->SetVisible(true);
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_MenuFrame->SetPosition({0.0f, -105.0f});
+
+    m_BlueCatRunImg->SetVisible(true);
+    m_BlueCatRunImg->SetZIndex(10);
+    m_BlueCatRunImg->SetScale({1.2f, 1.2f});
+    m_BlueCatRunImg->SetPosition({0.0f, -74.0f});
 
     m_ExitGameButton->SetVisible(true);
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
@@ -3838,9 +3486,6 @@ void LocalPlayScene::OnEnter() {
     UpdateDisplay();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ────────────────────────────────────────────────────────────────────────────
 void LocalPlayScene::OnExit() {
     LOG_INFO("LocalPlayScene::OnExit");
 
@@ -3854,26 +3499,24 @@ void LocalPlayScene::OnExit() {
 
     m_Ctx.Root.RemoveChild(m_LeftTriButton);
     m_Ctx.Root.RemoveChild(m_RightTriButton);
+    m_Ctx.Root.RemoveChild(m_BlueCatRunImg);
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
     m_Ctx.Root.RemoveChild(m_MenuFrame);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Update
-// ────────────────────────────────────────────────────────────────────────────
 Scene* LocalPlayScene::Update() {
     // 推進按鈕動畫計時器
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
-    // ── ESC / X 按鈕 → 返回 MenuScene ────────────────────────────────────
+    // ESC / X 按鈕  返回 MenuScene
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("LocalPlayScene: back to MenuScene");
         return m_MenuScene;
     }
 
-    // ── 判斷左右輸入 ──────────────────────────────────────────────────────
+    // 判斷左右輸入
     const bool pressedLeft  = Util::Input::IsKeyDown(Util::Keycode::A)    ||
                               Util::Input::IsKeyDown(Util::Keycode::LEFT)  ||
                               m_LeftTriButton->IsLeftClicked();
@@ -3899,18 +3542,18 @@ Scene* LocalPlayScene::Update() {
         UpdateDisplay();
     }
 
-    // ── ENTER → 確認人數（可在此接實際遊戲場景） ──────────────────────────
+    // ENTER  確認人數(可在此接實際遊戲場景)
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         int configuredCount = 0;
         if (m_KbConfigScene != nullptr) {
             configuredCount = m_KbConfigScene->GetConfiguredPlayerCount();
         }
 
-        if (m_GameScene != nullptr && m_PlayerCount <= configuredCount) {
-            m_Ctx.SelectedPlayerCount = m_PlayerCount;
-            LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
-            return m_GameScene;
-        }
+        // if (m_GameScene != nullptr && m_PlayerCount <= configuredCount) {
+        //     m_Ctx.SelectedPlayerCount = m_PlayerCount;
+        //     LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
+        //     return m_GameScene;
+        // }
 
         LOG_INFO("LocalPlayScene: ENTER blocked, selected={} configured={}",
                  m_PlayerCount, configuredCount);
@@ -3922,7 +3565,7 @@ Scene* LocalPlayScene::Update() {
 // ────────────────────────────────────────────────────────────────────────────
 // 私有：根據目前人數更新文字顯示與顏色
 // ────────────────────────────────────────────────────────────────────────────
-void LocalPlayScene::UpdateDisplay() {
+void LocalPlayScene::UpdateDisplay() const {
     // 主文字
     m_PlayerCountText->SetText(std::to_string(m_PlayerCount) + "PLAYER GAME");
 
@@ -4081,7 +3724,8 @@ void MenuScene::OnExit() {
 }
 
 Scene* MenuScene::Update() {
-    m_Physics.Update(m_Agents, m_Ctx.Floor);
+    // m_Physics.Update(m_Agents, m_Ctx.Floor);
+    CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
@@ -4130,13 +3774,13 @@ Scene* MenuScene::Update() {
     return nullptr;
 }
 
-void MenuScene::ShowCurrentOption() {
+void MenuScene::ShowCurrentOption() const {
     m_ExitGameText->SetVisible(m_SelectedIndex == 0);
     m_OptionText->SetVisible(m_SelectedIndex == 1);
     m_LocalPlayText->SetVisible(m_SelectedIndex == 2);
 }
 
-void MenuScene::HideAllOptions() {
+void MenuScene::HideAllOptions() const {
     m_ExitGameText->SetVisible(false);
     m_OptionText->SetVisible(false);
     m_LocalPlayText->SetVisible(false);
@@ -4157,17 +3801,18 @@ void MenuScene::HideAllOptions() {
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-// ────────────────────────────────────────────────────────────────────────────
-// 靜態資料：BG COLOR 選項清單（新增顏色只需在此處追加字串）
-// ────────────────────────────────────────────────────────────────────────────
 const std::vector<std::string> OptionMenuScene::s_BgColorOptions = {
     "WHITE",
-    // "BLACK",   ← 示例：未來可新增其他顏色
+    "CREAM",
+    "DARK",
 };
 
-// ────────────────────────────────────────────────────────────────────────────
-// 建構子：建立所有 UI 物件（尚未加入渲染樹）
-// ────────────────────────────────────────────────────────────────────────────
+const std::vector<std::string> OptionMenuScene::s_BgColorPaths = {
+    GA_RESOURCE_DIR "/Image/Background/white_background.png",
+    GA_RESOURCE_DIR "/Image/Background/cream_background.png",
+    GA_RESOURCE_DIR "/Image/Background/dark_background.png",
+};
+
 OptionMenuScene::OptionMenuScene(GameContext& ctx,
                                  MenuScene* menuScene,
                                  std::shared_ptr<Character> exitGameButton)
@@ -4177,31 +3822,26 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
-    // ── 大框架 ─────────────────────────────────────────────────────────────
     m_OptionMenuFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
     m_OptionMenuFrame->SetZIndex(25);
 
-    // ── 選擇框 ──────────────────────────────────────────────────────────────
     m_ChoiceFrame = std::make_shared<Character>(
-        GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png") ;
+        GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png");
     m_ChoiceFrame->SetZIndex(30);
 
-    // ── 標題 "OPTION" ────────────────────────────────────────────────────────
     m_TitleText = std::make_shared<GameText>("OPTION", 65, black);
     m_TitleText->SetZIndex(35);
     m_TitleText->SetPosition({0.0f, 228.0f});
 
-    // ── KEYBOARD CONFIG 列 ──────────────────────────────────────────────────
     m_KbConfigLabel = std::make_shared<GameText>("KEYBOARD CONFIG", 45, black);
     m_KbConfigLabel->SetZIndex(35);
     m_KbConfigLabel->SetPosition({AppUtil::AlignLeft(*m_KbConfigLabel, COL_LABEL_X), ROW_Y_KB});
 
     m_KbConfigOpen = std::make_shared<GameText>("OPEN", 45, black);
     m_KbConfigOpen->SetZIndex(35);
-    m_KbConfigOpen->SetPosition({COL_VALUE_X-5.0f, ROW_Y_KB});
+    m_KbConfigOpen->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_KB});
 
-    // ── BG COLOR 列 ─────────────────────────────────────────────────────────
     m_BgColorLabel = std::make_shared<GameText>("BG COLOR", 45, black);
     m_BgColorLabel->SetZIndex(35);
     m_BgColorLabel->SetPosition({AppUtil::AlignLeft(*m_BgColorLabel, COL_LABEL_X), ROW_Y_BG});
@@ -4214,7 +3854,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
 
     m_BgColorValue = std::make_shared<GameText>("WHITE", 45, black);
     m_BgColorValue->SetZIndex(35);
-    m_BgColorValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_BG});
+    m_BgColorValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BG});
 
     m_BgColorRightBtn = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
@@ -4222,7 +3862,6 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgColorRightBtn->SetZIndex(35);
     m_BgColorRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_BG});
 
-    // ── BGM VOLUME 列 ───────────────────────────────────────────────────────
     m_BgmVolumeLabel = std::make_shared<GameText>("BGM VOLUME", 45, black);
     m_BgmVolumeLabel->SetZIndex(35);
     m_BgmVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_BgmVolumeLabel, COL_LABEL_X), ROW_Y_BGM});
@@ -4235,7 +3874,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
 
     m_BgmVolumeValue = std::make_shared<GameText>("10", 45, black);
     m_BgmVolumeValue->SetZIndex(35);
-    m_BgmVolumeValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_BGM});
+    m_BgmVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BGM});
 
     m_BgmVolumeRightBtn = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
@@ -4243,10 +3882,9 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgmVolumeRightBtn->SetZIndex(35);
     m_BgmVolumeRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_BGM});
 
-    // ── SE VOLUME 列 ────────────────────────────────────────────────────────
     m_SeVolumeLabel = std::make_shared<GameText>("SE VOLUME", 45, black);
     m_SeVolumeLabel->SetZIndex(35);
-    m_SeVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_SeVolumeLabel,COL_LABEL_X), ROW_Y_SE});
+    m_SeVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_SeVolumeLabel, COL_LABEL_X), ROW_Y_SE});
 
     m_SeVolumeLeftBtn = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
@@ -4256,7 +3894,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
 
     m_SeVolumeValue = std::make_shared<GameText>("10", 45, black);
     m_SeVolumeValue->SetZIndex(35);
-    m_SeVolumeValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_SE});
+    m_SeVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_SE});
 
     m_SeVolumeRightBtn = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
@@ -4264,10 +3902,9 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_SeVolumeRightBtn->SetZIndex(35);
     m_SeVolumeRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_SE});
 
-    // ── DISP NUMBER 列 ──────────────────────────────────────────────────────
     m_DispNumberLabel = std::make_shared<GameText>("DISP NUMBER", 45, black);
     m_DispNumberLabel->SetZIndex(35);
-    m_DispNumberLabel->SetPosition({AppUtil::AlignLeft(*m_DispNumberLabel,COL_LABEL_X), ROW_Y_DISP});
+    m_DispNumberLabel->SetPosition({AppUtil::AlignLeft(*m_DispNumberLabel, COL_LABEL_X), ROW_Y_DISP});
 
     m_DispNumberLeftBtn = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
@@ -4277,7 +3914,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
 
     m_DispNumberValue = std::make_shared<GameText>("OFF", 45, black);
     m_DispNumberValue->SetZIndex(35);
-    m_DispNumberValue->SetPosition({COL_VALUE_X-5.0f, ROW_Y_DISP});
+    m_DispNumberValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_DISP});
 
     m_DispNumberRightBtn = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
@@ -4285,7 +3922,6 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_DispNumberRightBtn->SetZIndex(35);
     m_DispNumberRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_DISP});
 
-    // ── 底部按鈕 ────────────────────────────────────────────────────────────
     m_OkText = std::make_shared<GameText>("OK", 45, black);
     m_OkText->SetZIndex(35);
     m_OkText->SetPosition({COL_OK_X, ROW_Y_BTN});
@@ -4295,61 +3931,37 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_CancelText->SetPosition({COL_CANCEL_X, ROW_Y_BTN});
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ────────────────────────────────────────────────────────────────────────────
 void OptionMenuScene::OnEnter() {
     LOG_INFO("OptionMenuScene::OnEnter");
 
-    // 借用的共用物件
     m_Ctx.Root.AddChild(m_ExitGameButton);
-
-    // 大框架
     m_Ctx.Root.AddChild(m_OptionMenuFrame);
-
-    // 選擇框
     m_Ctx.Root.AddChild(m_ChoiceFrame);
-
-    // 標題
     m_Ctx.Root.AddChild(m_TitleText);
-
-    // KEYBOARD CONFIG 列
     m_Ctx.Root.AddChild(m_KbConfigLabel);
     m_Ctx.Root.AddChild(m_KbConfigOpen);
-
-    // BG COLOR 列
     m_Ctx.Root.AddChild(m_BgColorLabel);
     m_Ctx.Root.AddChild(m_BgColorLeftBtn);
     m_Ctx.Root.AddChild(m_BgColorValue);
     m_Ctx.Root.AddChild(m_BgColorRightBtn);
-
-    // BGM VOLUME 列
     m_Ctx.Root.AddChild(m_BgmVolumeLabel);
     m_Ctx.Root.AddChild(m_BgmVolumeLeftBtn);
     m_Ctx.Root.AddChild(m_BgmVolumeValue);
     m_Ctx.Root.AddChild(m_BgmVolumeRightBtn);
-
-    // SE VOLUME 列
     m_Ctx.Root.AddChild(m_SeVolumeLabel);
     m_Ctx.Root.AddChild(m_SeVolumeLeftBtn);
     m_Ctx.Root.AddChild(m_SeVolumeValue);
     m_Ctx.Root.AddChild(m_SeVolumeRightBtn);
-
-    // DISP NUMBER 列
     m_Ctx.Root.AddChild(m_DispNumberLabel);
     m_Ctx.Root.AddChild(m_DispNumberLeftBtn);
     m_Ctx.Root.AddChild(m_DispNumberValue);
     m_Ctx.Root.AddChild(m_DispNumberRightBtn);
-
-    // 底部按鈕
     m_Ctx.Root.AddChild(m_OkText);
     m_Ctx.Root.AddChild(m_CancelText);
 
-    // 調整大框架與關閉按鈕位置
     m_OptionMenuFrame->SetPosition({0.0f, -5.0f});
     m_ExitGameButton->SetPosition({399.2f, 285.1f});
 
-    // 重置按鈕動畫狀態
     m_BgColorLeftBtn->ResetState();
     m_BgColorRightBtn->ResetState();
     m_BgmVolumeLeftBtn->ResetState();
@@ -4359,22 +3971,16 @@ void OptionMenuScene::OnEnter() {
     m_DispNumberLeftBtn->ResetState();
     m_DispNumberRightBtn->ResetState();
 
-    // ── 新增：以已儲存設定初始化暫存 ──────────────────────────────────────
     m_Pending = m_Applied;
 
-    // 重置游標到第一列 (KEYBOARD CONFIG)
     m_SelectedRow = 0;
     UpdateValueTexts();
     UpdateChoiceFrame();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ────────────────────────────────────────────────────────────────────────────
 void OptionMenuScene::OnExit() {
     LOG_INFO("OptionMenuScene::OnExit");
 
-    // 本場景私有物件
     m_Ctx.Root.RemoveChild(m_OptionMenuFrame);
     m_Ctx.Root.RemoveChild(m_TitleText);
     m_Ctx.Root.RemoveChild(m_KbConfigLabel);
@@ -4399,17 +4005,11 @@ void OptionMenuScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_CancelText);
     m_Ctx.Root.RemoveChild(m_ChoiceFrame);
 
-    // 還原共用物件（順序與 ExitConfirmScene 一致）
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Update  （每 frame 呼叫）
-// ────────────────────────────────────────────────────────────────────────────
 Scene* OptionMenuScene::Update() {
-
-    // ── 推進按鈕動畫計時器 ──────────────────────────────────────────────────
     m_BgColorLeftBtn->UpdateButton();
     m_BgColorRightBtn->UpdateButton();
     m_BgmVolumeLeftBtn->UpdateButton();
@@ -4419,18 +4019,16 @@ Scene* OptionMenuScene::Update() {
     m_DispNumberLeftBtn->UpdateButton();
     m_DispNumberRightBtn->UpdateButton();
 
-    // ── ESC / X 按鈕 / CANCEL 點擊 → 返回 MenuScene ────────────────────────
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()              ||
         m_CancelText->IsLeftClicked())
     {
-        // 玩家取消：把音量還原成上次 OK 確認的值，預覽的調整全部作廢
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+        m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
         LOG_INFO("OptionMenuScene: cancelled => MenuScene");
         return m_MenuScene;
     }
 
-    // ── OK 點擊（滑鼠） ─────────────────────────────────────────────────────
     if (m_KbConfigOpen->IsLeftClicked()) {
         LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (mouse) => KeyboardConfigScene");
         return m_KeyboardConfigScene;
@@ -4438,11 +4036,11 @@ Scene* OptionMenuScene::Update() {
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+        m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
         LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
         return m_MenuScene;
     }
 
-    // ── 列游標：W 上移；S /下移 ──────────────────────────────────
     if (Util::Input::IsKeyDown(Util::Keycode::W) || Util::Input::IsKeyDown(Util::Keycode::UP)) {
         DecrementRow();
     }
@@ -4450,7 +4048,6 @@ Scene* OptionMenuScene::Update() {
         IncrementRow();
     }
 
-    // ── 滑鼠 hover 自動切換游標列 ───────────────────────────────────────────
     auto hoverTo = [&](const std::shared_ptr<GameText>& text, int row) {
         if (text->IsMouseHovering() && m_SelectedRow != row) {
             m_SelectedRow = row;
@@ -4465,53 +4062,49 @@ Scene* OptionMenuScene::Update() {
     hoverTo(m_OkText,          5);
     hoverTo(m_CancelText,      6);
 
-    // ── 直接點擊各列按鈕（同時跳到該列並調整值）───────────────────────────
-    // BG COLOR
     if (m_BgColorLeftBtn->IsLeftClicked()) {
         m_SelectedRow = 1; UpdateChoiceFrame(); AdjustLeft(1);
     } else if (m_BgColorRightBtn->IsLeftClicked()) {
         m_SelectedRow = 1; UpdateChoiceFrame(); AdjustRight(1);
     }
-    // BGM VOLUME
     else if (m_BgmVolumeLeftBtn->IsLeftClicked()) {
         m_SelectedRow = 2; UpdateChoiceFrame(); AdjustLeft(2);
     } else if (m_BgmVolumeRightBtn->IsLeftClicked()) {
         m_SelectedRow = 2; UpdateChoiceFrame(); AdjustRight(2);
     }
-    // SE VOLUME
     else if (m_SeVolumeLeftBtn->IsLeftClicked()) {
         m_SelectedRow = 3; UpdateChoiceFrame(); AdjustLeft(3);
     } else if (m_SeVolumeRightBtn->IsLeftClicked()) {
         m_SelectedRow = 3; UpdateChoiceFrame(); AdjustRight(3);
     }
-    // DISP NUMBER
     else if (m_DispNumberLeftBtn->IsLeftClicked()) {
         m_SelectedRow = 4; UpdateChoiceFrame(); AdjustLeft(4);
     } else if (m_DispNumberRightBtn->IsLeftClicked()) {
         m_SelectedRow = 4; UpdateChoiceFrame(); AdjustRight(4);
     }
 
-    // ── A / D 鍵調整當前列的值 ─────────────────────────────────────────────
     if (Util::Input::IsKeyDown(Util::Keycode::A) || Util::Input::IsKeyDown(Util::Keycode::LEFT)) {
-        AdjustLeft(m_SelectedRow) ;
+        AdjustLeft(m_SelectedRow);
     }
     else if (Util::Input::IsKeyDown(Util::Keycode::D) || Util::Input::IsKeyDown(Util::Keycode::RIGHT)) {
         AdjustRight(m_SelectedRow);
     }
 
-    // ── ENTER 鍵確認 ────────────────────────────────────────────────────────
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         switch (m_SelectedRow) {
         case 0:
-            LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (stub)");
-            if (m_KeyboardConfigScene != nullptr) return m_KeyboardConfigScene;
+            LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (keyboard) => KeyboardConfigScene");
+            // if (m_KeyboardConfigScene != nullptr) return m_KeyboardConfigScene;
             break;
         case 5:
             m_Applied = m_Pending;
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+            m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
             LOG_INFO("OptionMenuScene: OK (keyboard) => MenuScene");
             return m_MenuScene;
         case 6:
+            m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+            m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
             LOG_INFO("OptionMenuScene: CANCEL (keyboard) => MenuScene");
             return m_MenuScene;
         default:
@@ -4522,9 +4115,6 @@ Scene* OptionMenuScene::Update() {
     return nullptr;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有輔助：游標移動
-// ────────────────────────────────────────────────────────────────────────────
 void OptionMenuScene::DecrementRow() {
     m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
     UpdateChoiceFrame();
@@ -4535,157 +4125,126 @@ void OptionMenuScene::IncrementRow() {
     UpdateChoiceFrame();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有輔助：左調整（← 方向）
-// ────────────────────────────────────────────────────────────────────────────
+void OptionMenuScene::SwapOkCancel() {
+    m_SelectedRow = (m_SelectedRow == 5) ? 6 : 5;
+    UpdateChoiceFrame();
+}
+
 void OptionMenuScene::AdjustLeft(int row) {
     switch (row) {
-    case 1:  // BG COLOR（循環）
+    case 1:
         m_Pending.bgColorIndex = (m_Pending.bgColorIndex
                           + static_cast<int>(s_BgColorOptions.size()) - 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorLeftBtn->Press(75.0f);
+        m_Ctx.Background->SetImage(s_BgColorPaths[m_Pending.bgColorIndex]);
         break;
-    case 2:  // BGM VOLUME（下限 0）
+    case 2:
         if (m_Pending.bgmVolume > 0) {
             --m_Pending.bgmVolume;
             m_BgmVolumeLeftBtn->Press(75.0f);
-            // 即時預覽：m_Pending 還沒 OK，但讓玩家先聽到效果
             m_Ctx.BGMPlayer->SetVolume(m_Pending.bgmVolume * 6);
         }
         break;
-    case 3:  // SE VOLUME（下限 0）
+    case 3:
         if (m_Pending.seVolume > 0) {
             --m_Pending.seVolume;
             m_SeVolumeLeftBtn->Press(75.0f);
         }
         break;
-    case 4:  // DISP NUMBER（LEFT = OFF）
+    case 4:
         if (m_Pending.dispNumber) {
             m_Pending.dispNumber = false;
             m_DispNumberLeftBtn->Press(75.0f);
         }
         break;
     case 5:
-        m_SelectedRow = 6 ;
-        UpdateChoiceFrame();
-        break ;
     case 6:
-        m_SelectedRow = 5 ;
-        UpdateChoiceFrame();
-        break ;
+        SwapOkCancel();   // ← 兩個 case 共用同一段邏輯
+        break;
     default:
         break;
     }
     UpdateValueTexts();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有輔助：右調整（→ 方向）
-// ────────────────────────────────────────────────────────────────────────────
 void OptionMenuScene::AdjustRight(int row) {
     switch (row) {
-    case 1:  // BG COLOR（循環）
+    case 1:
         m_Pending.bgColorIndex = (m_Pending.bgColorIndex + 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorRightBtn->Press(75.0f);
+        m_Ctx.Background->SetImage(s_BgColorPaths[m_Pending.bgColorIndex]);
         break;
-    case 2:  // BGM VOLUME（上限 20）
+    case 2:
         if (m_Pending.bgmVolume < 20) {
             ++m_Pending.bgmVolume;
             m_BgmVolumeRightBtn->Press(75.0f);
-            // 即時預覽
             m_Ctx.BGMPlayer->SetVolume(m_Pending.bgmVolume * 6);
         }
         break;
-    case 3:  // SE VOLUME（上限 20）
+    case 3:
         if (m_Pending.seVolume < 20) {
             ++m_Pending.seVolume;
             m_SeVolumeRightBtn->Press(75.0f);
         }
         break;
-    case 4:  // DISP NUMBER（RIGHT = ON）
+    case 4:
         if (!m_Pending.dispNumber) {
             m_Pending.dispNumber = true;
             m_DispNumberRightBtn->Press(75.0f);
         }
         break;
     case 5:
-        m_SelectedRow = 6 ;
-        UpdateChoiceFrame();
-        break ;
     case 6:
-        m_SelectedRow = 5 ;
-        UpdateChoiceFrame();
-        break ;
+        SwapOkCancel();   // ← 兩個 case 共用同一段邏輯
+        break;
+    default:
+        break;
     }
     UpdateValueTexts();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有輔助：根據內部狀態重新設定所有值文字
-// ────────────────────────────────────────────────────────────────────────────
-void OptionMenuScene::UpdateValueTexts() {
+void OptionMenuScene::UpdateValueTexts() const {
     m_BgColorValue->SetText(s_BgColorOptions[m_Pending.bgColorIndex]);
     m_BgmVolumeValue->SetText(std::to_string(m_Pending.bgmVolume));
     m_SeVolumeValue->SetText(std::to_string(m_Pending.seVolume));
     m_DispNumberValue->SetText(m_Pending.dispNumber ? "ON" : "OFF");
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有輔助：把 m_ChoiceFrame 移到當前選中列的「值區域」
-// ────────────────────────────────────────────────────────────────────────────
-void OptionMenuScene::UpdateChoiceFrame() {
+void OptionMenuScene::UpdateChoiceFrame() const {
     switch (m_SelectedRow) {
-    case 0:  // KEYBOARD CONFIG → 圍住 OPEN
-        m_ChoiceFrame->SetScale({277.0f/367.0f, 1.1f}) ;
-        m_ChoiceFrame->SetPosition({COL_VALUE_X-15.0f, ROW_Y_KB});
+    case 0:
+        m_ChoiceFrame->SetScale({277.0f/367.0f, 1.1f});
+        m_ChoiceFrame->SetPosition({COL_VALUE_X - 15.0f, ROW_Y_KB});
         break;
-    case 1:  // BG COLOR → 圍住中間值
-        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
-        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_BG});
+    case 1:
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f});
+        m_ChoiceFrame->SetPosition({COL_VALUE_X - 13.5f, ROW_Y_BG});
         break;
-    case 2:  // BGM VOLUME
-        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
-        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_BGM});
+    case 2:
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f});
+        m_ChoiceFrame->SetPosition({COL_VALUE_X - 13.5f, ROW_Y_BGM});
         break;
-    case 3:  // SE VOLUME
-        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
-        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_SE});
+    case 3:
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f});
+        m_ChoiceFrame->SetPosition({COL_VALUE_X - 13.5f, ROW_Y_SE});
         break;
-    case 4:  // DISP NUMBER
-        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f}) ;
-        m_ChoiceFrame->SetPosition({COL_VALUE_X-13.5f, ROW_Y_DISP});
+    case 4:
+        m_ChoiceFrame->SetScale({187.0f/367.0f, 1.1f});
+        m_ChoiceFrame->SetPosition({COL_VALUE_X - 13.5f, ROW_Y_DISP});
         break;
-    case 5:  // OK
-        m_ChoiceFrame->SetScale({207.0f/367.0f, 1.1f}) ;
-        m_ChoiceFrame->SetPosition({COL_OK_X-15.0f, ROW_Y_BTN});
+    case 5:
+        m_ChoiceFrame->SetScale({207.0f/367.0f, 1.1f});
+        m_ChoiceFrame->SetPosition({COL_OK_X - 15.0f, ROW_Y_BTN});
         break;
-    case 6:  // CANCEL
-        m_ChoiceFrame->SetScale({207.0f/367.0f, 1.1f}) ;
-        m_ChoiceFrame->SetPosition({COL_CANCEL_X-15.0f, ROW_Y_BTN});
+    case 6:
+        m_ChoiceFrame->SetScale({207.0f/367.0f, 1.1f});
+        m_ChoiceFrame->SetPosition({COL_CANCEL_X - 15.0f, ROW_Y_BTN});
         break;
     default:
         break;
     }
-}
-</file>
-
-<file path="PhaseManager.cpp">
-#include "PhaseResourceManger.hpp"
-
-#include "Util/Logger.hpp"
-
-PhaseResourceManger::PhaseResourceManger() {
-    // m_TaskText = std::make_shared<TaskText>();
-    // m_Background = std::make_shared<BackgroundImage>();
-}
-
-void PhaseResourceManger::NextPhase() {
-    // if (m_Phase == 7) return;
-    // LOG_DEBUG("Passed! Next phase: {}", m_Phase);
-    // m_Background->NextPhase(m_Phase);
-    // m_TaskText->NextPhase(m_Phase++);
 }
 </file>
 
@@ -4695,14 +4254,10 @@ void PhaseResourceManger::NextPhase() {
 //
 
 #include "PhysicsWorld.hpp"
-
 #include <algorithm>
 #include <cmath>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Register / Unregister / Clear
-// ─────────────────────────────────────────────────────────────────────────────
-void PhysicsWorld::Register(std::shared_ptr<IPhysicsBody> body) {
+void PhysicsWorld::Register(const std::shared_ptr<IPhysicsBody>& body) {
     if (body == nullptr) return;
     m_Bodies.emplace_back(body);
 }
@@ -4722,9 +4277,6 @@ void PhysicsWorld::Clear() {
     m_Ropes.clear();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Rope 管理
-// ─────────────────────────────────────────────────────────────────────────────
 void PhysicsWorld::AddRope(IPhysicsBody* a, IPhysicsBody* b,
                             float maxLen, float friction) {
     m_Ropes.push_back({a, b, maxLen, friction});
@@ -4750,9 +4302,6 @@ std::vector<RopeConstraint*> PhysicsWorld::GetRopesOf(const IPhysicsBody* body) 
     return result;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 主要更新
-// ─────────────────────────────────────────────────────────────────────────────
 void PhysicsWorld::Update() {
     ++m_FrameCount;
 
@@ -4761,14 +4310,12 @@ void PhysicsWorld::Update() {
     }
 
     StepPhysicsUpdate();
-    StepRopes();
-    StepCollisions();
+    // StepRopes();
+    // StepCollisions();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // StepPhysicsUpdate：呼叫所有 active body 的自驅動邏輯
-// ─────────────────────────────────────────────────────────────────────────────
-void PhysicsWorld::StepPhysicsUpdate() {
+void PhysicsWorld::StepPhysicsUpdate() const {
     for (auto& wp : m_Bodies) {
         auto sp = wp.lock();
         if (sp && sp->IsActive()) {
@@ -4777,152 +4324,141 @@ void PhysicsWorld::StepPhysicsUpdate() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // StepRopes：解析繩索約束，對兩端施加力
-// ─────────────────────────────────────────────────────────────────────────────
-void PhysicsWorld::StepRopes() {
-    // TODO：實作繩索力解析
-    //
-    // for (auto& rope : m_Ropes) {
-    //     if (!rope.bodyA || !rope.bodyB) continue;
-    //
-    //     glm::vec2 posA = rope.bodyA->GetPosition();
-    //     glm::vec2 posB = rope.bodyB->GetPosition();
-    //     glm::vec2 delta = posA - posB;
-    //     float dist = glm::length(delta);
-    //
-    //     if (dist <= rope.maxLen) continue;  // 繩索未繃緊，不施力
-    //
-    //     // 方向：從 B 指向 A
-    //     glm::vec2 dir = delta / dist;
-    //
-    //     // 力大小（可調整 stiffness）
-    //     constexpr float stiffness = 0.8f;
-    //     float forceMag = (dist - rope.maxLen) * stiffness;
-    //
-    //     // 施加到速度（乘上 1-friction 模擬阻力）
-    //     float factor = 1.0f - rope.friction;
-    //     glm::vec2 velA = rope.bodyA->GetVelocity();
-    //     glm::vec2 velB = rope.bodyB->GetVelocity();
-    //
-    //     rope.bodyA->SetVelocity(velA - dir * forceMag * factor);
-    //     rope.bodyB->SetVelocity(velB + dir * forceMag * factor);
-    // }
-}
+// void PhysicsWorld::StepRopes() {
+//     // TODO：實作繩索力解析
+//     //
+//     // for (auto& rope : m_Ropes) {
+//     //     if (!rope.bodyA || !rope.bodyB) continue;
+//     //
+//     //     glm::vec2 posA = rope.bodyA->GetPosition();
+//     //     glm::vec2 posB = rope.bodyB->GetPosition();
+//     //     glm::vec2 delta = posA - posB;
+//     //     float dist = glm::length(delta);
+//     //
+//     //     if (dist <= rope.maxLen) continue;  // 繩索未繃緊，不施力
+//     //
+//     //     // 方向：從 B 指向 A
+//     //     glm::vec2 dir = delta / dist;
+//     //
+//     //     // 力大小（可調整 stiffness）
+//     //     constexpr float stiffness = 0.8f;
+//     //     float forceMag = (dist - rope.maxLen) * stiffness;
+//     //
+//     //     // 施加到速度（乘上 1-friction 模擬阻力）
+//     //     float factor = 1.0f - rope.friction;
+//     //     glm::vec2 velA = rope.bodyA->GetVelocity();
+//     //     glm::vec2 velB = rope.bodyB->GetVelocity();
+//     //
+//     //     rope.bodyA->SetVelocity(velA - dir * forceMag * factor);
+//     //     rope.bodyB->SetVelocity(velB + dir * forceMag * factor);
+//     // }
+// }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // StepCollisions：廣播 AABB 碰撞事件
-// ─────────────────────────────────────────────────────────────────────────────
-void PhysicsWorld::StepCollisions() {
-    // TODO：實作碰撞廣播
-    //
-    // 使用暴力 O(n²) 先行，之後可改為空間分割（Sweep-and-Prune 等）
-    //
-    // std::vector<std::shared_ptr<IPhysicsBody>> live;
-    // for (auto& wp : m_Bodies) {
-    //     if (auto sp = wp.lock(); sp && sp->IsActive()) live.push_back(sp);
-    // }
-    //
-    // for (int i = 0; i < (int)live.size(); ++i) {
-    //     for (int j = i + 1; j < (int)live.size(); ++j) {
-    //         if (!AabbOverlaps(live[i].get(), live[j].get())) continue;
-    //
-    //         // 計算法向量與穿透深度
-    //         glm::vec2 delta   = live[j]->GetPosition() - live[i]->GetPosition();
-    //         glm::vec2 overlap = live[i]->GetHalfSize() + live[j]->GetHalfSize()
-    //                             - glm::abs(delta);
-    //         glm::vec2 normal  = (overlap.x < overlap.y)
-    //                                 ? glm::vec2{(delta.x < 0 ? -1.f : 1.f), 0}
-    //                                 : glm::vec2{0, (delta.y < 0 ? -1.f : 1.f)};
-    //         float depth = std::min(overlap.x, overlap.y);
-    //
-    //         live[i]->OnCollision({live[j].get(),  normal, depth});
-    //         live[j]->OnCollision({live[i].get(), -normal, depth});
-    //     }
-    // }
-}
+// void PhysicsWorld::StepCollisions() {
+//     // TODO：實作碰撞廣播
+//     //
+//     // 使用暴力 O(n²) 先行，之後可改為空間分割（Sweep-and-Prune 等）
+//     //
+//     // std::vector<std::shared_ptr<IPhysicsBody>> live;
+//     // for (auto& wp : m_Bodies) {
+//     //     if (auto sp = wp.lock(); sp && sp->IsActive()) live.push_back(sp);
+//     // }
+//     //
+//     // for (int i = 0; i < (int)live.size(); ++i) {
+//     //     for (int j = i + 1; j < (int)live.size(); ++j) {
+//     //         if (!AabbOverlaps(live[i].get(), live[j].get())) continue;
+//     //
+//     //         // 計算法向量與穿透深度
+//     //         glm::vec2 delta   = live[j]->GetPosition() - live[i]->GetPosition();
+//     //         glm::vec2 overlap = live[i]->GetHalfSize() + live[j]->GetHalfSize()
+//     //                             - glm::abs(delta);
+//     //         glm::vec2 normal  = (overlap.x < overlap.y)
+//     //                                 ? glm::vec2{(delta.x < 0 ? -1.f : 1.f), 0}
+//     //                                 : glm::vec2{0, (delta.y < 0 ? -1.f : 1.f)};
+//     //         float depth = std::min(overlap.x, overlap.y);
+//     //
+//     //         live[i]->OnCollision({live[j].get(),  normal, depth});
+//     //         live[j]->OnCollision({live[i].get(), -normal, depth});
+//     //     }
+//     // }
+// }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 查詢：計算幾個 CHARACTER 正在往 dir 方向推 target
-// ─────────────────────────────────────────────────────────────────────────────
-int PhysicsWorld::CountCharactersPushing(const IPhysicsBody* target, int dir) const {
-    // TODO：實作
-    //
-    // int count = 0;
-    // glm::vec2 tPos    = target->GetPosition();
-    // glm::vec2 tHalf   = target->GetHalfSize();
-    //
-    // for (auto& wp : m_Bodies) {
-    //     auto sp = wp.lock();
-    //     if (!sp || !sp->IsActive()) continue;
-    //     if (sp.get() == target) continue;
-    //     if (sp->GetBodyType() != BodyType::CHARACTER) continue;
-    //
-    //     glm::vec2 cPos  = sp->GetPosition();
-    //     glm::vec2 cHalf = sp->GetHalfSize();
-    //
-    //     // 垂直上需在同層（避免把頭上的角色也算進去）
-    //     float vertGap = std::abs(cPos.y - tPos.y);
-    //     if (vertGap > (tHalf.y + cHalf.y) * 0.65f) continue;
-    //
-    //     // 側面緊貼判斷
-    //     float minDistX = tHalf.x + cHalf.x;
-    //     float dx       = cPos.x - tPos.x;
-    //     if (std::abs(dx) > minDistX * 1.05f) continue;
-    //
-    //     // dir > 0：推者在左邊往右推
-    //     glm::vec2 vel = sp->GetVelocity();
-    //     if (dir > 0 && dx < 0 && vel.x > 0) ++count;
-    //     if (dir < 0 && dx > 0 && vel.x < 0) ++count;
-    // }
-    // return count;
+// int PhysicsWorld::CountCharactersPushing(const IPhysicsBody* target, int dir) const {
+//     // TODO：實作
+//     //
+//     // int count = 0;
+//     // glm::vec2 tPos    = target->GetPosition();
+//     // glm::vec2 tHalf   = target->GetHalfSize();
+//     //
+//     // for (auto& wp : m_Bodies) {
+//     //     auto sp = wp.lock();
+//     //     if (!sp || !sp->IsActive()) continue;
+//     //     if (sp.get() == target) continue;
+//     //     if (sp->GetBodyType() != BodyType::CHARACTER) continue;
+//     //
+//     //     glm::vec2 cPos  = sp->GetPosition();
+//     //     glm::vec2 cHalf = sp->GetHalfSize();
+//     //
+//     //     // 垂直上需在同層（避免把頭上的角色也算進去）
+//     //     float vertGap = std::abs(cPos.y - tPos.y);
+//     //     if (vertGap > (tHalf.y + cHalf.y) * 0.65f) continue;
+//     //
+//     //     // 側面緊貼判斷
+//     //     float minDistX = tHalf.x + cHalf.x;
+//     //     float dx       = cPos.x - tPos.x;
+//     //     if (std::abs(dx) > minDistX * 1.05f) continue;
+//     //
+//     //     // dir > 0：推者在左邊往右推
+//     //     glm::vec2 vel = sp->GetVelocity();
+//     //     if (dir > 0 && dx < 0 && vel.x > 0) ++count;
+//     //     if (dir < 0 && dx > 0 && vel.x < 0) ++count;
+//     // }
+//     // return count;
+//
+//     (void)target;
+//     (void)dir;
+//     return 0;
+// }
 
-    (void)target;
-    (void)dir;
-    return 0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 查詢：計算幾個 body 站在 target 頂部
-// ─────────────────────────────────────────────────────────────────────────────
-int PhysicsWorld::CountBodiesOnTop(const IPhysicsBody* target) const {
-    // TODO：實作（呼叫 IsOnTop）
-    //
-    // int count = 0;
-    // for (auto& wp : m_Bodies) {
-    //     auto sp = wp.lock();
-    //     if (!sp || !sp->IsActive()) continue;
-    //     if (sp.get() == target) continue;
-    //     if (IsOnTop(sp.get(), target)) ++count;
-    // }
-    // return count;
+// int PhysicsWorld::CountBodiesOnTop(const IPhysicsBody* target) const {
+//     // TODO：實作（呼叫 IsOnTop）
+//     //
+//     // int count = 0;
+//     // for (auto& wp : m_Bodies) {
+//     //     auto sp = wp.lock();
+//     //     if (!sp || !sp->IsActive()) continue;
+//     //     if (sp.get() == target) continue;
+//     //     if (IsOnTop(sp.get(), target)) ++count;
+//     // }
+//     // return count;
+//
+//     (void)target;
+//     return 0;
+// }
 
-    (void)target;
-    return 0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 查詢：AABB 重疊的所有 body
-// ─────────────────────────────────────────────────────────────────────────────
-std::vector<IPhysicsBody*> PhysicsWorld::QueryOverlapping(const IPhysicsBody* target) const {
-    std::vector<IPhysicsBody*> result;
+// std::vector<IPhysicsBody*> PhysicsWorld::QueryOverlapping(const IPhysicsBody* target) const {
+//     std::vector<IPhysicsBody*> result;
+//
+//     // TODO：實作
+//     //
+//     // for (auto& wp : m_Bodies) {
+//     //     auto sp = wp.lock();
+//     //     if (!sp || !sp->IsActive()) continue;
+//     //     if (sp.get() == target) continue;
+//     //     if (AabbOverlaps(target, sp.get())) result.push_back(sp.get());
+//     // }
+//
+//     (void)target;
+//     return result;
+// }
 
-    // TODO：實作
-    //
-    // for (auto& wp : m_Bodies) {
-    //     auto sp = wp.lock();
-    //     if (!sp || !sp->IsActive()) continue;
-    //     if (sp.get() == target) continue;
-    //     if (AabbOverlaps(target, sp.get())) result.push_back(sp.get());
-    // }
 
-    (void)target;
-    return result;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 查詢：所有指定類型的 body
-// ─────────────────────────────────────────────────────────────────────────────
 std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
     std::vector<IPhysicsBody*> result;
     for (auto& wp : m_Bodies) {
@@ -4934,41 +4470,35 @@ std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
     return result;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 工具：AABB 重疊判斷
-// ─────────────────────────────────────────────────────────────────────────────
-bool PhysicsWorld::AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) const {
+bool PhysicsWorld::AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) {
     glm::vec2 delta = a->GetPosition() - b->GetPosition();
     glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
     return std::abs(delta.x) < sum.x && std::abs(delta.y) < sum.y;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 工具：rider 是否站在 platform 頂部
-// ─────────────────────────────────────────────────────────────────────────────
-bool PhysicsWorld::IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const {
-    // TODO：實作
-    //
-    // glm::vec2 rPos   = rider->GetPosition();
-    // glm::vec2 pPos   = platform->GetPosition();
-    // glm::vec2 rHalf  = rider->GetHalfSize();
-    // glm::vec2 pHalf  = platform->GetHalfSize();
-    //
-    // float platformTop = pPos.y + pHalf.y;
-    // float riderBottom = rPos.y - rHalf.y;
-    //
-    // bool horizOk = std::abs(rPos.x - pPos.x) < (rHalf.x + pHalf.x) * 0.8f;
-    // bool vertOk  = std::abs(riderBottom - platformTop) < 6.0f;
-    // return horizOk && vertOk;
+// bool PhysicsWorld::IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const {
+//     // TODO：實作
+//     //
+//     // glm::vec2 rPos   = rider->GetPosition();
+//     // glm::vec2 pPos   = platform->GetPosition();
+//     // glm::vec2 rHalf  = rider->GetHalfSize();
+//     // glm::vec2 pHalf  = platform->GetHalfSize();
+//     //
+//     // float platformTop = pPos.y + pHalf.y;
+//     // float riderBottom = rPos.y - rHalf.y;
+//     //
+//     // bool horizOk = std::abs(rPos.x - pPos.x) < (rHalf.x + pHalf.x) * 0.8f;
+//     // bool vertOk  = std::abs(riderBottom - platformTop) < 6.0f;
+//     // return horizOk && vertOk;
+//
+//     (void)rider;
+//     (void)platform;
+//     return false;
+// }
 
-    (void)rider;
-    (void)platform;
-    return false;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 工具：清理失效的弱引用
-// ─────────────────────────────────────────────────────────────────────────────
 void PhysicsWorld::PurgeExpired() {
     m_Bodies.erase(
         std::remove_if(m_Bodies.begin(), m_Bodies.end(),
@@ -4984,9 +4514,7 @@ void PhysicsWorld::PurgeExpired() {
 
 #include "PlayerCat.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 工具：建立 Util::Animation
-// ─────────────────────────────────────────────────────────────────────────────
 namespace {
 
 std::shared_ptr<Util::Animation> MakeAnim(const std::vector<std::string>& paths,
@@ -4999,9 +4527,7 @@ std::shared_ptr<Util::Animation> MakeAnim(const std::vector<std::string>& paths,
 
 } // namespace
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 建構子
-// ─────────────────────────────────────────────────────────────────────────────
 PlayerCat::PlayerCat(const CatAnimPaths& animPaths,
                      Util::Keycode leftKey,
                      Util::Keycode rightKey,
@@ -5020,9 +4546,8 @@ PlayerCat::PlayerCat(const CatAnimPaths& animPaths,
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 建立各動畫 clip
-// ─────────────────────────────────────────────────────────────────────────────
+
 void PlayerCat::BuildClips(const CatAnimPaths& paths) {
     // stand：AnimatedCharacter 建構子已用 stand paths 建立 m_Drawable，直接重用
     m_StandAnim = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
@@ -5038,9 +4563,7 @@ void PlayerCat::BuildClips(const CatAnimPaths& paths) {
     m_PushAnim     = MakeAnim(paths.push,      120, true);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 切換動畫狀態
-// ─────────────────────────────────────────────────────────────────────────────
 void PlayerCat::SetCatAnimState(CatAnimState newState) {
     // LAND 播放中不被打斷（除非動畫結束後由外部再次呼叫）
     if (m_CurrentAnimState == CatAnimState::LAND &&
@@ -5067,86 +4590,6 @@ void PlayerCat::SetCatAnimState(CatAnimState newState) {
         target->Play();
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 舊版簡易物理更新（PlayerCat 自行管理）
-// 問題 1 修正：standOffset = floor 半高 + 角色半高（動態）
-// 跳躍動畫：上升 → JUMP_RISE，下降 → JUMP_FALL，落地瞬間 → LAND
-// ─────────────────────────────────────────────────────────────────────────────
-void PlayerCat::Update(std::shared_ptr<Character>& floor) {
-    m_WasGrounded = m_IsGrounded;
-
-    bool isMoving = false;
-
-    if (m_InputEnabled) {
-        if (Util::Input::IsKeyPressed(m_RightKey)) {
-            m_Transform.translation.x += m_MoveSpeed;
-            if (m_Transform.scale.x < 0) m_Transform.scale.x = -m_Transform.scale.x;
-            isMoving = true;
-        }
-        else if (Util::Input::IsKeyPressed(m_LeftKey)) {
-            m_Transform.translation.x -= m_MoveSpeed;
-            if (m_Transform.scale.x > 0) m_Transform.scale.x = -m_Transform.scale.x;
-            isMoving = true;
-        }
-
-        if (m_IsGrounded && Util::Input::IsKeyDown(m_JumpKey)) {
-            m_Velocity.y  = m_JumpForce;
-            m_IsGrounded  = false;
-        }
-    }
-
-    // ── 物理 ──────────────────────────────────────────────────────────────
-    m_Velocity.y -= m_Gravity;
-    m_Transform.translation.y += m_Velocity.y;
-
-    // ── 地板碰撞（動態 standOffset）───────────────────────────────────────
-    if (floor) {
-        const float floorHalfH  = floor->GetScaledSize().y / 2.0f;
-        const float charHalfH   = this->GetScaledSize().y  / 2.0f;
-        const float standOffset = floorHalfH + charHalfH;
-        const float landingY    = floor->GetPosition().y + standOffset;
-
-        if (m_Velocity.y <= 0.0f && m_Transform.translation.y <= landingY) {
-            m_Transform.translation.y = landingY;
-            m_Velocity.y              = 0.0f;
-            m_IsGrounded              = true;
-        }
-        else {
-            m_IsGrounded = false;
-        }
-    }
-    else {
-        m_IsGrounded = false;
-    }
-
-    // ── 動畫狀態決策 ──────────────────────────────────────────────────────
-    const bool justLanded = m_IsGrounded && !m_WasGrounded;
-
-    // LAND 播放中由 SetCatAnimState 內部守衛保護，不會被打斷
-    if (!m_IsGrounded) {
-        // 空中：依速度方向決定 JUMP_RISE / JUMP_FALL
-        if (m_Velocity.y > 0.0f) {
-            SetCatAnimState(CatAnimState::JUMP_RISE);
-        }
-        else {
-            SetCatAnimState(CatAnimState::JUMP_FALL);
-        }
-    }
-    else if (justLanded) {
-        SetCatAnimState(CatAnimState::LAND);
-    }
-    else if (m_CurrentAnimState == CatAnimState::LAND && IfAnimationEnds()) {
-        // LAND 播完 → 回到 STAND / RUN
-        SetCatAnimState(isMoving ? CatAnimState::RUN : CatAnimState::STAND);
-    }
-    else if (isMoving) {
-        SetCatAnimState(CatAnimState::RUN);
-    }
-    else {
-        SetCatAnimState(CatAnimState::STAND);
-    }
-}
 </file>
 
 <file path="Titlescene.cpp">
@@ -5158,9 +4601,6 @@ void PlayerCat::Update(std::shared_ptr<Character>& floor) {
 #include "Util/Logger.hpp"
 #include "Util/Time.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 建構子
-// ─────────────────────────────────────────────────────────────────────────────
 TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
     : Scene(ctx), m_MenuScene(menuScene)
 {
@@ -5175,9 +4615,6 @@ TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
     m_PressEnterText->SetPosition({0.0f, -155.0f});
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ─────────────────────────────────────────────────────────────────────────────
 void TitleScene::OnEnter() {
     LOG_INFO("TitleScene::OnEnter");
 
@@ -5188,7 +4625,7 @@ void TitleScene::OnEnter() {
     m_FlashTimer = 0.0f;
     m_PressEnterText->SetVisible(true);
 
-    // ── 建立 PhysicsAgent 清單 ────────────────────────────────────────────
+    // 建立 PhysicsAgent 清單
     m_Agents.clear();
     for (int i = 0; i < static_cast<int>(m_Ctx.StartupCats.size()); ++i) {
         auto& cat = m_Ctx.StartupCats[i];
@@ -5204,9 +4641,6 @@ void TitleScene::OnEnter() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ─────────────────────────────────────────────────────────────────────────────
 void TitleScene::OnExit() {
     LOG_INFO("TitleScene::OnExit");
 
@@ -5220,18 +4654,15 @@ void TitleScene::OnExit() {
     m_Agents.clear();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Update
-// ─────────────────────────────────────────────────────────────────────────────
 Scene* TitleScene::Update() {
-    // ── PRESS ENTER 閃爍 ──────────────────────────────────────────────────
+    // PRESS ENTER 閃爍
     m_FlashTimer += Util::Time::GetDeltaTimeMs();
     if (m_FlashTimer >= 1000.0f) {
         m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
         m_FlashTimer = 0.0f;
     }
 
-    // ── 讀取輸入（Scene 的責任：決定每隻角色想往哪走、是否想跳）──────────
+    // 讀取輸入(Scene 的責任：決定每隻角色想往哪走、是否想跳)
     for (auto& agent : m_Agents) {
         if (agent.actor == nullptr) continue;
         auto& st = agent.state;
@@ -5251,25 +4682,21 @@ Scene* TitleScene::Update() {
             if      (goLeft  && !goRight) st.moveDir = -1;
             else if (goRight && !goLeft)  st.moveDir =  1;
 
-            // 跳躍：直接設定 velocityY（System 在下一步施加重力）
+            // 直接設定 velocityY(System 在下一步施加重力)
             const bool wantJump = (jk != Util::Keycode::UNKNOWN) &&
                                    Util::Input::IsKeyDown(jk);
 
             if (st.grounded && wantJump) {
-                // HasHeadBlock 由 System 內部檢查；此處只設旗標
-                // ※ 為避免循環依賴，TitleScene 直接寫入 velocityY
-                //   System 的 Update 不會重複施加跳躍力
-                st.velocityY    = CharacterPhysicsSystem::kJumpForce;
-                st.grounded     = false;
-                st.supportIndex = -1;
+                CharacterPhysicsSystem::ApplyJump(st);
             }
         }
     }
 
-    // ── 委託物理系統處理所有運算（含動畫）───────────────────────────────
-    m_Physics.Update(m_Agents, m_Ctx.Floor);
+    // 委託物理系統處理所有運算(含動畫)
+    // m_Physics.Update(m_Agents, m_Ctx.Floor);
+    CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
 
-    // ── 場景切換 ──────────────────────────────────────────────────────────
+    //場景切換
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         LOG_INFO("TitleScene: ENTER pressed → MenuScene");
         return m_MenuScene;
@@ -5287,10 +4714,10 @@ Scene* TitleScene::Update() {
 #include "UI_Triangle_Button.hpp"
 #include "Util/Time.hpp"
 
-UI_Triangle_Button::UI_Triangle_Button(const std::string& normalImagePath, const std::string& pressedImagePath)
+UI_Triangle_Button::UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath)
     : Character(normalImagePath), // 呼叫父類別建構子，預設載入 normal 圖片
-      m_NormalImagePath(normalImagePath),
-      m_PressedImagePath(pressedImagePath) {
+      m_NormalImagePath(std::move(normalImagePath)),
+      m_PressedImagePath(std::move(pressedImagePath)) {
 }
 
 void UI_Triangle_Button::Press(float durationMs) {

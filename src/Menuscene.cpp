@@ -108,7 +108,8 @@ void MenuScene::OnExit() {
 }
 
 Scene* MenuScene::Update() {
-    m_Physics.Update(m_Agents, m_Ctx.Floor);
+    // m_Physics.Update(m_Agents, m_Ctx.Floor);
+    CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
@@ -157,13 +158,13 @@ Scene* MenuScene::Update() {
     return nullptr;
 }
 
-void MenuScene::ShowCurrentOption() {
+void MenuScene::ShowCurrentOption() const {
     m_ExitGameText->SetVisible(m_SelectedIndex == 0);
     m_OptionText->SetVisible(m_SelectedIndex == 1);
     m_LocalPlayText->SetVisible(m_SelectedIndex == 2);
 }
 
-void MenuScene::HideAllOptions() {
+void MenuScene::HideAllOptions() const {
     m_ExitGameText->SetVisible(false);
     m_OptionText->SetVisible(false);
     m_LocalPlayText->SetVisible(false);

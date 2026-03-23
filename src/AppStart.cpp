@@ -7,60 +7,16 @@
 #include "KeyboardConfigScene.hpp"
 #include "LocalPlayScene.hpp"
 #include "LocalPlayGameScene.hpp"
+#include "CatAssets.hpp"
 #include "Util/Logger.hpp"
-
 #include <array>
 #include <cmath>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 工具：建立單幀路徑 / 多幀路徑
-// ─────────────────────────────────────────────────────────────────────────────
-static std::string BuildCatFramePath(const std::string& color,
-                                     const std::string& action,
-                                     int frameNum) {
-    return std::string(GA_RESOURCE_DIR) +
-           "/Image/Character/" + color + "_cat/" +
-           color + "_cat_" + action + "_" + std::to_string(frameNum) + ".png";
-}
-
-static std::vector<std::string> BuildCatFramePaths(const std::string& color,
-                                                    const std::string& action,
-                                                    int numFrames) {
-    std::vector<std::string> paths;
-    paths.reserve(static_cast<size_t>(numFrames));
-    for (int f = 1; f <= numFrames; ++f) {
-        paths.push_back(BuildCatFramePath(color, action, f));
-    }
-    return paths;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 建立一隻貓的完整動畫路徑集合
-//   stand : stand_1, stand_2
-//   run   : run_1, run_2
-//   jump_rise : jump_1         ← 起跳到最高點
-//   jump_fall : jump_2         ← 最高點到落地前
-//   land  : land_1
-//   push  : push_1, push_2
-// ─────────────────────────────────────────────────────────────────────────────
-static CatAnimPaths BuildCatAnimPaths(const std::string& color) {
-    CatAnimPaths p;
-    p.stand     = BuildCatFramePaths(color, "stand", 8);
-    p.run       = BuildCatFramePaths(color, "run",   9);
-    p.jump_rise = { BuildCatFramePath(color, "jump", 1) };  // jump_1 只有一幀
-    p.jump_fall = { BuildCatFramePath(color, "jump", 2) };  // jump_2 只有一幀
-    p.land      = { BuildCatFramePath(color, "land", 1) };  // land_1 只有一幀
-    p.push      = BuildCatFramePaths(color, "push",  3);
-    return p;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // App::Start
-// ─────────────────────────────────────────────────────────────────────────────
 void App::Start() {
     LOG_TRACE("Start");
 
-    // ── Step 1：GameContext ───────────────────────────────────────────────────
+    // GameContext
     m_Ctx = std::make_unique<GameContext>(m_Root);
 
     m_Ctx->Background = std::make_shared<Character>(
@@ -96,15 +52,11 @@ void App::Start() {
     m_Ctx->BGMPlayer = std::make_unique<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
 
-    // ── 建立 8 隻裝飾貓（StartupCats）────────────────────────────────────────
-    static const std::array<const char*, 8> kColorOrder = {
-        "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"
-    };
-
+    // 建立 8 隻貓
     m_Ctx->StartupCats.clear();
-    m_Ctx->StartupCats.reserve(kColorOrder.size());
+    m_Ctx->StartupCats.reserve(GameContext::kCatColorOrder.size());
 
-    for (int i = 0; i < static_cast<int>(kColorOrder.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(GameContext::kCatColorOrder.size()); ++i) {
         Util::Keycode left  = Util::Keycode::UNKNOWN;
         Util::Keycode right = Util::Keycode::UNKNOWN;
         Util::Keycode jump  = Util::Keycode::UNKNOWN;
@@ -121,7 +73,7 @@ void App::Start() {
         }
 
         auto cat = std::make_shared<PlayerCat>(
-            BuildCatAnimPaths(kColorOrder[static_cast<size_t>(i)]),
+            CatAssets::BuildFullAnimPaths(GameContext::kCatColorOrder[static_cast<size_t>(i)]),
             left, right, jump);
         cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
         cat->SetInputEnabled(i < 2);
@@ -129,14 +81,12 @@ void App::Start() {
         m_Ctx->StartupCats.push_back(cat);
     }
 
-    // ── 計算初始位置 ──────────────────────────────────────────────────────────
-    // 問題 1 修正：spawnY 用 floor 半高 + 角色半高（動態，每隻貓各自計算）
-    // 問題 2 修正：spacing 係數 0.42 → 0.84（乘 2 倍），避免碰撞箱重疊
+    // 計算初始位置
     const float floorY      = m_Ctx->Floor->GetPosition().y;
     const float floorHalfH  = m_Ctx->Floor->GetScaledSize().y / 2.0f;
 
-    const float spacing     = 75.0f;
-    const float centerBlank = spacing * 2.0f;
+    constexpr float spacing     = 75.0f;
+    constexpr float centerBlank = spacing * 2.0f;
 
     for (int i = 0; i < static_cast<int>(m_Ctx->StartupCats.size()); ++i) {
         auto& cat = m_Ctx->StartupCats[i];
@@ -157,7 +107,7 @@ void App::Start() {
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 
-    // ── Step 2：場景建立 ──────────────────────────────────────────────────────
+    // 場景建立
     auto titleScene = std::make_unique<TitleScene>(*m_Ctx, nullptr);
 
     auto menuScene = std::make_unique<MenuScene>(

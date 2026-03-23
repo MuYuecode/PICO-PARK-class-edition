@@ -9,9 +9,7 @@
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-// ────────────────────────────────────────────────────────────────────────────
 // 靜態常數
-// ────────────────────────────────────────────────────────────────────────────
 const Util::Color KeyboardConfigScene::k_Black = Util::Color::FromRGB(0,   0,   0,   255);
 const Util::Color KeyboardConfigScene::k_Red   = Util::Color::FromRGB(220, 50,  50,  255);
 const Util::Color KeyboardConfigScene::k_Grey  = Util::Color::FromRGB(150, 150, 150, 255);
@@ -42,9 +40,19 @@ const PlayerKeyConfig KeyboardConfigScene::k_Default2P = {
     Util::Keycode::UNKNOWN    // SUB MENU: -
 };
 
-// ────────────────────────────────────────────────────────────────────────────
+static constexpr std::array<Util::Keycode PlayerKeyConfig::*, 9> kBindFields = {
+    &PlayerKeyConfig::up,
+    &PlayerKeyConfig::down,
+    &PlayerKeyConfig::left,
+    &PlayerKeyConfig::right,
+    &PlayerKeyConfig::jump,
+    &PlayerKeyConfig::cancel,
+    &PlayerKeyConfig::shot,
+    &PlayerKeyConfig::menu,
+    &PlayerKeyConfig::subMenu,
+};
+
 // PlayerKeyConfig::AllKeys
-// ────────────────────────────────────────────────────────────────────────────
 std::vector<Util::Keycode> PlayerKeyConfig::AllKeys() const {
     std::vector<Util::Keycode> result;
     for (auto k : {up, down, left, right, jump, cancel, shot, menu, subMenu}) {
@@ -53,9 +61,6 @@ std::vector<Util::Keycode> PlayerKeyConfig::AllKeys() const {
     return result;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 建構子
-// ────────────────────────────────────────────────────────────────────────────
 KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
                                          OptionMenuScene* optionScene,
                                          std::shared_ptr<Character> exitGameButton)
@@ -68,19 +73,19 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_Applied[1] = k_Default2P;
     // 3P-8P：全 UNKNOWN
 
-    // ── 框架 ──────────────────────────────────────────────────────────────
+    // 框架
     m_Frame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
     m_Frame->SetZIndex(25);
     m_Frame->SetPosition({0.0f, -5.0f});
 
-    // ── 選擇框 ────────────────────────────────────────────────────────────
+    // 選擇框
     m_ChoiceFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png");
     m_ChoiceFrame->SetZIndex(30);
     m_ChoiceFrame->SetScale({0.46f, 1.0f}) ;
 
-    // ── 橫線（需要資源 Option_HLine.png：約 650×4px 橘色橫線）────────────
+    // 橫線
     auto makeHLine = [&](float y) {
         auto line = std::make_shared<Character>(
             GA_RESOURCE_DIR "/Image/Background/Option_HLine.png");
@@ -92,12 +97,10 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_HLine2 = makeHLine(ROW_Y_HLINE2);
     m_HLine3 = makeHLine(ROW_Y_HLINE3);
 
-    // ── 標題 ──────────────────────────────────────────────────────────────
     m_TitleText = std::make_shared<GameText>("KEYBOARD CONFIG", 55, k_Black);
     m_TitleText->SetZIndex(35);
     m_TitleText->SetPosition({0.0f, ROW_Y_TITLE});
 
-    // ── PLAYER 列 ─────────────────────────────────────────────────────────
     m_PlayerLabel = std::make_shared<GameText>("PLAYER", 45, k_Black);
     m_PlayerLabel->SetZIndex(35);
     m_PlayerLabel->SetPosition({AppUtil::AlignLeft(*m_PlayerLabel, COL_LABEL_X), ROW_Y_PLAYER});
@@ -118,8 +121,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_PlayerRightBtn->SetZIndex(35);
     m_PlayerRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_PLAYER});
 
-    // ── 綁定列（UP ~ SUB MENU）────────────────────────────────────────────
-    static const std::array<const char*, BIND_COUNT> labels = {
+    static constexpr std::array<const char*, BIND_COUNT> labels = {
         "UP", "DOWN", "LEFT", "RIGHT", "JUMP",
         "CANCEL", "SHOT/SELECT", "MENU", "SUB MENU"
     };
@@ -135,7 +137,6 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
         m_BindValues[i]->SetPosition({COL_VALUE_X, y});
     }
 
-    // ── 底部按鈕 ──────────────────────────────────────────────────────────
     m_OkText      = std::make_shared<GameText>("OK",      45, k_Black);
     m_CancelText  = std::make_shared<GameText>("CANCEL",  45, k_Black);
     m_DefaultText = std::make_shared<GameText>("DEFAULT", 45, k_Black);
@@ -147,9 +148,6 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_DefaultText->SetPosition({COL_DEFAULT_X, ROW_Y_BTN});
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::OnEnter() {
     LOG_INFO("KeyboardConfigScene::OnEnter");
 
@@ -187,9 +185,6 @@ void KeyboardConfigScene::OnEnter() {
     UpdateChoiceFrame();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::OnExit() {
     LOG_INFO("KeyboardConfigScene::OnExit");
 
@@ -215,14 +210,11 @@ void KeyboardConfigScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Update
-// ────────────────────────────────────────────────────────────────────────────
 Scene* KeyboardConfigScene::Update() {
     m_PlayerLeftBtn->UpdateButton();
     m_PlayerRightBtn->UpdateButton();
 
-    // ── 按鍵捕捉模式 ──────────────────────────────────────────────────────
+    // 按鍵捕捉模式
     if (m_WaitingForKey) {
         Util::Keycode pressed = AppUtil::GetAnyKeyDown();
         if (pressed != Util::Keycode::UNKNOWN) {
@@ -235,7 +227,7 @@ Scene* KeyboardConfigScene::Update() {
         return nullptr;
     }
 
-    // ── ESC / X 按鈕 / CANCEL → 不儲存，返回 OptionMenuScene ──────────────
+    // ESC / X 按鈕 / CANCEL 不儲存，返回 OptionMenuScene
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()              ||
         m_CancelText->IsLeftClicked())
@@ -244,7 +236,7 @@ Scene* KeyboardConfigScene::Update() {
         return m_OptionScene;
     }
 
-    // ── 游標移動 W/S ──────────────────────────────────────────────────────
+    // 游標移動 W/S
     if (Util::Input::IsKeyDown(Util::Keycode::W) ||
         Util::Input::IsKeyDown(Util::Keycode::UP))
     {
@@ -256,7 +248,7 @@ Scene* KeyboardConfigScene::Update() {
         IncrementRow();
     }
 
-    // ── 滑鼠 hover 自動切換游標 ───────────────────────────────────────────
+    // 滑鼠 hover 自動切換游標
     auto hoverTo = [&](const std::shared_ptr<GameText>& t, int row) {
         if (IsRowSelectable(row) && t->IsMouseHovering() && m_SelectedRow != row) {
             m_SelectedRow = row;
@@ -271,7 +263,7 @@ Scene* KeyboardConfigScene::Update() {
     hoverTo(m_CancelText,  ROW_CANCEL);
     hoverTo(m_DefaultText, ROW_DEFAULT);
 
-    // ── A/D 或點擊按鈕 ────────────────────────────────────────────────────
+    // A/D 或點擊按鈕
     bool pressedLeft  = Util::Input::IsKeyDown(Util::Keycode::A) ||
                         Util::Input::IsKeyDown(Util::Keycode::LEFT) ;
     bool pressedRight = Util::Input::IsKeyDown(Util::Keycode::D) ||
@@ -309,7 +301,7 @@ Scene* KeyboardConfigScene::Update() {
         if (pressedRight) { m_SelectedRow = ROW_OK; UpdateChoiceFrame(); }
     }
 
-    // ── ENTER 確認 ────────────────────────────────────────────────────────
+    // ENTER 確認
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN) || Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
         if (m_SelectedRow == ROW_OK) {
             // 有衝突時禁止 OK（3P-8P）
@@ -357,34 +349,26 @@ Scene* KeyboardConfigScene::Update() {
     return nullptr;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
 // 私有：載入玩家設定到 m_Pending
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::LoadPlayer(int playerIdx) {
     m_Pending = m_Applied[playerIdx];
     // 更新 PLAYER 值文字
     m_PlayerValue->SetText(std::to_string(playerIdx + 1) + "P");
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：m_Pending → m_Applied[m_CurrentPlayer]
-// ────────────────────────────────────────────────────────────────────────────
+// m_Pending → m_Applied[m_CurrentPlayer]
 void KeyboardConfigScene::CommitPending() {
     m_Applied[m_CurrentPlayer] = m_Pending;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
 // 私有：套用預設值到 m_Pending
-// ────────────────────────────────────────────────────────────────────────────
 void KeyboardConfigScene::ApplyDefault() {
     if (m_CurrentPlayer == 0)      m_Pending = k_Default1P;
     else if (m_CurrentPlayer == 1) m_Pending = k_Default2P;
     else                           m_Pending = PlayerKeyConfig{};  // 3P-8P：清空
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：判斷列是否可選（2P+ 下 MENU/SUB MENU 不可選）
-// ────────────────────────────────────────────────────────────────────────────
+// 判斷列是否可選(2P+ 下 MENU/SUB MENU 不可選)
 bool KeyboardConfigScene::IsRowSelectable(int row) const {
     if (m_CurrentPlayer > 0 &&
         (row == ROW_MENU_KEY || row == ROW_SUBMENU)) {
@@ -393,9 +377,7 @@ bool KeyboardConfigScene::IsRowSelectable(int row) const {
     return true;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：游標移動（自動跳過不可選列）
-// ────────────────────────────────────────────────────────────────────────────
+// 游標移動(自動跳過不可選列)
 void KeyboardConfigScene::DecrementRow() {
     int r = m_SelectedRow;
     do {
@@ -414,42 +396,21 @@ void KeyboardConfigScene::IncrementRow() {
     UpdateChoiceFrame();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：設定綁定值
-// ────────────────────────────────────────────────────────────────────────────
+// 設定綁定值
 void KeyboardConfigScene::AssignKey(int bindIdx, Util::Keycode key) {
-    switch (bindIdx) {
-    case 0: m_Pending.up       = key; break;
-    case 1: m_Pending.down     = key; break;
-    case 2: m_Pending.left     = key; break;
-    case 3: m_Pending.right    = key; break;
-    case 4: m_Pending.jump     = key; break;
-    case 5: m_Pending.cancel   = key; break;
-    case 6: m_Pending.shot     = key; break;
-    case 7: m_Pending.menu     = key; break;
-    case 8: m_Pending.subMenu  = key; break;
-    default: break;
+    if (bindIdx >= 0 && bindIdx < static_cast<int>(kBindFields.size())) {
+        m_Pending.*kBindFields[static_cast<size_t>(bindIdx)] = key;
     }
 }
 
 Util::Keycode KeyboardConfigScene::GetPendingKey(int bindIdx) const {
-    switch (bindIdx) {
-    case 0: return m_Pending.up;
-    case 1: return m_Pending.down;
-    case 2: return m_Pending.left;
-    case 3: return m_Pending.right;
-    case 4: return m_Pending.jump;
-    case 5: return m_Pending.cancel;
-    case 6: return m_Pending.shot;
-    case 7: return m_Pending.menu;
-    case 8: return m_Pending.subMenu;
-    default: return Util::Keycode::UNKNOWN;
+    if (bindIdx >= 0 && bindIdx < static_cast<int>(kBindFields.size())) {
+        return m_Pending.*kBindFields[static_cast<size_t>(bindIdx)];
     }
+    return Util::Keycode::UNKNOWN;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：衝突偵測（只對 3P-8P）
-// ────────────────────────────────────────────────────────────────────────────
+// 衝突偵測（只對 3P-8P）
 std::vector<Util::Keycode> KeyboardConfigScene::GetConflicts() const {
     if (m_CurrentPlayer < 1) return {};
 
@@ -471,10 +432,8 @@ std::vector<Util::Keycode> KeyboardConfigScene::GetConflicts() const {
     return conflicts;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：根據 m_Pending 更新所有值文字與顏色
-// ────────────────────────────────────────────────────────────────────────────
-void KeyboardConfigScene::UpdateValueTexts() {
+// 根據 m_Pending 更新所有值文字與顏色
+void KeyboardConfigScene::UpdateValueTexts() const {
     auto conflicts = GetConflicts();
 
     for (int i = 0; i < BIND_COUNT; ++i) {
@@ -499,10 +458,8 @@ void KeyboardConfigScene::UpdateValueTexts() {
     m_OkText->SetColor(okDisabled ? k_Grey : k_Black);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：RowY（用於 ChoiceFrame）
-// ────────────────────────────────────────────────────────────────────────────
-float KeyboardConfigScene::RowY(int row) const {
+// RowY(用於 ChoiceFrame)
+float KeyboardConfigScene::RowY(int row) {
     if (row == ROW_PLAYER)  return ROW_Y_PLAYER;
     if (row >= ROW_BIND_0 && row <= ROW_SUBMENU)
         return BindRowY(row - ROW_BIND_0);
@@ -511,28 +468,21 @@ float KeyboardConfigScene::RowY(int row) const {
     return 0.0f;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：更新 ChoiceFrame 位置
-// ────────────────────────────────────────────────────────────────────────────
-void KeyboardConfigScene::UpdateChoiceFrame() {
-    float x = COL_VALUE_X-10.0f;
-    if (m_SelectedRow == ROW_PLAYER) x = COL_VALUE_X-10.0f;
-    else if (m_SelectedRow == ROW_OK)      x = COL_OK_X-10.0f;
-    else if (m_SelectedRow == ROW_CANCEL)  x = COL_CANCEL_X-10.0f;
-    else if (m_SelectedRow == ROW_DEFAULT) x = COL_DEFAULT_X-10.0f;
+// 更新 ChoiceFrame 位置
+void KeyboardConfigScene::UpdateChoiceFrame() const {
+    float x = COL_VALUE_X - 10.0f;  // 預設：PLAYER 列與所有 BIND 列共用此 X
+    if      (m_SelectedRow == ROW_OK)      x = COL_OK_X      - 10.0f;
+    else if (m_SelectedRow == ROW_CANCEL)  x = COL_CANCEL_X  - 10.0f;
+    else if (m_SelectedRow == ROW_DEFAULT) x = COL_DEFAULT_X - 10.0f;
 
     m_ChoiceFrame->SetPosition({x, RowY(m_SelectedRow)});
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 新增：回傳已設定足夠按鍵的玩家數
-//
+// 回傳已設定足夠按鍵的玩家數
 // 判定標準：m_Applied[p].AllKeys().size() >= 4
 // （至少需要上下左右四個方向鍵才算「已設定」）
-//
 // 初始狀態：1P 和 2P 有預設設定 → 回傳 2
 //           3P-8P 全 UNKNOWN   → 不計入
-// ────────────────────────────────────────────────────────────────────────────
 int KeyboardConfigScene::GetConfiguredPlayerCount() const {
     int count = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p) {

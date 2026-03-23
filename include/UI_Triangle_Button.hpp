@@ -11,15 +11,15 @@
 class UI_Triangle_Button : public Character {
 public:
     // 傳入兩種狀態的圖片路徑
-    UI_Triangle_Button(const std::string& normalImagePath, const std::string& pressedImagePath);
+    UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath);
 
     // 必須在每一幀呼叫此方法，用來更新按鈕內部的計時器邏輯
     void UpdateButton();
 
-    // 觸發「按下」狀態，並設定維持時間 (預設 200 毫秒)
-    void Press(float durationMs = 200.0f);
+    // 觸發「按下」狀態，並設定維持時間 (預設 75 毫秒)
+    void Press(float durationMs = 75.0f);
 
-    // 強制重置按鈕為未按下狀態 (用於選單切換時清空殘留狀態)
+    // 強制重置按鈕為未按下狀態(用於選單切換時清空殘留狀態)
     void ResetState();
 
 private:

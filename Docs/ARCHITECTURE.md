@@ -1,4 +1,3 @@
-
 # 遊戲架構說明文件
 
 > 物理系統相關說明請參閱 `PHYSICS_DESIGN.md`。  
@@ -96,9 +95,11 @@ struct GameContext {
     Util::Renderer& Root;           // 渲染根節點（App 持有，Context 只借用）
 
     // ── 永久存在於渲染樹的物件（AppStart 加入後不再移除）──
-    shared_ptr<Character> WhiteBackground;  // 白色背景底圖
-    shared_ptr<Character> Floor;            // 地板
-    shared_ptr<Character> Header;           // 標題 Logo（TitleScene + MenuScene 共用）
+    shared_ptr<Character>  Background;  // 背景底圖（可熱替換為白/米黃/深色）
+    shared_ptr<Character>  Floor;       // 地板
+    shared_ptr<BGMPlayer>  BGMPlayer;   // 背景音樂播放器
+    shared_ptr<Character>  Header;      // 標題 Logo
+    shared_ptr<Character>  Door;        // 門（open/close 兩種圖片，LocalPlayGameScene 切換）
 
     // ── 標題畫面的 8 隻裝飾貓（也是遊戲中可操控的角色）──
     vector<shared_ptr<PlayerCat>> StartupCats;
@@ -107,13 +108,17 @@ struct GameContext {
     int  SelectedPlayerCount  = 2;
     int  CooperativePushPower = 1;
     bool ShouldQuit           = false;
+
+    // 角色顏色順序（index 0–7 依序為 blue, red, yellow, green, purple, pink, orange, gray）
+    static constexpr array<const char*, 8> kCatColorOrder = { ... };
 };
 ```
 
 ### 設計原則
 
 - `GameContext` **不擁有 Renderer**，只持有引用，避免循環依賴。
-- 永久物件（`WhiteBackground`、`Floor`、`Header`）只在 `AppStart` 加入渲染樹一次，場景不應移除它們。
+- 永久物件（`Background`、`Floor`、`Header`、`Door`）只在 `AppStart` 加入渲染樹一次，場景不應移除它們。
+- `BGMPlayer` 在 `AppStart` 建立，各場景透過 `m_Ctx.BGMPlayer` 呼叫 `SetVolume()`，不需持有所有權。
 - 場景之間需要溝通的「遊戲狀態」（人數、推力加成）存在 `GameContext`，不要跨場景直接持有對方的指標來讀取狀態。
 
 > **未來新增全域狀態**（如關卡進度、分數）：加到 `GameContext` 的成員，而非放在單一場景裡。
@@ -149,7 +154,7 @@ protected:
 | `OptionMenuScene` | `OptionMenuScene` | 遊戲設定（背景色、音量、顯示數字） | MenuScene, KeyboardConfigScene |
 | `KeyboardConfigScene` | `KeyboardConfigScene` | 按鍵綁定設定（1P–8P） | OptionMenuScene |
 | `LocalPlayScene` | `LocalPlayScene` | 選擇玩家人數（2–8） | MenuScene, LocalPlayGameScene |
-| `LocalPlayGameScene` | `LocalPlayGameScene` | 實際遊戲（多角色物理、合作推動） | LocalPlayScene |
+| `LocalPlayGameScene` | `LocalPlayGameScene` | 實際遊戲（多角色物理、合作推動、門進入判斷） | LocalPlayScene |
 
 ### 4.3 共用 UI 物件的借用模式
 
@@ -160,6 +165,7 @@ m_MenuFrame          （選單外框）
 m_ExitGameButton     （X 按鈕）
 m_LeftTriButton      （◀ 按鈕）
 m_RightTriButton     （▶ 按鈕）
+m_blue_cat_run_img   （藍貓跑步圖示）
 ```
 
 `AppStart.cpp` 呼叫這些 getter，並透過**建構子參數**將 `shared_ptr` 注入各 Scene。Scene 在建構時就持有這些物件，`OnEnter` / `OnExit` 只負責 `AddChild` / `RemoveChild`，不需要再呼叫 getter。
@@ -171,11 +177,12 @@ MenuScene::GetMenuFrame()       → 注入 ExitConfirmScene, LocalPlayScene
 MenuScene::GetExitGameButton()  → 注入 ExitConfirmScene, OptionMenuScene, KeyboardConfigScene
 MenuScene::GetLeftTriButton()   → 注入 LocalPlayScene
 MenuScene::GetRightTriButton()  → 注入 LocalPlayScene
+MenuScene::GetBlueCatRunImg()   → 注入 LocalPlayScene
 ```
 
 各 Scene 在 `OnEnter` 加入渲染樹、`OnExit` 移除，但**不擁有所有權**。
 
-> **未來新增選單子場景**（例如 `OnlinePlayScene`）：同樣從 `MenuScene` 取得這四個物件，在 `OnEnter`/`OnExit` 配對加入/移除，借用結束後還原 scale/position。
+> **未來新增選單子場景**（例如 `OnlinePlayScene`）：同樣從 `MenuScene` 取得上述物件，在 `OnEnter`/`OnExit` 配對加入/移除，借用結束後還原 scale/position。
 
 ### 4.4 場景間指標傳遞規則
 
@@ -194,7 +201,7 @@ Util::GameObject          （PTSD 引擎基底，持有 m_Drawable、m_Transform
 ├── Character              圖片物件（Util::Image 作為 drawable）
 │   └── UI_Triangle_Button 帶「按下」狀態的圖片按鈕
 ├── AnimatedCharacter      動畫物件（Util::Animation 作為 drawable）
-│   └── PlayerCat          可操控角色，含動畫狀態機與物理接口
+│   └── PlayerCat          可操控角色，含動畫狀態機與 IPhysicsBody 介面
 └── GameText               文字物件（Util::Text 作為 drawable）
 ```
 
@@ -209,12 +216,10 @@ Util::GameObject          （PTSD 引擎基底，持有 m_Drawable、m_Transform
 | `SetImage(path)` | 熱替換圖片（會重建 Drawable） |
 | `GetPosition()` | 回傳 `m_Transform.translation` |
 | `SetPosition(vec2)` | 同上 |
-| `GetSize()` | 回傳縮放後的像素大小 |
+| `GetSize()` | 回傳縮放後的像素大小（呼叫 `GetScaledSize()`） |
 | `SetScale(vec2)` | 修改 `m_Transform.scale`（負 X = 水平翻轉） |
-| `IsMouseHovering()` | AABB 滑鼠懸停偵測 |
-| `IsLeftClicked()` | 滑鼠左鍵點擊偵測 |
-| `IfCollides(other)` | 簡易距離碰撞（50px 閾值，**目前僅作示意，實際碰撞已由 `CharacterPhysicsSystem` 接管**） |
-| `IsStandingOn(other, surfaceOffset)` | 判斷自身是否站在 `other` 表面上（`this->y <= other->y + surfaceOffset`），為舊版輔助方法，新場景應使用 `PhysicsState::supportIndex` |
+| `IsMouseHovering()` | AABB 滑鼠懸停偵測（委託 `AppUtil::IsMouseHovering`） |
+| `IsLeftClicked()` | 滑鼠左鍵點擊偵測（委託 `AppUtil::IsLeftClicked`） |
 
 > `m_Transform` 是 `public`（PTSD 引擎設計如此），可直接修改 `scale.x` 實現翻轉，但建議優先使用 `SetScale()`。
 
@@ -233,8 +238,6 @@ Util::GameObject          （PTSD 引擎基底，持有 m_Drawable、m_Transform
 
 `PlayerCat` 繼承此類並擴充為多動畫 clip 的狀態機（詳見 `PHYSICS_DESIGN.md`）。
 
-> **未來新增動畫物件**（如 NPC、裝飾動畫）：繼承 `AnimatedCharacter`，在建構子傳入幀路徑，在 `Update` 或外部控制 `Play()`/`SetLooping()`。
-
 ### 5.4 GameText
 
 **檔案**：`GameText.hpp` / `GameText.cpp`
@@ -247,8 +250,8 @@ Util::GameObject          （PTSD 引擎基底，持有 m_Drawable、m_Transform
 | `SetColor(Color)` | 動態更新文字顏色 |
 | `SetVisible(bool)` | 顯示/隱藏 |
 | `GetSize()` | 回傳文字佔用的像素尺寸（用於對齊計算） |
-| `IsMouseHovering()` | AABB 滑鼠懸停偵測 |
-| `IsLeftClicked()` | 滑鼠左鍵點擊偵測 |
+| `IsMouseHovering()` | AABB 滑鼠懸停偵測（委託 `AppUtil::IsMouseHovering`） |
+| `IsLeftClicked()` | 滑鼠左鍵點擊偵測（委託 `AppUtil::IsLeftClicked`） |
 
 > **字型唯一**：目前整個遊戲只使用一種字型（`TerminusTTFWindows-Bold-4.49.3.ttf`）。若未來需要第二種字型，需修改 `GameText` 的建構子或新增 `GameTextStyled` 子類別。
 
@@ -258,11 +261,12 @@ Util::GameObject          （PTSD 引擎基底，持有 m_Drawable、m_Transform
 |------|------|
 | `-10` | 白色背景 |
 | `0` | 地板、Header |
-| `10` | 選單外框 |
+| `5` | Door（門） |
+| `10` | 選單外框、藍貓圖示 |
 | `15` | 三角按鈕 |
-| `20` | ExitGameButton、角色（`20.0 + i * 0.01`） |
-| `25` | OptionMenuFrame |
-| `30` | ChoiceFrame |
+| `20` | ExitGameButton、角色（`20.0 + i * 0.01`）、場景私有文字 |
+| `25` | OptionMenuFrame / KeyboardConfigScene Frame |
+| `30` | ChoiceFrame、DoorCountText |
 | `35` | 選單文字 |
 | `100` | GameText 預設值 |
 
@@ -286,7 +290,7 @@ Util::GameObject          （PTSD 引擎基底，持有 m_Drawable、m_Transform
 
 | 方法 | 說明 |
 |------|------|
-| `Press(ms)` | 切換為按下圖片，ms 毫秒後自動還原 |
+| `Press(ms)` | 切換為按下圖片，ms 毫秒後自動還原（預設 75ms） |
 | `UpdateButton()` | **每幀必須呼叫**，負責計時器倒數 |
 | `ResetState()` | 強制還原為正常狀態（場景切換時清除殘留） |
 
@@ -303,8 +307,6 @@ Scene* XxxScene::Update() {
     // ...
 }
 ```
-
-> **未來新增按鈕類型**（如圓形按鈕、文字按鈕帶高亮）：建立新類別繼承 `Character`，複製 `UI_Triangle_Button` 的計時邏輯，替換圖片路徑邏輯即可。
 
 ---
 
@@ -324,16 +326,20 @@ Scene* XxxScene::Update() {
 - **角色水平移動**：用 `IsKeyPressed`（需要持續移動）。
 - **滑鼠點擊**：`IsKeyDown(Util::Keycode::MOUSE_LB)` 搭配 `IsMouseHovering()` 實作（已封裝在 `Character::IsLeftClicked()` 和 `GameText::IsLeftClicked()`）。
 
-### AppUtil::GetAnyKeyDown
+### AppUtil 工具函式
 
 **檔案**：`AppUtil.hpp` / `AppUtil.cpp`
 
-掃描所有可綁定按鍵，回傳這一幀剛被按下的第一個，供 `KeyboardConfigScene` 的按鍵捕捉使用。
+| 函式 | 說明 |
+|------|------|
+| `AlignLeft(text, boundaryX)` | 計算文字置左時的中心 X（用於選單標籤對齊） |
+| `AlignRight(text, boundaryX)` | 計算文字置右時的中心 X |
+| `KeycodeToString(key)` | 將 `Util::Keycode` 轉成顯示字串（`UNKNOWN` → `"-"`） |
+| `GetAnyKeyDown()` | 回傳這幀剛被按下的第一個可綁定按鍵 |
+| `IsMouseHovering(obj)` | 對任意 `Util::GameObject` 做 AABB 懸停偵測 |
+| `IsLeftClicked(obj)` | 對任意 `Util::GameObject` 做左鍵點擊偵測 |
 
-```cpp
-Util::Keycode key = AppUtil::GetAnyKeyDown();
-if (key != Util::Keycode::UNKNOWN) { /* 綁定 */ }
-```
+`GetAnyKeyDown()` 供 `KeyboardConfigScene` 的按鍵捕捉使用。
 
 ---
 
@@ -360,7 +366,7 @@ struct PlayerKeyConfig {
 
 ```
 k_Default1P : W/S/A/D 移動，W 跳，ESC 取消，SPACE 射擊，ENTER 選單，TAB 子選單
-k_Default2P : ↑↓←→ 移動，↑ 跳，BackSpace 取消，R_CTRL 射擊
+k_Default2P : ↑↓←→ 移動，↑ 跳，AC_BACK 取消，R_CTRL 射擊
 3P–8P       : 全部 UNKNOWN（需玩家手動設定）
 ```
 
@@ -371,15 +377,15 @@ k_Default2P : ↑↓←→ 移動，↑ 跳，BackSpace 取消，R_CTRL 射擊
 - 持有 `m_Applied[MAX_PLAYERS]`（已確認的設定）與 `m_Pending`（編輯中的暫存）。
 - `CommitPending()` 將暫存寫入 `m_Applied[m_CurrentPlayer]`。
 - `GetAppliedConfig(i)` 供 `LocalPlayGameScene::SpawnPlayers()` 取得按鍵設定。
-- `GetConfiguredPlayerCount()` 回傳已設定足夠按鍵（≥4 個非 UNKNOWN）的玩家數，供 `LocalPlayScene` 顯示警告。
+- `GetConfiguredPlayerCount()` 回傳已設定足夠按鍵（≥4 個非 UNKNOWN）的玩家數，供 `LocalPlayScene` 顯示警告與阻擋進入遊戲。
 
 ### 8.3 OptionMenuScene::Settings
 
 ```cpp
 struct Settings {
-    int  bgColorIndex = 0;   // 背景顏色索引（對應 s_BgColorOptions 清單）
-    int  bgmVolume    = 0;   // BGM 音量（0–20）
-    int  seVolume     = 0;   // SE 音量（0–20）
+    int  bgColorIndex = 0;   // 背景顏色索引（對應 s_BgColorOptions：WHITE/CREAM/DARK）
+    int  bgmVolume    = 10;  // BGM 音量（0–20），實際傳入 BGMPlayer 時乘 6
+    int  seVolume     = 10;  // SE 音量（0–20，目前 SE 系統尚未實作）
     bool dispNumber   = false; // 是否顯示玩家編號
 };
 ```
@@ -398,39 +404,46 @@ struct Settings {
 
 ```
 resources/
+├── BGM/
+│   ├── ppc.mp3
+│   ├── pp1.mp3
+│   └── pp2.mp3
 ├── Font/
-│   └── TerminusTTFWindows-Bold-4.49.3.ttf    （唯一字型）
+│   ├── TerminusTTFWindows-Bold-4.49.3.ttf   （主要字型）
+│   ├── FORCEDSQUARE.ttf
+│   └── Monocraft.ttf
 ├── Image/
 │   ├── Background/
-│   │   ├── white_background.jpg
+│   │   ├── white_background.png
+│   │   ├── cream_background.png
+│   │   ├── dark_background.png
 │   │   ├── background_floor.png
 │   │   ├── header.png
+│   │   ├── door_close.png
+│   │   ├── door_open.png
 │   │   ├── Menu_Frame.png
 │   │   ├── Choice_Frame.png
 │   │   ├── Option_Menu_Frame.png
-│   │   └── Option_Choice_Frame.png
+│   │   ├── Option_Choice_Frame.png
+│   │   ├── Option_HLine.png
+│   │   └── Keyboard_Config_Menu_Frame.png
 │   ├── Button/
 │   │   ├── ExitGameButton.png
-│   │   ├── Left_Tri_Button.png
-│   │   ├── Left_Tri_Button_Full.png
-│   │   ├── Right_Tri_Button.png
-│   │   └── Right_Tri_Button_Full.png
+│   │   ├── Left_Tri_Button.png / Left_Tri_Button_Full.png
+│   │   └── Right_Tri_Button.png / Right_Tri_Button_Full.png
 │   └── Character/
 │       └── {color}_cat/
-│           ├── {color}_cat_stand_1.png
-│           ├── {color}_cat_stand_2.png
-│           ├── {color}_cat_run_1.png
-│           ├── {color}_cat_run_2.png
-│           ├── {color}_cat_jump_1.png    （起跳→最高點）
-│           ├── {color}_cat_jump_2.png    （最高點→落地前）
-│           ├── {color}_cat_land_1.png
-│           ├── {color}_cat_push_1.png
-│           └── {color}_cat_push_2.png
+│           ├── {color}_cat_stand_1–8.png    （8 幀）
+│           ├── {color}_cat_run_1–9.png      （9 幀）
+│           ├── {color}_cat_jump_1.png       （起跳→最高點）
+│           ├── {color}_cat_jump_2.png       （最高點→落地前）
+│           ├── {color}_cat_land_1–2.png
+│           └── {color}_cat_push_1–3.png    （3 幀）
 ```
 
 ### 角色顏色順序
 
-`AppStart.cpp` 的 `kColorOrder` 決定角色 index 與顏色對應關係，**需與 `LocalPlayGameScene` 的 `kColorOrder` 保持一致**：
+由 `GameContext::kCatColorOrder` 統一定義，`AppStart.cpp` 和 `LocalPlayGameScene.cpp` 均使用此陣列，**不再各自維護**：
 
 ```
 index 0 = blue    index 4 = purple
@@ -439,7 +452,17 @@ index 2 = yellow  index 6 = orange
 index 3 = green   index 7 = gray
 ```
 
-> **未來新增角色動畫幀**（如 `push_3.png`）：修改 `BuildCatAnimPaths()` 中對應動作的 `numFrames` 參數即可，呼叫端無需變更。
+### CatAssets 工具（CatAssets.hpp）
+
+`CatAssets` namespace 提供三個 inline 函式，集中管理角色圖片路徑的建構邏輯，避免 `AppStart.cpp` 與 `LocalPlayGameScene.cpp` 各自重複實作：
+
+| 函式 | 說明 |
+|------|------|
+| `BuildFramePath(color, action, frameNum)` | 建立單幀路徑 |
+| `BuildFramePaths(color, action, numFrames)` | 建立多幀路徑（frame 1 ~ numFrames） |
+| `BuildFullAnimPaths(color)` | 建立完整的 `CatAnimPaths`（stand×8, run×9, jump×2, land×2, push×3） |
+
+> **未來新增角色動畫幀**（如 `push_4.png`）：只需修改 `BuildFullAnimPaths` 中對應動作的幀數，呼叫端無需變更。
 
 ---
 
@@ -453,14 +476,14 @@ TitleScene ──ENTER──→ MenuScene ──A/D 選單──→ ExitConfirmS
                           │                         │
                           │              ESC/NO──→ MenuScene
                           │
-                          ├──→ OptionMenuScene ──ENTER on KB CONFIG──→ KeyboardConfigScene
+                          ├──→ OptionMenuScene ──ENTER(row0)/mouse──→ KeyboardConfigScene
                           │         │                                        │
                           │    OK/ESC/CANCEL ←──────────────────────────────┘
                           │
-                          └──→ LocalPlayScene ──ENTER（人數足夠）──→ LocalPlayGameScene
-                                    │                                        │
-                               ESC/X───────────────────────────────────────→┘
-                               ← MenuScene
+                          └──→ LocalPlayScene ──ENTER（人數 ≤ configuredCount）──→ LocalPlayGameScene
+                                    │                                                    │
+                               ESC/X Button ←──────────────────────────────────────────┘
+                               → MenuScene
 ```
 
 ---
@@ -479,10 +502,11 @@ TitleScene ──ENTER──→ MenuScene ──A/D 選單──→ ExitConfirmS
 
 除上述步驟外，關卡場景通常還需要：
 
-- 持有 `CharacterPhysicsSystem m_CharPhysics` 和 `PhysicsWorld m_World`。
+- 持有 `CharacterPhysicsSystem` 和 `PhysicsWorld m_World`。
 - `OnEnter` 中呼叫 `SpawnPlayers()`、建立關卡物件、`m_World.Register()`。
 - `OnExit` 中清空 `m_World`，隱藏 `StartupCats`。
 - 讀取 `m_Ctx.SelectedPlayerCount` 決定玩家人數，讀取 `KeyboardConfigScene::GetAppliedConfig(i)` 取得按鍵設定。
+- 使用 `CatAssets::BuildFullAnimPaths(color)` 建立貓咪動畫路徑。
 
 ### 新增一個全域設定項目（例如「解析度」）
 
@@ -490,29 +514,8 @@ TitleScene ──ENTER──→ MenuScene ──A/D 選單──→ ExitConfirmS
 2. 在 `OptionMenuScene` 的 UI 建立對應的列（參考 BG COLOR 列的模式）。
 3. 若設定需跨場景生效，在 `GameContext` 加入對應成員，`OptionMenuScene` 在 OK 時同步寫入。
 
-### 新增一個 UI 按鈕類型
-
-繼承 `Character`，仿照 `UI_Triangle_Button` 加入：
-- `m_PressTimer`（計時器）
-- `Press(ms)` / `UpdateButton()` / `ResetState()` 三個方法
-
 ### 新增一個角色顏色
 
 1. 在 `resources/Image/Character/` 下建立 `{color}_cat/` 資料夾，放入所有動畫幀。
-2. 在 `AppStart.cpp` 和 `LocalPlayGameScene.cpp` 的 `kColorOrder` 陣列末尾追加顏色名稱字串。
+2. 在 `GameContext::kCatColorOrder` 陣列末尾追加顏色名稱字串。
 3. `LocalPlayScene::MAX_PLAYERS` 若需要支援超過 8 人，一併調整。
-
----
-
-## 附錄：工具函式
-
-### AppUtil
-
-**檔案**：`AppUtil.hpp` / `AppUtil.cpp`
-
-| 函式 | 說明 |
-|------|------|
-| `AlignLeft(text, boundaryX)` | 計算文字置左時的中心 X（用於選單標籤對齊） |
-| `AlignRight(text, boundaryX)` | 計算文字置右時的中心 X |
-| `KeycodeToString(key)` | 將 `Util::Keycode` 轉成顯示字串（`UNKNOWN` → `"-"`） |
-| `GetAnyKeyDown()` | 回傳這幀剛被按下的第一個可綁定按鍵 |

@@ -12,44 +12,23 @@ public:
     explicit Character(const std::string& ImagePath);
 
     Character(const Character&) = delete;
-
     Character(Character&&) = delete;
-
     Character& operator=(const Character&) = delete;
-
     Character& operator=(Character&&) = delete;
 
     [[nodiscard]] const std::string& GetImagePath() const { return m_ImagePath; }
-
     [[nodiscard]] const glm::vec2& GetPosition() const { return m_Transform.translation; }
-
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
-
-    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
+    [[nodiscard]] glm::vec2 GetSize() const { return GetScaledSize(); }
 
     void SetImage(const std::string& ImagePath);
-
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
-
     void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
 
-    [[nodiscard]] bool IfCollides(const std::shared_ptr<Character>& other) const {
-        float distance = glm::distance(this->GetPosition(), other->GetPosition());
-        return distance < 50.0f;
-    }
-
-    [[nodiscard]] bool IsStandingOn(const std::shared_ptr<Character>& other, float surfaceOffset) const {
-        return this->GetPosition().y <= (other->GetPosition().y + surfaceOffset);
-    }
-
-    // ==========================================
-    // 新增：偵測滑鼠是否懸停在圖片範圍內
-    // ==========================================
+    // 偵測滑鼠是否在物件範圍內
     [[nodiscard]] bool IsMouseHovering() const;
 
-    // ==========================================
-    // 新增：偵測文字是否被滑鼠左鍵點擊
-    // ==========================================
+    // 偵測物件是否被滑鼠左鍵點擊
     [[nodiscard]] bool IsLeftClicked() const;
 
 private:

@@ -18,34 +18,19 @@ public:
     }
 
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
-
-    void SetVisible(bool visible) { m_Visible = visible; }
+    [[nodiscard]] glm::vec2 GetPosition() const { return m_Transform.translation; }
+    [[nodiscard]] glm::vec2 GetSize() const { return GetScaledSize(); }
 
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
-
-    void SetColor(const Util::Color& color) {
-        auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable);
-        if (t) t->SetColor(color);
-    }
-
+    // 重新設定顏色 用於表達不同意義
+    void SetColor(const Util::Color& color) const ;
     // 重新設定文字 用於選單值變更時更新顯示
-    void SetText(const std::string& text) {
-        auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable);
-        if (t) t->SetText(text);
-    }
+    void SetText(const std::string& text) const ;
 
-    [[nodiscard]] const glm::vec2 GetPosition() const { return m_Transform.translation; }
-
-    [[nodiscard]] const glm::vec2 GetSize() const { return GetScaledSize(); }
-
-    // ==========================================
     // 新增：偵測滑鼠是否懸停在文字範圍內
-    // ==========================================
     [[nodiscard]] bool IsMouseHovering() const;
 
-    // ==========================================
     // 新增：偵測文字是否被滑鼠左鍵點擊
-    // ==========================================
     [[nodiscard]] bool IsLeftClicked() const;
 };
 

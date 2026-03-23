@@ -6,9 +6,6 @@
 #include "Util/Logger.hpp"
 #include "Util/Time.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 建構子
-// ─────────────────────────────────────────────────────────────────────────────
 TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
     : Scene(ctx), m_MenuScene(menuScene)
 {
@@ -23,9 +20,6 @@ TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
     m_PressEnterText->SetPosition({0.0f, -155.0f});
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ─────────────────────────────────────────────────────────────────────────────
 void TitleScene::OnEnter() {
     LOG_INFO("TitleScene::OnEnter");
 
@@ -36,7 +30,7 @@ void TitleScene::OnEnter() {
     m_FlashTimer = 0.0f;
     m_PressEnterText->SetVisible(true);
 
-    // ── 建立 PhysicsAgent 清單 ────────────────────────────────────────────
+    // 建立 PhysicsAgent 清單
     m_Agents.clear();
     for (int i = 0; i < static_cast<int>(m_Ctx.StartupCats.size()); ++i) {
         auto& cat = m_Ctx.StartupCats[i];
@@ -52,9 +46,6 @@ void TitleScene::OnEnter() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ─────────────────────────────────────────────────────────────────────────────
 void TitleScene::OnExit() {
     LOG_INFO("TitleScene::OnExit");
 
@@ -68,18 +59,15 @@ void TitleScene::OnExit() {
     m_Agents.clear();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Update
-// ─────────────────────────────────────────────────────────────────────────────
 Scene* TitleScene::Update() {
-    // ── PRESS ENTER 閃爍 ──────────────────────────────────────────────────
+    // PRESS ENTER 閃爍
     m_FlashTimer += Util::Time::GetDeltaTimeMs();
     if (m_FlashTimer >= 1000.0f) {
         m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
         m_FlashTimer = 0.0f;
     }
 
-    // ── 讀取輸入（Scene 的責任：決定每隻角色想往哪走、是否想跳）──────────
+    // 讀取輸入(Scene 的責任：決定每隻角色想往哪走、是否想跳)
     for (auto& agent : m_Agents) {
         if (agent.actor == nullptr) continue;
         auto& st = agent.state;
@@ -99,25 +87,21 @@ Scene* TitleScene::Update() {
             if      (goLeft  && !goRight) st.moveDir = -1;
             else if (goRight && !goLeft)  st.moveDir =  1;
 
-            // 跳躍：直接設定 velocityY（System 在下一步施加重力）
+            // 直接設定 velocityY(System 在下一步施加重力)
             const bool wantJump = (jk != Util::Keycode::UNKNOWN) &&
                                    Util::Input::IsKeyDown(jk);
 
             if (st.grounded && wantJump) {
-                // HasHeadBlock 由 System 內部檢查；此處只設旗標
-                // ※ 為避免循環依賴，TitleScene 直接寫入 velocityY
-                //   System 的 Update 不會重複施加跳躍力
-                st.velocityY    = CharacterPhysicsSystem::kJumpForce;
-                st.grounded     = false;
-                st.supportIndex = -1;
+                CharacterPhysicsSystem::ApplyJump(st);
             }
         }
     }
 
-    // ── 委託物理系統處理所有運算（含動畫）───────────────────────────────
-    m_Physics.Update(m_Agents, m_Ctx.Floor);
+    // 委託物理系統處理所有運算(含動畫)
+    // m_Physics.Update(m_Agents, m_Ctx.Floor);
+    CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
 
-    // ── 場景切換 ──────────────────────────────────────────────────────────
+    //場景切換
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         LOG_INFO("TitleScene: ENTER pressed → MenuScene");
         return m_MenuScene;

@@ -7,19 +7,9 @@
 
 #include "Util/BGM.hpp"
 #include <vector>
-#include <string>
 #include <memory>
 
-/**
- * @class BGMPlayer
- * @brief 專門管理背景音樂輪播的 OOP 封裝類別
- *
- * 功能：
- * - 自動載入 Resources/BGM/ 資料夾下的三首歌
- * - 自動輪播
- * - 預設音量 50% (64)
- * - 可隨時暫停、繼續、調整音量
- */
+
 class BGMPlayer {
 public:
     BGMPlayer();

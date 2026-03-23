@@ -10,47 +10,38 @@
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-// ────────────────────────────────────────────────────────────────────────────
-// 靜態色彩常數
-// ────────────────────────────────────────────────────────────────────────────
 const Util::Color LocalPlayScene::k_Black = Util::Color::FromRGB(0,   0,   0,   255);
 const Util::Color LocalPlayScene::k_Red   = Util::Color::FromRGB(220, 50,  50,  255);
 
-// ────────────────────────────────────────────────────────────────────────────
-// 建構子
-// ────────────────────────────────────────────────────────────────────────────
 LocalPlayScene::LocalPlayScene(GameContext& ctx,
                                MenuScene* menuScene,
                                std::shared_ptr<Character>          menuFrame,
                                std::shared_ptr<Character>          exitGameButton,
                                std::shared_ptr<UI_Triangle_Button> leftTriButton,
                                std::shared_ptr<UI_Triangle_Button> rightTriButton,
-                               std::shared_ptr<Character>          blueCatRunImg,  // ← 新增
+                               std::shared_ptr<Character>          blueCatRunImg,
                                KeyboardConfigScene* kbConfigScene)
     : Scene(ctx)
     , m_MenuFrame(std::move(menuFrame))
     , m_ExitGameButton(std::move(exitGameButton))
     , m_LeftTriButton(std::move(leftTriButton))
     , m_RightTriButton(std::move(rightTriButton))
-    , m_BlueCatRunImg(std::move(blueCatRunImg))   // ← 新增
+    , m_BlueCatRunImg(std::move(blueCatRunImg))
     , m_MenuScene(menuScene)
     , m_KbConfigScene(kbConfigScene)
 {
-    // ── 主文字："nPLAYER GAME"，與 MenuScene 選項文字同位置、同大小 ──────────
+    // 主文字："nPLAYER GAME"，與 MenuScene 選項文字同位置、同大小
     m_PlayerCountText = std::make_shared<GameText>("2PLAYER GAME", 65, k_Black);
     m_PlayerCountText->SetZIndex(20);
     m_PlayerCountText->SetPosition({0.0f, -153.0f}); // -118
 
-    // ── 警告文字：略小、紅色，顯示於主文字正上方 ──────────────────────────
+    // 警告文字：略小、紅色，顯示於主文字正上方
     m_NoConfigText = std::make_shared<GameText>("No keyboard config", 30, k_Red);
     m_NoConfigText->SetZIndex(20);
     m_NoConfigText->SetPosition({0.0f, -188.0f});
     m_NoConfigText->SetVisible(false);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnEnter
-// ────────────────────────────────────────────────────────────────────────────
 void LocalPlayScene::OnEnter() {
     LOG_INFO("LocalPlayScene::OnEnter  players={}", m_PlayerCount);
 
@@ -65,15 +56,15 @@ void LocalPlayScene::OnEnter() {
     m_Ctx.Root.AddChild(m_PlayerCountText);
     m_Ctx.Root.AddChild(m_NoConfigText);
 
-    // ── 確保共用元件可見且位置/縮放與 MenuScene 完全相同 ──────────────────
+    // 確保共用元件可見且位置/縮放與 MenuScene 完全相同
     m_MenuFrame->SetVisible(true);
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_MenuFrame->SetPosition({0.0f, -105.0f});
 
-    m_BlueCatRunImg->SetVisible(true);                            // ← 新增
-    m_BlueCatRunImg->SetZIndex(10);                               // ← 新增
-    m_BlueCatRunImg->SetScale({1.2f, 1.2f});                      // ← 新增
-    m_BlueCatRunImg->SetPosition({0.0f, -74.0f});                 // ← 新增
+    m_BlueCatRunImg->SetVisible(true);
+    m_BlueCatRunImg->SetZIndex(10);
+    m_BlueCatRunImg->SetScale({1.2f, 1.2f});
+    m_BlueCatRunImg->SetPosition({0.0f, -74.0f});
 
     m_ExitGameButton->SetVisible(true);
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
@@ -90,9 +81,6 @@ void LocalPlayScene::OnEnter() {
     UpdateDisplay();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// OnExit
-// ────────────────────────────────────────────────────────────────────────────
 void LocalPlayScene::OnExit() {
     LOG_INFO("LocalPlayScene::OnExit");
 
@@ -106,27 +94,24 @@ void LocalPlayScene::OnExit() {
 
     m_Ctx.Root.RemoveChild(m_LeftTriButton);
     m_Ctx.Root.RemoveChild(m_RightTriButton);
-    m_Ctx.Root.RemoveChild(m_BlueCatRunImg);   // ← 新增
+    m_Ctx.Root.RemoveChild(m_BlueCatRunImg);
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
     m_Ctx.Root.RemoveChild(m_MenuFrame);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Update
-// ────────────────────────────────────────────────────────────────────────────
 Scene* LocalPlayScene::Update() {
     // 推進按鈕動畫計時器
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
-    // ── ESC / X 按鈕 → 返回 MenuScene ────────────────────────────────────
+    // ESC / X 按鈕  返回 MenuScene
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("LocalPlayScene: back to MenuScene");
         return m_MenuScene;
     }
 
-    // ── 判斷左右輸入 ──────────────────────────────────────────────────────
+    // 判斷左右輸入
     const bool pressedLeft  = Util::Input::IsKeyDown(Util::Keycode::A)    ||
                               Util::Input::IsKeyDown(Util::Keycode::LEFT)  ||
                               m_LeftTriButton->IsLeftClicked();
@@ -152,14 +137,14 @@ Scene* LocalPlayScene::Update() {
         UpdateDisplay();
     }
 
-    // ── ENTER → 確認人數（可在此接實際遊戲場景） ──────────────────────────
+    // ENTER  確認人數(可在此接實際遊戲場景)
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         int configuredCount = 0;
         if (m_KbConfigScene != nullptr) {
             configuredCount = m_KbConfigScene->GetConfiguredPlayerCount();
         }
 
-        if (m_GameScene != nullptr && m_PlayerCount <= configuredCount) {
+        if (m_PlayerCount <= configuredCount) {
             m_Ctx.SelectedPlayerCount = m_PlayerCount;
             LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
             return m_GameScene;
@@ -172,10 +157,8 @@ Scene* LocalPlayScene::Update() {
     return nullptr;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 私有：根據目前人數更新文字顯示與顏色
-// ────────────────────────────────────────────────────────────────────────────
-void LocalPlayScene::UpdateDisplay() {
+// 根據目前人數更新文字顯示與顏色
+void LocalPlayScene::UpdateDisplay() const {
     // 主文字
     m_PlayerCountText->SetText(std::to_string(m_PlayerCount) + "PLAYER GAME");
 

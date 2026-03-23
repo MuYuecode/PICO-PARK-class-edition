@@ -29,14 +29,11 @@ public:
     void SetOptionScene(OptionMenuScene* s)       { m_OptionScene = s; }
     void SetLocalPlayScene(LocalPlayScene* s)     { m_LocalPlayScene = s; }
 
-    // [新增] ExitConfirmScene 需要借用這兩個物件（修改 scale / position），
-    // 而且需要知道它們是「已在渲染樹中的那組」，所以透過 getter 共享。
-    // AppStart 先建立 MenuScene，再把這兩個物件傳給 ExitConfirmScene。
-    std::shared_ptr<Character> GetMenuFrame()      const { return m_MenuFrame; }
-    std::shared_ptr<Character> GetExitGameButton() const { return m_ExitGameButton; }
-    std::shared_ptr<UI_Triangle_Button> GetLeftTriButton()  const { return m_LeftTriButton;  }  // ← 新增
-    std::shared_ptr<UI_Triangle_Button> GetRightTriButton() const { return m_RightTriButton; }  // ← 新增
-    std::shared_ptr<Character> GetBlueCatRunImg()  const { return m_blue_cat_run_img; }
+    [[nodiscard]] std::shared_ptr<Character> GetMenuFrame()      const { return m_MenuFrame; }
+    [[nodiscard]] std::shared_ptr<Character> GetExitGameButton() const { return m_ExitGameButton; }
+    [[nodiscard]] std::shared_ptr<UI_Triangle_Button> GetLeftTriButton()  const { return m_LeftTriButton;  }  // ← 新增
+    [[nodiscard]] std::shared_ptr<UI_Triangle_Button> GetRightTriButton() const { return m_RightTriButton; }  // ← 新增
+    [[nodiscard]] std::shared_ptr<Character> GetBlueCatRunImg()  const { return m_blue_cat_run_img; }
 
 private:
     std::shared_ptr<Character>          m_MenuFrame;
@@ -57,10 +54,10 @@ private:
     Scene*             m_TitleScene        = nullptr;
     ExitConfirmScene*  m_ExitConfirmScene  = nullptr;
     OptionMenuScene*   m_OptionScene       = nullptr;
-    LocalPlayScene*    m_LocalPlayScene    = nullptr;  // ← 取代 PlayerSelectScene
+    LocalPlayScene*    m_LocalPlayScene    = nullptr;
 
-    void ShowCurrentOption();
-    void HideAllOptions();
+    void ShowCurrentOption() const;
+    void HideAllOptions() const;
 };
 
 #endif // MENU_SCENE_HPP

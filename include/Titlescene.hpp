@@ -21,14 +21,14 @@ public:
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
 
 private:
-    // ── UI ───────────────────────────────────────────────────────────────
+    // UI
     std::shared_ptr<GameText> m_TitleSub;
     std::shared_ptr<GameText> m_PressEnterText;
 
     float      m_FlashTimer = 0.0f;
     MenuScene* m_MenuScene  = nullptr;
 
-    // ── 物理系統（算法）與代理人（資料）─────────────────────────────────
+    // 物理系統(算法)與代理人(資料)
     CharacterPhysicsSystem      m_Physics;
     std::vector<PhysicsAgent>   m_Agents;
 };

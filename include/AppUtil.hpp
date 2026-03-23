@@ -7,32 +7,27 @@
 #include "Util/Keycode.hpp"
 
 namespace AppUtil {
-
-    /**
-     * @brief 計算文字置左對齊時的中心 X 座標
-     */
+    // 計算文字靠左對齊時的 X 座標
     inline float AlignLeft(const GameText& text, float boundaryX) {
         return boundaryX + text.GetSize().x / 2.0f;
     }
 
-    /**
-     * @brief 計算文字置右對齊時的中心 X 座標
-     */
+    // 計算文字靠右對齊時的 X 座標
     inline float AlignRight(const GameText& text, float boundaryX) {
         return boundaryX - text.GetSize().x / 2.0f;
     }
 
-    /**
-     * @brief 將 Keycode 轉成玩家看得懂的顯示字串
-     *        UNKNOWN → "-"
-     */
+    // 將 Keycode 轉成玩家看得懂的顯示字串
     std::string KeycodeToString(Util::Keycode key);
 
-    /**
-     * @brief 回傳這一幀剛被按下的第一個可綁定按鍵
-     *        若無任何按鍵被按下，回傳 Util::Keycode::UNKNOWN
-     */
+    // 回傳這一幀剛被按下的第一個可綁定按鍵
     Util::Keycode GetAnyKeyDown();
+
+    // 共用判斷，是否有滑鼠在物件上
+    bool IsMouseHovering(const Util::GameObject& obj);
+
+    // 共用判斷，物件是否被滑鼠點擊
+    bool IsLeftClicked(const Util::GameObject& obj);
 
 } // namespace AppUtil
 

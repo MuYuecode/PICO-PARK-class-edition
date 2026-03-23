@@ -110,7 +110,7 @@ Scene* ExitConfirmScene::Update() {
     return nullptr;
 }
 
-void ExitConfirmScene::UpdateChoiceFramePosition() {
+void ExitConfirmScene::UpdateChoiceFramePosition() const {
     if (m_IsYesSelected) {
         m_ChoiceFrame->SetPosition({-120.0f, -180.0f});
     }

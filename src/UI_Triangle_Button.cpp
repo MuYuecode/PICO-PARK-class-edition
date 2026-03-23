@@ -5,10 +5,10 @@
 #include "UI_Triangle_Button.hpp"
 #include "Util/Time.hpp"
 
-UI_Triangle_Button::UI_Triangle_Button(const std::string& normalImagePath, const std::string& pressedImagePath)
+UI_Triangle_Button::UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath)
     : Character(normalImagePath), // 呼叫父類別建構子，預設載入 normal 圖片
-      m_NormalImagePath(normalImagePath),
-      m_PressedImagePath(pressedImagePath) {
+      m_NormalImagePath(std::move(normalImagePath)),
+      m_PressedImagePath(std::move(pressedImagePath)) {
 }
 
 void UI_Triangle_Button::Press(float durationMs) {

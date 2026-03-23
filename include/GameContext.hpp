@@ -1,7 +1,6 @@
 #ifndef PICOPART_GAMECONTEXT_HPP
 #define PICOPART_GAMECONTEXT_HPP
 
-#include "pch.hpp" // IWYU pragma: export
 #include "BGMPlayer.hpp"
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
@@ -17,7 +16,7 @@ struct GameContext {
     std::shared_ptr<BGMPlayer>  BGMPlayer;
 
     // 在多個 Scene 都要顯示
-    // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除。
+    // 所以移到 GameContext，由 AppStart 加入渲染樹後就不再移除
     std::shared_ptr<Character> Header;
     std::shared_ptr<Character> Door;
 
@@ -27,6 +26,11 @@ struct GameContext {
     int CooperativePushPower = 1;
 
     bool ShouldQuit = false;
+
+    // character color
+    static constexpr std::array<const char*, 8> kCatColorOrder = {
+        "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"
+    };
 
     explicit GameContext(Util::Renderer& root)
         : Root(root) {}

@@ -21,12 +21,12 @@ public:
         return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetState() == Util::Animation::State::PLAY;
     }
 
-    void SetLooping(bool looping) {
-        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
+    void SetLooping(bool looping) const {
+        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable) ;
         temp->SetLooping(looping);
     }
 
-    void Play() {
+    void Play() const {
         auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
         temp->Play();
     }
