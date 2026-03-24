@@ -8,6 +8,7 @@
 #include "CharacterPhysicsSystem.hpp"
 
 class LocalPlayScene;
+class LevelSelectScene;
 
 class LocalPlayGameScene : public Scene {
 public:
@@ -19,6 +20,8 @@ public:
     void   OnEnter() override;
     void   OnExit()  override;
     Scene* Update()  override;
+
+    void SetLevelSelectScene(LevelSelectScene* s) { m_LevelSelectScene = s; }
 
 private:
     // 場景私有：每位玩家持有一份按鍵設定
@@ -32,8 +35,7 @@ private:
     int                       m_EnteredCount = 0;
     void                      UpdateDoorCountText() const ;
 
-    // 下一個場景(LevelSelectScene，尚未實作時設為 nullptr)
-    Scene*               m_LevelSelectScene = nullptr;
+    LevelSelectScene*    m_LevelSelectScene = nullptr;
     LocalPlayScene*      m_LocalPlayScene   = nullptr;
     KeyboardConfigScene* m_KbConfigScene    = nullptr;
 
@@ -43,7 +45,6 @@ private:
     void SpawnPlayers(int count);
     void ApplyInitialFormation();
     void UpdateCooperativePower() const ;
-    void SetLevelSelectScene(Scene* s) { m_LevelSelectScene = s; }
 };
 
 #endif // PICOPART_LOCALPLAYGAMESCENE_HPP

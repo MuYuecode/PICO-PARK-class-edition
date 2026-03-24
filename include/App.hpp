@@ -13,6 +13,7 @@ class OptionMenuScene;
 class KeyboardConfigScene;
 class LocalPlayScene;
 class LocalPlayGameScene;
+class LevelSelectScene;
 
 class App {
 public:
@@ -39,6 +40,7 @@ private:
     std::unique_ptr<Scene> m_KeyboardConfigScene;
     std::unique_ptr<Scene> m_LocalPlayScene;
     std::unique_ptr<Scene> m_LocalPlayGameScene;
+    std::unique_ptr<Scene> m_LevelSelectScene;
 
     Scene* m_CurrentScene = nullptr;
 };

@@ -14,12 +14,12 @@
 
 // 角色動畫狀態
 enum class CatAnimState {
-    STAND,      // 站立（循環）
-    RUN,        // 跑步（循環）
-    JUMP_RISE,  // 起跳到最高點 — jump_1.png（循環）
-    JUMP_FALL,  // 最高點到落地前 — jump_2.png（循環）
-    LAND,       // 落地（播一次）
-    PUSH,       // 推動（循環）
+    STAND,      // 站立(循環)
+    RUN,        // 跑步(循環)
+    JUMP_RISE,  // 起跳到最高點 — jump_1.png(循環)
+    JUMP_FALL,  // 最高點到落地前 — jump_2.png(循環)
+    LAND,       // 落地(播一次)
+    PUSH,       // 推動(循環)
 };
 
 // 各動畫所需的圖片路徑集合

@@ -20,7 +20,14 @@ FetchContent_Declare(
     SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/PTSD
 )
 
+FetchContent_Declare(
+        nlohmann_json
+        URL         https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip
+        SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/lib/nlohmann_json
+)
+
 FetchContent_MakeAvailable(ptsd)
+FetchContent_MakeAvailable(sdl2 sdl2_image sdl2_ttf sdl2_mixer spdlog glm googletest nlohmann_json)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 file(GLOB_RECURSE HEADER_FILES include/*.hpp)
@@ -56,6 +63,10 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         include/BGMPlayer.hpp
         src/BGMPlayer.cpp
         include/CatAssets.hpp
+        include/Savemanager.hpp
+        src/Savemanager.cpp
+        include/LevelSelectScene.hpp
+        src/LevelSelectScene.cpp
 )
 
 if(MSVC)
@@ -77,4 +88,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/i
 target_link_libraries(${PROJECT_NAME}
     SDL2::SDL2main
     PTSD
+    nlohmann_json
 )

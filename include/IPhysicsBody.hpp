@@ -10,19 +10,19 @@ class IPhysicsBody;
 
 // 物理物件類型
 enum class BodyType {
-    CHARACTER,              // 玩家角色（PlayerCat）
+    CHARACTER,              // 玩家角色(PlayerCat)
     PUSHABLE_BOX,           // 有條件可被推動的箱子
     PATROL_ENEMY,           // 固定巡邏路徑的敵人
     MOVING_PLATFORM,        // 固定軌跡移動的平台
     CONDITIONAL_PLATFORM,   // 有條件才移動的平台
-    ROPE_ENDPOINT,          // 繩索端點（成對出現）
+    ROPE_ENDPOINT,          // 繩索端點(成對出現)
     BULLET,                 // 子彈
 };
 
 // 碰撞資訊(傳入 OnCollision 的完整情境)
 struct CollisionInfo {
     IPhysicsBody* other    = nullptr;      // 碰到誰
-    glm::vec2     normal   = {0, 0};   // 碰撞法向量（從 other 指向 self）
+    glm::vec2     normal   = {0, 0};   // 碰撞法向量(從 other 指向 self)
     float         depth    = 0.0f;         // 穿透深度
 };
 
@@ -30,7 +30,7 @@ struct CollisionInfo {
 // 設計原則：
 //   - 介面只定義「PhysicsWorld 需要知道的最小資訊」
 //   - 具體的動畫、渲染、AI 邏輯留在子類別
-//   - PhysicsUpdate() 是物件的「自驅動」邏輯（敵人移動、平台軌跡等）
+//   - PhysicsUpdate() 是物件的「自驅動」邏輯(敵人移動、平台軌跡等)
 //   - OnCollision()   是物件對「外部碰撞事件」的反應
 class IPhysicsBody {
 public:

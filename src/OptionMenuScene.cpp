@@ -2,11 +2,14 @@
 // Created by cody2 on 2026/3/15.
 //
 
+#include "SaveManager.hpp"
+#include "BGMPlayer.hpp"
+#include "AppUtil.hpp"
+
 #include "Menuscene.hpp"
 #include "OptionMenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "BGMPlayer.hpp"
-#include "AppUtil.hpp"
+
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -139,6 +142,21 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_CancelText = std::make_shared<GameText>("CANCEL", 45, black);
     m_CancelText->SetZIndex(35);
     m_CancelText->SetPosition({COL_CANCEL_X, ROW_Y_BTN});
+
+    OptionSettingsData saved;
+    if (SaveManager::LoadOptionSettings(saved)) {
+        m_Applied.bgColorIndex = saved.bgColorIndex;
+        m_Applied.bgmVolume    = saved.bgmVolume;
+        m_Applied.seVolume     = saved.seVolume;
+        m_Applied.dispNumber   = saved.dispNumber;
+        LOG_INFO("OptionMenuScene: loaded settings from file");
+    }
+
+    // 確保建構選單時，立刻將讀取到(或預設)的設定套用到全局的 Context 中
+    ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
+    if (ctx.BGMPlayer) {
+        ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
+    }
 }
 
 void OptionMenuScene::OnEnter() {
@@ -247,6 +265,17 @@ Scene* OptionMenuScene::Update() {
         m_Applied = m_Pending;
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
         m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
+
+        {
+            OptionSettingsData toSave{
+                m_Applied.bgColorIndex,
+                m_Applied.bgmVolume,
+                m_Applied.seVolume,
+                m_Applied.dispNumber
+            };
+            SaveManager::SaveOptionSettings(toSave);
+        }
+
         LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
         return m_MenuScene;
     }
@@ -309,6 +338,17 @@ Scene* OptionMenuScene::Update() {
             m_Applied = m_Pending;
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
             m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
+
+            {
+            OptionSettingsData toSave{
+                m_Applied.bgColorIndex,
+                m_Applied.bgmVolume,
+                m_Applied.seVolume,
+                m_Applied.dispNumber
+            };
+            SaveManager::SaveOptionSettings(toSave);
+            }
+
             LOG_INFO("OptionMenuScene: OK (keyboard) => MenuScene");
             return m_MenuScene;
         case 6:

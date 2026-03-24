@@ -29,6 +29,7 @@ void App::TransitionTo(Scene* next) {
     }
     m_CurrentScene = next;
     if (m_CurrentScene != nullptr) {
+        LOG_INFO("now is {}", typeid(*m_CurrentScene).name());
         m_CurrentScene->OnEnter();
     }
 }

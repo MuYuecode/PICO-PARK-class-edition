@@ -2,7 +2,6 @@
 #define APP_UTIL_HPP
 
 #include <string>
-#include "Character.hpp"
 #include "GameText.hpp"
 #include "Util/Keycode.hpp"
 

@@ -18,14 +18,14 @@ class KeyboardConfigScene;
 
 /**
  * 遊戲設定選單場景
- * 選單結構（由上至下）：
- *   OPTION（標題，置中）
+ * 選單結構(由上至下)：
+ *   OPTION(標題，置中)
  *   KEYBOARD CONFIG  |  OPEN
  *   BG COLOR         |  ◀  WHITE  ▶
  *   BGM VOLUME       |  ◀  0      ▶
  *   SE VOLUME        |  ◀  0      ▶
  *   DISP NUMBER      |  ◀  OFF    ▶
- *   ──────────────────────────────
+ *
  *          OK              CANCEL
  *
  * 操作方式：
@@ -36,7 +36,7 @@ class KeyboardConfigScene;
  *   ENTER  : 確認(KEYBOARD CONFIG 開啟子頁；OK/CANCEL/ESC 離開)
  *   ESC / X 按鈕 / CANCEL : 取消並返回 MenuScene
  *
- * m_ChoiceFrame 永遠圍住當前選中列的「值」區域（OPEN 或中間文字）。
+ * m_ChoiceFrame 永遠圍住當前選中列的「值」區域(OPEN 或中間文字)
  */
 class OptionMenuScene : public Scene {
 public:

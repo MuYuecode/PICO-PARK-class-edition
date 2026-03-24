@@ -50,7 +50,7 @@ public:
 
     static constexpr int MAX_PLAYERS = 8;
 
-    // 回傳已設定足夠按鍵(≥4 個非 UNKNOWN)的玩家數量。
+    // 回傳已設定足夠按鍵(≥4 個非 UNKNOWN)的玩家數量
     [[nodiscard]] int GetConfiguredPlayerCount() const;
 
     [[nodiscard]] PlayerKeyConfig GetAppliedConfig(int playerIdx) const {

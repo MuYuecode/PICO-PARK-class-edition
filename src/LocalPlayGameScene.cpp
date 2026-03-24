@@ -1,13 +1,14 @@
 #include "LocalPlayGameScene.hpp"
+#include "LocalPlayScene.hpp"
+#include "LevelSelectScene.hpp"
+
+#include "CatAssets.hpp"
+#include "Util/Input.hpp"
+#include "Util/Logger.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
-
-#include "CatAssets.hpp"       // ← 【重複 1】修正：共用路徑工具
-#include "LocalPlayScene.hpp"
-#include "Util/Input.hpp"
-#include "Util/Logger.hpp"
 
 LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
                                        LocalPlayScene* localPlayScene,
@@ -129,8 +130,9 @@ Scene* LocalPlayGameScene::Update() {
             pb.agent.actor->SetPosition({640, -360});
             UpdateDoorCountText();
 
-            if (m_EnteredCount >= m_Ctx.SelectedPlayerCount) {
-                return m_LevelSelectScene;   // 尚未實作時回傳 nullptr
+            if (m_EnteredCount == m_Ctx.SelectedPlayerCount) {
+                LOG_INFO("LocalPlayGameScene all players entered the door, going to LevelSelectScene");
+                return m_LevelSelectScene;
             }
         }
     }

@@ -9,11 +9,11 @@
 
 #include "IPhysicsBody.hpp"
 
-// 繩索約束（成對記錄，由 PhysicsWorld 統一解析）
+// 繩索約束(成對記錄，由 PhysicsWorld 統一解析)
 struct RopeConstraint {
     IPhysicsBody* bodyA    = nullptr;
     IPhysicsBody* bodyB    = nullptr;
-    float         maxLen   = 200.0f;  // 繩索最大長度（像素）
+    float         maxLen   = 200.0f;  // 繩索最大長度(像素)
     float         friction = 0.5f;    // 0=無阻力，1=完全鎖死
 
     // TODO 實作時補充：
@@ -29,17 +29,17 @@ struct RopeConstraint {
 // PhysicsWorld：物理物件的協調者
 //
 // 職責：
-//   1. 持有場景中所有 IPhysicsBody 的弱引用（不擁有生命週期）
+//   1. 持有場景中所有 IPhysicsBody 的弱引用(不擁有生命週期)
 //   2. 每 frame 按順序執行：
-//       a. 呼叫各 body 的 PhysicsUpdate()（自驅動邏輯）
+//       a. 呼叫各 body 的 PhysicsUpdate()(自驅動邏輯)
 //       b. 解析繩索約束
-//       c. 廣播 AABB 碰撞事件（呼叫 OnCollision）
-//   3. 提供查詢工具，供各 System 使用（計算「有幾人推箱子」等）
+//       c. 廣播 AABB 碰撞事件(呼叫 OnCollision)
+//   3. 提供查詢工具，供各 System 使用(計算「有幾人推箱子」等)
 //
 // 不負責的事：
-//   - 玩家輸入（Scene 的責任）
-//   - 動畫切換（各物件自行處理）
-//   - 渲染（GameObject / Renderer 的責任）
+//   - 玩家輸入(Scene 的責任)
+//   - 動畫切換(各物件自行處理)
+//   - 渲染(GameObject / Renderer 的責任)
 class PhysicsWorld {
 public:
     PhysicsWorld()  = default;
@@ -64,7 +64,7 @@ public:
     // 查詢工具(供各 System / 物件的 PhysicsUpdate 使用)
 
     // 計算「有幾個 CHARACTER body 正在往 dir 方向推 target」
-    // dir: +1 = 向右推（body 在 target 左側往右移），-1 = 向左推
+    // dir: +1 = 向右推(body 在 target 左側往右移)，-1 = 向左推
     // 用於：PushableBox 判斷是否達到 n 人推動條件
     // int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
 

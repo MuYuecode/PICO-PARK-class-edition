@@ -90,11 +90,11 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 //     //     // 方向：從 B 指向 A
 //     //     glm::vec2 dir = delta / dist;
 //     //
-//     //     // 力大小（可調整 stiffness）
+//     //     // 力大小(可調整 stiffness)
 //     //     constexpr float stiffness = 0.8f;
 //     //     float forceMag = (dist - rope.maxLen) * stiffness;
 //     //
-//     //     // 施加到速度（乘上 1-friction 模擬阻力）
+//     //     // 施加到速度(乘上 1-friction 模擬阻力)
 //     //     float factor = 1.0f - rope.friction;
 //     //     glm::vec2 velA = rope.bodyA->GetVelocity();
 //     //     glm::vec2 velB = rope.bodyB->GetVelocity();
@@ -108,7 +108,7 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 // void PhysicsWorld::StepCollisions() {
 //     // TODO：實作碰撞廣播
 //     //
-//     // 使用暴力 O(n²) 先行，之後可改為空間分割（Sweep-and-Prune 等）
+//     // 使用暴力 O(n²) 先行，之後可改為空間分割(Sweep-and-Prune 等)
 //     //
 //     // std::vector<std::shared_ptr<IPhysicsBody>> live;
 //     // for (auto& wp : m_Bodies) {
@@ -151,7 +151,7 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 //     //     glm::vec2 cPos  = sp->GetPosition();
 //     //     glm::vec2 cHalf = sp->GetHalfSize();
 //     //
-//     //     // 垂直上需在同層（避免把頭上的角色也算進去）
+//     //     // 垂直上需在同層(避免把頭上的角色也算進去)
 //     //     float vertGap = std::abs(cPos.y - tPos.y);
 //     //     if (vertGap > (tHalf.y + cHalf.y) * 0.65f) continue;
 //     //
@@ -174,7 +174,7 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 
 // 查詢：計算幾個 body 站在 target 頂部
 // int PhysicsWorld::CountBodiesOnTop(const IPhysicsBody* target) const {
-//     // TODO：實作（呼叫 IsOnTop）
+//     // TODO：實作(呼叫 IsOnTop)
 //     //
 //     // int count = 0;
 //     // for (auto& wp : m_Bodies) {

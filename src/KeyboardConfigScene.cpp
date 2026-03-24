@@ -2,9 +2,12 @@
 // Created by cody2 on 2026/3/16.
 //
 
+#include "SaveManager.hpp"
+#include "AppUtil.hpp"
+
 #include "KeyboardConfigScene.hpp"
 #include "OptionMenuScene.hpp"
-#include "AppUtil.hpp"
+
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -146,6 +149,33 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_OkText->SetPosition({COL_OK_X,      ROW_Y_BTN});
     m_CancelText->SetPosition({COL_CANCEL_X,  ROW_Y_BTN});
     m_DefaultText->SetPosition({COL_DEFAULT_X, ROW_Y_BTN});
+
+    {
+        std::array<KeyConfigData, MAX_PLAYERS> loaded;
+        if (SaveManager::LoadKeyConfigs(loaded)) {
+            auto toKeyConfig = [](const KeyConfigData& d) -> PlayerKeyConfig {
+                PlayerKeyConfig p;
+                p.up      = static_cast<Util::Keycode>(d.up);
+                p.down    = static_cast<Util::Keycode>(d.down);
+                p.left    = static_cast<Util::Keycode>(d.left);
+                p.right   = static_cast<Util::Keycode>(d.right);
+                p.jump    = static_cast<Util::Keycode>(d.jump);
+                p.cancel  = static_cast<Util::Keycode>(d.cancel);
+                p.shot    = static_cast<Util::Keycode>(d.shot);
+                p.menu    = static_cast<Util::Keycode>(d.menu);
+                p.subMenu = static_cast<Util::Keycode>(d.subMenu);
+                return p;
+            };
+            for (int i = 0; i < MAX_PLAYERS; ++i) {
+                // 只有實際有設定的玩家才覆蓋(非全 UNKNOWN)
+                if (loaded[i].up != 0 || loaded[i].down != 0 ||
+                    loaded[i].left != 0 || loaded[i].right != 0) {
+                    m_Applied[i] = toKeyConfig(loaded[i]);
+                    }
+            }
+            LOG_INFO("KeyboardConfigScene: loaded key configs from file");
+        }
+    }
 }
 
 void KeyboardConfigScene::OnEnter() {
@@ -272,7 +302,7 @@ Scene* KeyboardConfigScene::Update() {
 
     if ((m_SelectedRow == ROW_PLAYER && pressedLeft) || m_PlayerLeftBtn->IsLeftClicked()) {
         m_SelectedRow = ROW_PLAYER ;
-        // 切到前一位玩家（循環）
+        // 切到前一位玩家(循環)
         int next = (m_CurrentPlayer + MAX_PLAYERS - 1) % MAX_PLAYERS;
         m_CurrentPlayer = next;
         LoadPlayer(next);
@@ -304,7 +334,7 @@ Scene* KeyboardConfigScene::Update() {
     // ENTER 確認
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN) || Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
         if (m_SelectedRow == ROW_OK) {
-            // 有衝突時禁止 OK（3P-8P）
+            // 有衝突時禁止 OK(3P-8P)
             if (m_CurrentPlayer >= 1 && HasConflicts()) {
                 LOG_INFO("KeyboardConfigScene: OK blocked due to key conflict");
             }
@@ -359,6 +389,20 @@ void KeyboardConfigScene::LoadPlayer(int playerIdx) {
 // m_Pending → m_Applied[m_CurrentPlayer]
 void KeyboardConfigScene::CommitPending() {
     m_Applied[m_CurrentPlayer] = m_Pending;
+
+    {
+        auto toData = [](const PlayerKeyConfig& p) -> KeyConfigData {
+            return { static_cast<int>(p.up),   static_cast<int>(p.down),
+                     static_cast<int>(p.left),  static_cast<int>(p.right),
+                     static_cast<int>(p.jump),  static_cast<int>(p.cancel),
+                     static_cast<int>(p.shot),  static_cast<int>(p.menu),
+                     static_cast<int>(p.subMenu) };
+        };
+        std::array<KeyConfigData, MAX_PLAYERS> saveData;
+        for (int i = 0; i < MAX_PLAYERS; ++i)
+            saveData[i] = toData(m_Applied[i]);
+        SaveManager::SaveKeyConfigs(saveData);
+    }
 }
 
 // 私有：套用預設值到 m_Pending
@@ -410,7 +454,7 @@ Util::Keycode KeyboardConfigScene::GetPendingKey(int bindIdx) const {
     return Util::Keycode::UNKNOWN;
 }
 
-// 衝突偵測（只對 3P-8P）
+// 衝突偵測(只對 3P-8P)
 std::vector<Util::Keycode> KeyboardConfigScene::GetConflicts() const {
     if (m_CurrentPlayer < 1) return {};
 
@@ -480,7 +524,7 @@ void KeyboardConfigScene::UpdateChoiceFrame() const {
 
 // 回傳已設定足夠按鍵的玩家數
 // 判定標準：m_Applied[p].AllKeys().size() >= 4
-// （至少需要上下左右四個方向鍵才算「已設定」）
+// (至少需要上下左右四個方向鍵才算「已設定」)
 // 初始狀態：1P 和 2P 有預設設定 → 回傳 2
 //           3P-8P 全 UNKNOWN   → 不計入
 int KeyboardConfigScene::GetConfiguredPlayerCount() const {

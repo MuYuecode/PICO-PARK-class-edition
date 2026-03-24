@@ -11,7 +11,7 @@ std::shared_ptr<Util::Animation> MakeAnim(const std::vector<std::string>& paths,
                                            int intervalMs,
                                            bool looping) {
     if (paths.empty()) return nullptr;
-    // play=false（由 SetCatAnimState 觸發），cooldown=0
+    // play=false(由 SetCatAnimState 觸發)，cooldown=0
     return std::make_shared<Util::Animation>(paths, false, intervalMs, looping, 0);
 }
 
@@ -55,7 +55,7 @@ void PlayerCat::BuildClips(const CatAnimPaths& paths) {
 
 // 切換動畫狀態
 void PlayerCat::SetCatAnimState(CatAnimState newState) {
-    // LAND 播放中不被打斷（除非動畫結束後由外部再次呼叫）
+    // LAND 播放中不被打斷(除非動畫結束後由外部再次呼叫)
     if (m_CurrentAnimState == CatAnimState::LAND &&
         newState != CatAnimState::LAND &&
         !IfAnimationEnds()) {

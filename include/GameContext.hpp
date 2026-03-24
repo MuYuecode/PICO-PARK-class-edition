@@ -10,7 +10,7 @@
 struct GameContext {
     Util::Renderer& Root;
 
-    // 永久留在渲染樹的物件（所有場景都看得到）
+    // 永久留在渲染樹的物件(所有場景都看得到)
     std::shared_ptr<Character>  Background;
     std::shared_ptr<Character>  Floor;
     std::shared_ptr<BGMPlayer>  BGMPlayer;

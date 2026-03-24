@@ -42,7 +42,7 @@ public:
     static constexpr int MAX_PLAYERS = 8;
 
 private:
-    // ── 借用自 MenuScene 的共用 UI ──────────────────────────────────────────
+    //  借用自 MenuScene 的共用 UI
     std::shared_ptr<Character>          m_MenuFrame;
     std::shared_ptr<Character>          m_ExitGameButton;
     std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;

@@ -1,5 +1,7 @@
 #include "App.hpp"
 #include "BGMPlayer.hpp"
+#include "CatAssets.hpp"
+
 #include "Titlescene.hpp"
 #include "Menuscene.hpp"
 #include "ExitConfirmScene.hpp"
@@ -7,7 +9,8 @@
 #include "KeyboardConfigScene.hpp"
 #include "LocalPlayScene.hpp"
 #include "LocalPlayGameScene.hpp"
-#include "CatAssets.hpp"
+#include "LevelSelectScene.hpp"
+
 #include "Util/Logger.hpp"
 #include <array>
 #include <cmath>
@@ -144,12 +147,17 @@ void App::Start() {
         localPlayScene.get(),
         kbConfigScene.get());
 
+    auto levelSelectScene = std::make_unique<LevelSelectScene>(
+        *m_Ctx,
+        localPlayGameScene.get());
+
     titleScene->SetMenuScene(menuScene.get());
     menuScene->SetExitConfirmScene(exitConfirmScene.get());
     menuScene->SetOptionScene(optionMenuScene.get());
     menuScene->SetLocalPlayScene(localPlayScene.get());
     optionMenuScene->SetKeyboardConfigScene(kbConfigScene.get());
     localPlayScene->SetGameScene(localPlayGameScene.get());
+    localPlayGameScene->SetLevelSelectScene(levelSelectScene.get());
 
     m_TitleScene          = std::move(titleScene);
     m_MenuScene           = std::move(menuScene);
@@ -158,6 +166,7 @@ void App::Start() {
     m_KeyboardConfigScene = std::move(kbConfigScene);
     m_LocalPlayScene      = std::move(localPlayScene);
     m_LocalPlayGameScene  = std::move(localPlayGameScene);
+    m_LevelSelectScene    = std::move(levelSelectScene);
 
     TransitionTo(m_TitleScene.get());
 

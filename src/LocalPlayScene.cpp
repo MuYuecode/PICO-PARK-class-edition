@@ -45,7 +45,7 @@ LocalPlayScene::LocalPlayScene(GameContext& ctx,
 void LocalPlayScene::OnEnter() {
     LOG_INFO("LocalPlayScene::OnEnter  players={}", m_PlayerCount);
 
-    // 借用的共用物件（從 MenuScene 拿到）
+    // 借用的共用物件(從 MenuScene 拿到)
     m_Ctx.Root.AddChild(m_MenuFrame);
     m_Ctx.Root.AddChild(m_ExitGameButton);
     m_Ctx.Root.AddChild(m_LeftTriButton);
@@ -88,7 +88,7 @@ void LocalPlayScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_PlayerCountText);
     m_Ctx.Root.RemoveChild(m_NoConfigText);
 
-    // 還原共用物件狀態，再移除（與其他借用場景的慣例一致）
+    // 還原共用物件狀態，再移除(與其他借用場景的慣例一致)
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
 

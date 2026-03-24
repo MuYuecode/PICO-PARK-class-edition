@@ -12,14 +12,14 @@
  *
  * 生命週期
  *
- *   App::Start()    → 建立所有 Scene 物件（此時不呼叫 OnEnter）
+ *   App::Start()    → 建立所有 Scene 物件(此時不呼叫 OnEnter)
  *   TransitionTo(X) → 先呼叫前一個場景的 OnExit()，再呼叫 X 的 OnEnter()
  *   每個 frame      → Update() 被呼叫，回傳下一個場景的指標
  *
  * Update() 回傳值約定
  *
  *   nullptr   → 繼續待在這個場景，不切換
- *   Scene*    → 切換到該場景（指標由 App 持有，Scene 只借用，不能 delete）
+ *   Scene*    → 切換到該場景(指標由 App 持有，Scene 只借用，不能 delete)
  *
  * AddChild / RemoveChild 的使用規則
  *
@@ -27,12 +27,12 @@
  *   OnExit()  裡呼叫 m_Ctx.Root.RemoveChild(xxx) → 從渲染樹移除
  *
  *   「一定要配對」，否則同一個 shared_ptr 會在渲染清單裡出現兩次，
- *   造成每次進入場景就多渲染一個重疊的圖層。
+ *   造成每次進入場景就多渲染一個重疊的圖層
  *
  * 所有權
  *
- *   App 以 unique_ptr<Scene> 持有所有場景（負責生命週期）
- *   Scene 之間互傳的是 raw pointer（non-owning），絕對不能 delete
+ *   App 以 unique_ptr<Scene> 持有所有場景(負責生命週期)
+ *   Scene 之間互傳的是 raw pointer(non-owning)，絕對不能 delete
  */
 class Scene {
 public:
@@ -50,7 +50,7 @@ public:
     /**
      * @brief 進入此場景時呼叫一次
      * - 呼叫 m_Ctx.Root.AddChild() 把需要的物件加入渲染樹
-     * - 重置場景內部狀態（計時器、選擇索引…）
+     * - 重置場景內部狀態(計時器、選擇索引…)
      */
     virtual void OnEnter() = 0;
 

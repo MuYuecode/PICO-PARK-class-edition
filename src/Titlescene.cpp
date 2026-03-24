@@ -41,7 +41,7 @@ void TitleScene::OnEnter() {
 
         PhysicsAgent agent;
         agent.actor = cat;
-        // state 使用預設值（grounded=true, velocityY=0 等）
+        // state 使用預設值(grounded=true, velocityY=0 等)
         m_Agents.push_back(agent);
     }
 }

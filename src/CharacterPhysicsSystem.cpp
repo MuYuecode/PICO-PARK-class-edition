@@ -82,7 +82,7 @@ float CharacterPhysicsSystem::ResolveHorizontal(const int idx,
     for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
         if (j == idx || agents[j].actor == nullptr) continue;
 
-        // 跳過垂直堆疊關係（踩頭），避免支撐者被誤判為水平障礙
+        // 跳過垂直堆疊關係(踩頭)，避免支撐者被誤判為水平障礙
         if (agents[idx].state.supportIndex == j) continue;
         if (agents[j].state.supportIndex == idx) continue;
 
@@ -107,11 +107,11 @@ float CharacterPhysicsSystem::ResolveHorizontal(const int idx,
     return targetX;
 }
 
-// HalfWidth / HalfHeight（固定碰撞尺寸，避免動畫切換導致尺寸突變）
+// HalfWidth / HalfHeight(固定碰撞尺寸，避免動畫切換導致尺寸突變)
 float CharacterPhysicsSystem::HalfWidth()  { return 18.0f; }
 float CharacterPhysicsSystem::HalfHeight() { return 23.0f; }
 
-// StandOffset（動態：floor 半高 + 角色半高）
+// StandOffset(動態：floor 半高 + 角色半高)
 float CharacterPhysicsSystem::StandOffset(const std::shared_ptr<Character>& floor) {
     const float floorHalfH = (floor != nullptr)
                                  ? std::abs(floor->GetScaledSize().y) / 2.0f
@@ -136,7 +136,7 @@ void CharacterPhysicsSystem::ResolveVertical(int idx,
     float bestLandingY = -1e9f;
     int   bestSupport  = -2;   // -2=none, -1=floor, >=0=another character
 
-    // 地板（StandOffset 已精簡簽名，不再傳入 idx/agents）
+    // 地板(StandOffset 已精簡簽名，不再傳入 idx/agents)
     if (floor != nullptr) {
         const float landingY = floor->GetPosition().y + StandOffset(floor);
         if (oldY >= landingY - 1.0f && targetY <= landingY) {

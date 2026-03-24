@@ -4,11 +4,11 @@
 
 //
 // CatAssets.hpp
-// 貓咪資源路徑工具（統一出口）
+// 貓咪資源路徑工具(統一出口)
 //
 // 解決【重複 1】：AppStart.cpp 與 LocalPlayGameScene.cpp 各自實作
-// BuildCatFramePath / BuildCatFramePaths / BuildCatAnimPaths 的問題。
-// 兩處改為共同 #include 此標頭，並呼叫對應的函式。
+// BuildCatFramePath / BuildCatFramePaths / BuildCatAnimPaths 的問題
+// 兩處改為共同 #include 此標頭，並呼叫對應的函式
 //
 #ifndef CAT_ASSETS_HPP
 #define CAT_ASSETS_HPP
@@ -29,7 +29,7 @@ inline std::string BuildFramePath(const std::string& color,
            color + "_cat_" + action + "_" + std::to_string(frameNum) + ".png";
 }
 
-// 建立多幀路徑（frame 1 ~ numFrames）
+// 建立多幀路徑(frame 1 ~ numFrames)
 inline std::vector<std::string> BuildFramePaths(const std::string& color,
                                                  const std::string& action,
                                                  int numFrames) {
