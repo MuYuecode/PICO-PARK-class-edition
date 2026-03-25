@@ -15,32 +15,32 @@
 #include <array>
 #include <cmath>
 
-// App::Start
+using namespace std ;
+
 void App::Start() {
     LOG_TRACE("Start");
 
-    // GameContext
-    m_Ctx = std::make_unique<GameContext>(m_Root);
+    m_Ctx = make_unique<GameContext>(m_Root);
 
-    m_Ctx->Background = std::make_shared<Character>(
+    m_Ctx->Background = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/white_background.png");
     m_Ctx->Background->SetZIndex(-10);
     m_Ctx->Background->SetScale({100.0f, 100.0f});
     m_Root.AddChild(m_Ctx->Background);
 
-    m_Ctx->Floor = std::make_shared<Character>(
+    m_Ctx->Floor = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/background_floor.png");
     m_Ctx->Floor->SetZIndex(0);
     m_Ctx->Floor->SetPosition({0.0f, -340.0f});
     m_Root.AddChild(m_Ctx->Floor);
 
-    m_Ctx->Header = std::make_shared<Character>(
+    m_Ctx->Header = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/header.png");
     m_Ctx->Header->SetZIndex(0);
     m_Ctx->Header->SetPosition({0.0f, 135.0f});
     m_Root.AddChild(m_Ctx->Header);
 
-    m_Ctx->Door = std::make_shared<Character>(
+    m_Ctx->Door = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/door_close.png");
     m_Ctx->Door->SetScale({0.148f, 0.161f});   // ← 新增這一行
     m_Ctx->Door->SetZIndex(5.0f);
@@ -52,10 +52,9 @@ void App::Start() {
     }
     m_Root.AddChild(m_Ctx->Door);
 
-    m_Ctx->BGMPlayer = std::make_unique<BGMPlayer>();
+    m_Ctx->BGMPlayer = make_unique<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
 
-    // 建立 8 隻貓
     m_Ctx->StartupCats.clear();
     m_Ctx->StartupCats.reserve(GameContext::kCatColorOrder.size());
 
@@ -75,7 +74,7 @@ void App::Start() {
             jump  = Util::Keycode::UP;
         }
 
-        auto cat = std::make_shared<PlayerCat>(
+        auto cat = make_shared<PlayerCat>(
             CatAssets::BuildFullAnimPaths(GameContext::kCatColorOrder[static_cast<size_t>(i)]),
             left, right, jump);
         cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
@@ -106,33 +105,33 @@ void App::Start() {
 
         cat->SetPosition({x, spawnY});
 
-        const float faceScale = std::abs(cat->m_Transform.scale.x);
+        const float faceScale = abs(cat->m_Transform.scale.x);
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 
     // 場景建立
-    auto titleScene = std::make_unique<TitleScene>(*m_Ctx, nullptr);
+    auto titleScene = make_unique<TitleScene>(*m_Ctx, nullptr);
 
-    auto menuScene = std::make_unique<MenuScene>(
+    auto menuScene = make_unique<MenuScene>(
         *m_Ctx, titleScene.get(), nullptr, nullptr, nullptr);
 
-    auto exitConfirmScene = std::make_unique<ExitConfirmScene>(
+    auto exitConfirmScene = make_unique<ExitConfirmScene>(
         *m_Ctx,
         menuScene.get(),
         menuScene->GetMenuFrame(),
         menuScene->GetExitGameButton());
 
-    auto optionMenuScene = std::make_unique<OptionMenuScene>(
+    auto optionMenuScene = make_unique<OptionMenuScene>(
         *m_Ctx,
         menuScene.get(),
         menuScene->GetExitGameButton());
 
-    auto kbConfigScene = std::make_unique<KeyboardConfigScene>(
+    auto kbConfigScene = make_unique<KeyboardConfigScene>(
         *m_Ctx,
         optionMenuScene.get(),
         menuScene->GetExitGameButton());
 
-    auto localPlayScene = std::make_unique<LocalPlayScene>(
+    auto localPlayScene = make_unique<LocalPlayScene>(
         *m_Ctx,
         menuScene.get(),
         menuScene->GetMenuFrame(),
@@ -142,12 +141,12 @@ void App::Start() {
         menuScene->GetBlueCatRunImg(),   // ← 新增
         kbConfigScene.get());
 
-    auto localPlayGameScene = std::make_unique<LocalPlayGameScene>(
+    auto localPlayGameScene = make_unique<LocalPlayGameScene>(
         *m_Ctx,
         localPlayScene.get(),
         kbConfigScene.get());
 
-    auto levelSelectScene = std::make_unique<LevelSelectScene>(
+    auto levelSelectScene = make_unique<LevelSelectScene>(
         *m_Ctx,
         localPlayGameScene.get());
 

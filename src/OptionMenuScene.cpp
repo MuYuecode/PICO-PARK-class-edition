@@ -14,13 +14,15 @@
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-const std::vector<std::string> OptionMenuScene::s_BgColorOptions = {
+using namespace std ;
+
+const vector<string> OptionMenuScene::s_BgColorOptions = {
     "WHITE",
     "CREAM",
     "DARK",
 };
 
-const std::vector<std::string> OptionMenuScene::s_BgColorPaths = {
+const vector<string> OptionMenuScene::s_BgColorPaths = {
     GA_RESOURCE_DIR "/Image/Background/white_background.png",
     GA_RESOURCE_DIR "/Image/Background/cream_background.png",
     GA_RESOURCE_DIR "/Image/Background/dark_background.png",
@@ -28,118 +30,118 @@ const std::vector<std::string> OptionMenuScene::s_BgColorPaths = {
 
 OptionMenuScene::OptionMenuScene(GameContext& ctx,
                                  MenuScene* menuScene,
-                                 std::shared_ptr<Character> exitGameButton)
+                                 shared_ptr<Character> exitGameButton)
     : Scene(ctx)
     , m_ExitGameButton(std::move(exitGameButton))
     , m_MenuScene(menuScene)
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
-    m_OptionMenuFrame = std::make_shared<Character>(
+    m_OptionMenuFrame = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
     m_OptionMenuFrame->SetZIndex(25);
 
-    m_ChoiceFrame = std::make_shared<Character>(
+    m_ChoiceFrame = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png");
     m_ChoiceFrame->SetZIndex(30);
 
-    m_TitleText = std::make_shared<GameText>("OPTION", 65, black);
+    m_TitleText = make_shared<GameText>("OPTION", 65, black);
     m_TitleText->SetZIndex(35);
     m_TitleText->SetPosition({0.0f, 228.0f});
 
-    m_KbConfigLabel = std::make_shared<GameText>("KEYBOARD CONFIG", 45, black);
+    m_KbConfigLabel = make_shared<GameText>("KEYBOARD CONFIG", 45, black);
     m_KbConfigLabel->SetZIndex(35);
     m_KbConfigLabel->SetPosition({AppUtil::AlignLeft(*m_KbConfigLabel, COL_LABEL_X), ROW_Y_KB});
 
-    m_KbConfigOpen = std::make_shared<GameText>("OPEN", 45, black);
+    m_KbConfigOpen = make_shared<GameText>("OPEN", 45, black);
     m_KbConfigOpen->SetZIndex(35);
     m_KbConfigOpen->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_KB});
 
-    m_BgColorLabel = std::make_shared<GameText>("BG COLOR", 45, black);
+    m_BgColorLabel = make_shared<GameText>("BG COLOR", 45, black);
     m_BgColorLabel->SetZIndex(35);
     m_BgColorLabel->SetPosition({AppUtil::AlignLeft(*m_BgColorLabel, COL_LABEL_X), ROW_Y_BG});
 
-    m_BgColorLeftBtn = std::make_shared<UI_Triangle_Button>(
+    m_BgColorLeftBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_BgColorLeftBtn->SetZIndex(35);
     m_BgColorLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_BG});
 
-    m_BgColorValue = std::make_shared<GameText>("WHITE", 45, black);
+    m_BgColorValue = make_shared<GameText>("WHITE", 45, black);
     m_BgColorValue->SetZIndex(35);
     m_BgColorValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BG});
 
-    m_BgColorRightBtn = std::make_shared<UI_Triangle_Button>(
+    m_BgColorRightBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_BgColorRightBtn->SetZIndex(35);
     m_BgColorRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_BG});
 
-    m_BgmVolumeLabel = std::make_shared<GameText>("BGM VOLUME", 45, black);
+    m_BgmVolumeLabel = make_shared<GameText>("BGM VOLUME", 45, black);
     m_BgmVolumeLabel->SetZIndex(35);
     m_BgmVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_BgmVolumeLabel, COL_LABEL_X), ROW_Y_BGM});
 
-    m_BgmVolumeLeftBtn = std::make_shared<UI_Triangle_Button>(
+    m_BgmVolumeLeftBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_BgmVolumeLeftBtn->SetZIndex(35);
     m_BgmVolumeLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_BGM});
 
-    m_BgmVolumeValue = std::make_shared<GameText>("10", 45, black);
+    m_BgmVolumeValue = make_shared<GameText>("10", 45, black);
     m_BgmVolumeValue->SetZIndex(35);
     m_BgmVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BGM});
 
-    m_BgmVolumeRightBtn = std::make_shared<UI_Triangle_Button>(
+    m_BgmVolumeRightBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_BgmVolumeRightBtn->SetZIndex(35);
     m_BgmVolumeRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_BGM});
 
-    m_SeVolumeLabel = std::make_shared<GameText>("SE VOLUME", 45, black);
+    m_SeVolumeLabel = make_shared<GameText>("SE VOLUME", 45, black);
     m_SeVolumeLabel->SetZIndex(35);
     m_SeVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_SeVolumeLabel, COL_LABEL_X), ROW_Y_SE});
 
-    m_SeVolumeLeftBtn = std::make_shared<UI_Triangle_Button>(
+    m_SeVolumeLeftBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_SeVolumeLeftBtn->SetZIndex(35);
     m_SeVolumeLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_SE});
 
-    m_SeVolumeValue = std::make_shared<GameText>("10", 45, black);
+    m_SeVolumeValue = make_shared<GameText>("10", 45, black);
     m_SeVolumeValue->SetZIndex(35);
     m_SeVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_SE});
 
-    m_SeVolumeRightBtn = std::make_shared<UI_Triangle_Button>(
+    m_SeVolumeRightBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_SeVolumeRightBtn->SetZIndex(35);
     m_SeVolumeRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_SE});
 
-    m_DispNumberLabel = std::make_shared<GameText>("DISP NUMBER", 45, black);
+    m_DispNumberLabel = make_shared<GameText>("DISP NUMBER", 45, black);
     m_DispNumberLabel->SetZIndex(35);
     m_DispNumberLabel->SetPosition({AppUtil::AlignLeft(*m_DispNumberLabel, COL_LABEL_X), ROW_Y_DISP});
 
-    m_DispNumberLeftBtn = std::make_shared<UI_Triangle_Button>(
+    m_DispNumberLeftBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_DispNumberLeftBtn->SetZIndex(35);
     m_DispNumberLeftBtn->SetPosition({COL_LEFT_BTN_X, ROW_Y_DISP});
 
-    m_DispNumberValue = std::make_shared<GameText>("OFF", 45, black);
+    m_DispNumberValue = make_shared<GameText>("OFF", 45, black);
     m_DispNumberValue->SetZIndex(35);
     m_DispNumberValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_DISP});
 
-    m_DispNumberRightBtn = std::make_shared<UI_Triangle_Button>(
+    m_DispNumberRightBtn = make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_DispNumberRightBtn->SetZIndex(35);
     m_DispNumberRightBtn->SetPosition({COL_RIGHT_BTN_X, ROW_Y_DISP});
 
-    m_OkText = std::make_shared<GameText>("OK", 45, black);
+    m_OkText = make_shared<GameText>("OK", 45, black);
     m_OkText->SetZIndex(35);
     m_OkText->SetPosition({COL_OK_X, ROW_Y_BTN});
 
-    m_CancelText = std::make_shared<GameText>("CANCEL", 45, black);
+    m_CancelText = make_shared<GameText>("CANCEL", 45, black);
     m_CancelText->SetZIndex(35);
     m_CancelText->SetPosition({COL_CANCEL_X, ROW_Y_BTN});
 
@@ -149,7 +151,6 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
         m_Applied.bgmVolume    = saved.bgmVolume;
         m_Applied.seVolume     = saved.seVolume;
         m_Applied.dispNumber   = saved.dispNumber;
-        LOG_INFO("OptionMenuScene: loaded settings from file");
     }
 
     // 確保建構選單時，立刻將讀取到(或預設)的設定套用到全局的 Context 中
@@ -253,12 +254,10 @@ Scene* OptionMenuScene::Update() {
     {
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
         m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
-        LOG_INFO("OptionMenuScene: cancelled => MenuScene");
         return m_MenuScene;
     }
 
     if (m_KbConfigOpen->IsLeftClicked()) {
-        LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (mouse) => KeyboardConfigScene");
         return m_KeyboardConfigScene;
     }
     if (m_OkText->IsLeftClicked()) {
@@ -275,8 +274,6 @@ Scene* OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
         }
-
-        LOG_INFO("OptionMenuScene: OK (mouse) => MenuScene");
         return m_MenuScene;
     }
 
@@ -287,7 +284,7 @@ Scene* OptionMenuScene::Update() {
         IncrementRow();
     }
 
-    auto hoverTo = [&](const std::shared_ptr<GameText>& text, int row) {
+    auto hoverTo = [&](const shared_ptr<GameText>& text, int row) {
         if (text->IsMouseHovering() && m_SelectedRow != row) {
             m_SelectedRow = row;
             UpdateChoiceFrame();
@@ -332,7 +329,6 @@ Scene* OptionMenuScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         switch (m_SelectedRow) {
         case 0:
-            LOG_INFO("OptionMenuScene: KEYBOARD CONFIG OPEN (keyboard) => KeyboardConfigScene");
             return m_KeyboardConfigScene;
         case 5:
             m_Applied = m_Pending;
@@ -348,13 +344,10 @@ Scene* OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
             }
-
-            LOG_INFO("OptionMenuScene: OK (keyboard) => MenuScene");
             return m_MenuScene;
         case 6:
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
             m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
-            LOG_INFO("OptionMenuScene: CANCEL (keyboard) => MenuScene");
             return m_MenuScene;
         default:
             break;
@@ -409,7 +402,7 @@ void OptionMenuScene::AdjustLeft(int row) {
         break;
     case 5:
     case 6:
-        SwapOkCancel();   // ← 兩個 case 共用同一段邏輯
+        SwapOkCancel();
         break;
     default:
         break;
@@ -446,7 +439,7 @@ void OptionMenuScene::AdjustRight(int row) {
         break;
     case 5:
     case 6:
-        SwapOkCancel();   // ← 兩個 case 共用同一段邏輯
+        SwapOkCancel();
         break;
     default:
         break;
@@ -456,8 +449,8 @@ void OptionMenuScene::AdjustRight(int row) {
 
 void OptionMenuScene::UpdateValueTexts() const {
     m_BgColorValue->SetText(s_BgColorOptions[m_Pending.bgColorIndex]);
-    m_BgmVolumeValue->SetText(std::to_string(m_Pending.bgmVolume));
-    m_SeVolumeValue->SetText(std::to_string(m_Pending.seVolume));
+    m_BgmVolumeValue->SetText(to_string(m_Pending.bgmVolume));
+    m_SeVolumeValue->SetText(to_string(m_Pending.seVolume));
     m_DispNumberValue->SetText(m_Pending.dispNumber ? "ON" : "OFF");
 }
 

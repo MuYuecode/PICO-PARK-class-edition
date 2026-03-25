@@ -7,7 +7,6 @@
 
 class MenuScene;
 
-// 是否退出遊戲
 class ExitConfirmScene : public Scene {
 public:
     ExitConfirmScene(GameContext& ctx,
@@ -35,7 +34,6 @@ private:
 
     bool m_IsYesSelected = true;
 
-    // 輔助函式
     void UpdateChoiceFramePosition() const;
 };
 

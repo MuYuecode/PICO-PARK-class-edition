@@ -9,23 +9,17 @@
 BGMPlayer::BGMPlayer() {
     s_Instance = this;
 
-    // ==================== 載入三首歌 ====================
     m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/ppc.mp3"));
     m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/pp1.mp3"));
     m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/pp2.mp3"));
 
-    // ==================== 預設音量 50% ====================
     for (auto& bgm : m_BGMs) {
         bgm->SetVolume(60);
     }
 
-    // ==================== 音樂結束自動切歌 ====================
-
     Mix_HookMusicFinished(MusicFinishedCallback);
     LOG_INFO("BGMPlayer initialized with 3 tracks");
 }
-
-// ====================== 公開介面 ======================
 
 void BGMPlayer::Play() const {
     if (m_BGMs.empty()) return;
@@ -57,7 +51,6 @@ void BGMPlayer::Next() {
     m_BGMs[m_CurrentIndex]->Play(1);
 }
 
-// ==================== 靜態回呼 ====================
 void BGMPlayer::MusicFinishedCallback() {
     s_ShouldPlayNext = true ;
 }

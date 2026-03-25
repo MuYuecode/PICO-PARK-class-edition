@@ -14,14 +14,14 @@ class BGMPlayer {
 public:
     BGMPlayer();
 
-    void Play() const;                // 播放
-    void Pause() const;               // 暫停
-    void Resume() const;              // 繼續
+    void Play() const;
+    void Pause() const;
+    void Resume() const;
     void SetVolume(int volume) const; // 0 ~ 128
-    void Next() ;                     // 手動切下一首
-    void Update();                    // 更新
+    void Next() ;
+    void Update();
 
-    [[nodiscard]] int GetVolume() const; // 取得目前播放的曲目名稱
+    [[nodiscard]] int GetVolume() const;
 
     static inline bool s_ShouldPlayNext = false;
 

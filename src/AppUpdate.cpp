@@ -15,7 +15,6 @@ void App::Update() {
         TransitionTo(next);
     }
 
-    // ExitConfirmScene 設定 ShouldQuit 後，App 在這裡偵測並結束
     if (m_Ctx->ShouldQuit) {
         m_CurrentState = State::END;
     }

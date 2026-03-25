@@ -30,7 +30,6 @@ void TitleScene::OnEnter() {
     m_FlashTimer = 0.0f;
     m_PressEnterText->SetVisible(true);
 
-    // 建立 PhysicsAgent 清單
     m_Agents.clear();
     for (int i = 0; i < static_cast<int>(m_Ctx.StartupCats.size()); ++i) {
         auto& cat = m_Ctx.StartupCats[i];
@@ -41,7 +40,6 @@ void TitleScene::OnEnter() {
 
         PhysicsAgent agent;
         agent.actor = cat;
-        // state 使用預設值(grounded=true, velocityY=0 等)
         m_Agents.push_back(agent);
     }
 }
@@ -60,14 +58,12 @@ void TitleScene::OnExit() {
 }
 
 Scene* TitleScene::Update() {
-    // PRESS ENTER 閃爍
     m_FlashTimer += Util::Time::GetDeltaTimeMs();
     if (m_FlashTimer >= 1000.0f) {
         m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
         m_FlashTimer = 0.0f;
     }
 
-    // 讀取輸入(Scene 的責任：決定每隻角色想往哪走、是否想跳)
     for (auto& agent : m_Agents) {
         if (agent.actor == nullptr) continue;
         auto& st = agent.state;
@@ -87,7 +83,6 @@ Scene* TitleScene::Update() {
             if      (goLeft  && !goRight) st.moveDir = -1;
             else if (goRight && !goLeft)  st.moveDir =  1;
 
-            // 直接設定 velocityY(System 在下一步施加重力)
             const bool wantJump = (jk != Util::Keycode::UNKNOWN) &&
                                    Util::Input::IsKeyDown(jk);
 
@@ -97,11 +92,8 @@ Scene* TitleScene::Update() {
         }
     }
 
-    // 委託物理系統處理所有運算(含動畫)
-    // m_Physics.Update(m_Agents, m_Ctx.Floor);
     CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
 
-    //場景切換
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         LOG_INFO("TitleScene: ENTER pressed → MenuScene");
         return m_MenuScene;

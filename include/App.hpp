@@ -5,7 +5,6 @@
 #include "GameContext.hpp"
 #include "Scene.hpp"
 
-// 前向宣告只保留「AppStart.cpp 需要呼叫 setter 時」用到的型別
 class TitleScene;
 class MenuScene;
 class ExitConfirmScene;

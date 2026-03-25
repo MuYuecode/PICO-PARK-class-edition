@@ -4,8 +4,6 @@
 #include <string>
 #include "Util/GameObject.hpp"
 
-
-
 class Character : public Util::GameObject
 {
 public:
@@ -25,15 +23,11 @@ public:
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
     void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
 
-    // 偵測滑鼠是否在物件範圍內
     [[nodiscard]] bool IsMouseHovering() const;
-
-    // 偵測物件是否被滑鼠左鍵點擊
     [[nodiscard]] bool IsLeftClicked() const;
 
 private:
     void ResetPosition() { m_Transform.translation = {0, 0}; }
-
     std::string m_ImagePath;
 };
 

@@ -1,74 +1,57 @@
-# 遊戲架構說明文件
+# Architecture Overview
 
-> 物理系統相關說明請參閱 `PHYSICS_DESIGN.md`   
-> 本文件說明其餘所有架構：程式入口、App 狀態機、Scene 系統、渲染層、UI 元件、輸入系統、設定系統、持久化儲存、資源慣例，以及未來可能擴充的位置 
+> Physics system → `PHYSICS_DESIGN.md`. This document covers everything else.
 
----
-
-## 目錄
-
-1. [程式入口與主迴圈](#1-程式入口與主迴圈)
-2. [App 狀態機](#2-app-狀態機)
-3. [GameContext：跨場景共享資料](#3-gamecontext跨場景共享資料)
-4. [Scene 系統](#4-scene-系統)
-5. [渲染層](#5-渲染層)
-6. [UI 元件](#6-ui-元件)
-7. [輸入系統](#7-輸入系統)
-8. [設定系統](#8-設定系統)
-9. [持久化儲存(SaveManager)](#9-持久化儲存savemanager)
-10. [資源路徑慣例](#10-資源路徑慣例)
-11. [場景切換流程全覽](#11-場景切換流程全覽)
-12. [擴充指引](#12-擴充指引)
+## Contents
+1. [Entry Point & Main Loop](#1-entry-point--main-loop)
+2. [App State Machine](#2-app-state-machine)
+3. [GameContext](#3-gamecontext)
+4. [Scene System](#4-scene-system)
+5. [Rendering Layer](#5-rendering-layer)
+6. [UI Components](#6-ui-components)
+7. [Input System](#7-input-system)
+8. [Settings System](#8-settings-system)
+9. [SaveManager](#9-savemanager)
+10. [Resource Path Conventions](#10-resource-path-conventions)
+11. [Scene Transition Overview](#11-scene-transition-overview)
+12. [Extension Guide](#12-extension-guide)
 
 ---
 
-## 1. 程式入口與主迴圈
+## 1. Entry Point & Main Loop
 
 ```
 main.cpp
-└── Core::Context::GetInstance()   ← 引擎視窗/OpenGL 初始化(PTSD 提供)
+└── Core::Context::GetInstance()   (PTSD engine: window / OpenGL init)
 └── App app
     └── while (!context->GetExit())
-            START  → app.Start()    建立所有場景與永久物件，讀取持久化設定
-            UPDATE → app.Update()   每幀驅動當前場景
-            END    → app.End()      釋放資源，通知引擎退出
+            START  → app.Start()    build all scenes, load persistent settings
+            UPDATE → app.Update()   drive current scene each frame
+            END    → app.End()      release resources, signal engine exit
 ```
 
-`Core::Context` 由 PTSD 引擎管理，負責視窗建立、OpenGL 環境、事件輪詢   
-每次 `context->Update()` 才會真正把渲染結果刷新到螢幕 
+`context->Update()` flushes the rendered frame to screen.
 
 ---
 
-## 2. App 狀態機
+## 2. App State Machine
 
-**檔案**：`App.hpp` / `AppStart.cpp` / `AppUpdate.cpp` / `AppEnd.cpp`
+**Files:** `App.hpp` / `AppStart.cpp` / `AppUpdate.cpp` / `AppEnd.cpp`
 
 ```
-App::State
-    START  ──→  UPDATE  ──→  END
-      ↑            │
-   app.Start()   每幀呼叫
-                 m_CurrentScene->Update()
-                 m_Root.Update()(渲染)
+App::State:  START ──→ UPDATE ──→ END
 ```
 
-### App 持有的物件
+### App Members
 
-| 成員 | 型別 | 說明 |
-|------|------|------|
-| `m_Ctx` | `unique_ptr<GameContext>` | 跨場景共享資料(見第 3 節) |
-| `m_Root` | `Util::Renderer` | 全域渲染根節點 |
-| `m_TitleScene` | `unique_ptr<Scene>` | 每個場景的**唯一擁有者** |
-| `m_MenuScene` | `unique_ptr<Scene>` | 同上 |
-| `m_ExitConfirmScene` | `unique_ptr<Scene>` | 同上 |
-| `m_OptionMenuScene` | `unique_ptr<Scene>` | 同上 |
-| `m_KeyboardConfigScene` | `unique_ptr<Scene>` | 同上 |
-| `m_LocalPlayScene` | `unique_ptr<Scene>` | 同上 |
-| `m_LocalPlayGameScene` | `unique_ptr<Scene>` | 同上 |
-| `m_LevelSelectScene` | `unique_ptr<Scene>` | 同上 |
-| `m_CurrentScene` | `Scene*`(non-owning) | 指向當前場景 |
+| Member | Type | Notes |
+|--------|------|-------|
+| `m_Ctx` | `unique_ptr<GameContext>` | cross-scene shared data |
+| `m_Root` | `Util::Renderer` | global render root |
+| `m_TitleScene` … `m_LevelSelectScene` | `unique_ptr<Scene>` | sole owners of each scene |
+| `m_CurrentScene` | `Scene*` (non-owning) | active scene |
 
-> **未來新增場景**：在 `App.hpp` 宣告 `unique_ptr<Scene> m_XxxScene`，在 `AppStart.cpp` 建立並用 `SetXxx()` 互相串接指標，最後 `std::move` 進成員變數即可 
+> **Adding a new scene:** declare `unique_ptr<Scene> m_XxxScene` in `App.hpp`, construct in `AppStart.cpp`, wire pointers via setters, then `std::move` into the member.
 
 ### TransitionTo
 
@@ -80,502 +63,389 @@ void App::TransitionTo(Scene* next) {
 }
 ```
 
-場景切換的唯一入口 `App::Update()` 每幀檢查 `m_CurrentScene->Update()` 的回傳值，非 null 且與當前不同時才呼叫 `TransitionTo` 
-
-### ShouldQuit
-
-`GameContext::ShouldQuit` 為 true 時，`App::Update()` 將狀態設為 `END`，下一幀自動結束 
+Called by `App::Update()` when `m_CurrentScene->Update()` returns a non-null, different pointer.  
+`GameContext::ShouldQuit = true` → `App::Update()` sets state to `END`.
 
 ---
 
-## 3. GameContext：跨場景共享資料
+## 3. GameContext
 
-**檔案**：`GameContext.hpp`
+**File:** `GameContext.hpp`
 
 ```cpp
 struct GameContext {
-    Util::Renderer& Root;           // 渲染根節點(App 持有，Context 只借用)
+    Util::Renderer& Root;           // borrowed from App, not owned
 
-    // ── 永久存在於渲染樹的物件(AppStart 加入後不再移除)──
-    shared_ptr<Character>  Background;  // 背景底圖(可熱替換為白/米黃/深色)
-    shared_ptr<Character>  Floor;       // 地板
-    shared_ptr<BGMPlayer>  BGMPlayer;   // 背景音樂播放器
-    shared_ptr<Character>  Header;      // 標題 Logo
-    shared_ptr<Character>  Door;        // 門(open/close 兩種圖片，LocalPlayGameScene 切換)
+    // Permanent render-tree objects (added in AppStart, never removed)
+    shared_ptr<Character>  Background;  // hot-swappable bg image
+    shared_ptr<Character>  Floor;
+    shared_ptr<BGMPlayer>  BGMPlayer;
+    shared_ptr<Character>  Header;
+    shared_ptr<Character>  Door;        // switched open/close by LocalPlayGameScene
 
-    // ── 標題畫面的 8 隻裝飾貓(也是遊戲中可操控的角色)──
+    // 8 decoration cats shared between title screen and gameplay
     vector<shared_ptr<PlayerCat>> StartupCats;
 
-    // ── 遊戲執行期資料 ──
+    // Runtime game data
     int  SelectedPlayerCount  = 2;
     int  CooperativePushPower = 1;
     bool ShouldQuit           = false;
 
-    // 角色顏色順序(index 0–7 依序為 blue, red, yellow, green, purple, pink, orange, gray)
-    static constexpr array<const char*, 8> kCatColorOrder = { ... };
+    // index 0–7: blue, red, yellow, green, purple, pink, orange, gray
+    static constexpr array<const char*, 8> kCatColorOrder = { … };
 };
 ```
 
-### 設計原則
-
-- `GameContext` **不擁有 Renderer**，只持有引用，避免循環依賴 
-- 永久物件(`Background`、`Floor`、`Header`、`Door`)只在 `AppStart` 加入渲染樹一次，場景不應移除它們(`LevelSelectScene` 的例外：暫時隱藏 `Header`，離開時還原) 
-- `BGMPlayer` 在 `AppStart` 建立，各場景透過 `m_Ctx.BGMPlayer` 呼叫 `SetVolume()`，不需持有所有權 
-- 場景之間需要溝通的「遊戲狀態」(人數、推力加成)存在 `GameContext`，不要跨場景直接持有對方的指標來讀取狀態 
-
-> **未來新增全域狀態**(如關卡進度、當前分數)：加到 `GameContext` 的成員，而非放在單一場景裡 
+**Rules:**
+- Permanent objects are added to the render tree once in `AppStart`; scenes must not remove them (`LevelSelectScene` hides `Header` via `SetVisible`, not `RemoveChild`).
+- Cross-scene game state (`SelectedPlayerCount`, `CooperativePushPower`) lives here; scenes must not read each other's members directly.
 
 ---
 
-## 4. Scene 系統
+## 4. Scene System
 
-### 4.1 Scene 介面
-
-**檔案**：`Scene.hpp`
+### 4.1 Scene Interface (`Scene.hpp`)
 
 ```cpp
 class Scene {
 public:
-    virtual void   OnEnter() = 0;  // 進入時：AddChild + 重置狀態
-    virtual void   OnExit()  = 0;  // 離開時：RemoveChild(必須與 OnEnter 配對)
-    virtual Scene* Update()  = 0;  // 每幀：邏輯更新，回傳下一個場景或 nullptr
+    virtual void   OnEnter() = 0;  // AddChild + reset state
+    virtual void   OnExit()  = 0;  // RemoveChild (must pair with OnEnter)
+    virtual Scene* Update()  = 0;  // per-frame logic; return next scene or nullptr
 protected:
     GameContext& m_Ctx;
 };
 ```
 
-**AddChild / RemoveChild 鐵律**：`OnEnter` 加入的每一個物件，`OnExit` 必須移除，否則下次進入場景時同一個 `shared_ptr` 會在渲染清單中出現兩次，造成圖層重疊 
+**Invariant:** every `AddChild` in `OnEnter` must have a matching `RemoveChild` in `OnExit`. Violations cause duplicate render-list entries.
 
-### 4.2 現有場景一覽
+### 4.2 Scene Catalogue
 
-| 場景 | 檔案 | 職責 | 可前往 |
-|------|------|------|--------|
-| `TitleScene` | `Titlescene` | 標題畫面，PRESS ENTER 閃爍，8 隻貓可互動 | MenuScene |
-| `MenuScene` | `Menuscene` | 主選單(EXIT GAME / OPTION / LOCAL PLAY) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
-| `ExitConfirmScene` | `Exitconfirmscene` | 離開確認對話框(YES/NO) | MenuScene(或設定 ShouldQuit) |
-| `OptionMenuScene` | `OptionMenuScene` | 遊戲設定(背景色、音量、顯示數字)，OK 時持久化到 settings.json | MenuScene, KeyboardConfigScene |
-| `KeyboardConfigScene` | `KeyboardConfigScene` | 按鍵綁定設定(1P–8P)，CommitPending 時持久化到 settings.json | OptionMenuScene |
-| `LocalPlayScene` | `LocalPlayScene` | 選擇玩家人數(2–8) | MenuScene, LocalPlayGameScene |
-| `LocalPlayGameScene` | `LocalPlayGameScene` | 實際遊戲(多角色物理、合作推動、門進入判斷) | LocalPlayScene, LevelSelectScene |
-| `LevelSelectScene` | `LevelSelectScene` | 關卡選擇(10 關格子、橘色框、皇冠標記、最佳時間) | LocalPlayGameScene(ESC), LevelNScene(ENTER) |
+| Scene | File | Role | Destinations |
+|-------|------|------|-------------|
+| `TitleScene` | `Titlescene` | title screen, flashing prompt, 8 cats | MenuScene |
+| `MenuScene` | `Menuscene` | main menu (EXIT / OPTION / LOCAL PLAY) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
+| `ExitConfirmScene` | `Exitconfirmscene` | YES/NO quit dialog | MenuScene (or ShouldQuit) |
+| `OptionMenuScene` | `OptionMenuScene` | bg color, volume, disp number; saves on OK | MenuScene, KeyboardConfigScene |
+| `KeyboardConfigScene` | `KeyboardConfigScene` | key binding (1P–8P); saves on CommitPending | OptionMenuScene |
+| `LocalPlayScene` | `LocalPlayScene` | select player count (2–8) | MenuScene, LocalPlayGameScene |
+| `LocalPlayGameScene` | `LocalPlayGameScene` | multi-player physics, door entry | LocalPlayScene, LevelSelectScene |
+| `LevelSelectScene` | `LevelSelectScene` | 10-level grid, crown marks, best times | LocalPlayGameScene (ESC), LevelNScene (ENTER) |
 
-### 4.3 共用 UI 物件的借用模式
+### 4.3 Shared UI Object Borrowing Pattern
 
-`MenuScene` 建構並擁有以下物件的所有權：
-
-```
-m_MenuFrame          (選單外框)
-m_ExitGameButton     (X 按鈕)
-m_LeftTriButton      (◀ 按鈕)
-m_RightTriButton     (▶ 按鈕)
-m_blue_cat_run_img   (藍貓跑步圖示)
-```
-
-`AppStart.cpp` 呼叫這些 getter，並透過**建構子參數**將 `shared_ptr` 注入各 Scene Scene 在建構時就持有這些物件，`OnEnter` / `OnExit` 只負責 `AddChild` / `RemoveChild`，不需要再呼叫 getter 
+`MenuScene` owns these objects and exposes them via getters:
 
 ```
-AppStart 呼叫 getter → 建構子注入 → Scene 持有 shared_ptr
-
-MenuScene::GetMenuFrame()       → 注入 ExitConfirmScene, LocalPlayScene
-MenuScene::GetExitGameButton()  → 注入 ExitConfirmScene, OptionMenuScene, KeyboardConfigScene
-MenuScene::GetLeftTriButton()   → 注入 LocalPlayScene
-MenuScene::GetRightTriButton()  → 注入 LocalPlayScene
-MenuScene::GetBlueCatRunImg()   → 注入 LocalPlayScene
+m_MenuFrame, m_ExitGameButton, m_LeftTriButton, m_RightTriButton, m_blue_cat_run_img
 ```
 
-各 Scene 在 `OnEnter` 加入渲染樹、`OnExit` 移除，但**不擁有所有權** 
+`AppStart.cpp` injects them via constructor parameters into borrower scenes:
 
-> **未來新增選單子場景**(例如 `OnlinePlayScene`)：同樣從 `MenuScene` 取得上述物件，在 `OnEnter`/`OnExit` 配對加入/移除，借用結束後還原 scale/position 
+```
+GetMenuFrame()       → ExitConfirmScene, LocalPlayScene
+GetExitGameButton()  → ExitConfirmScene, OptionMenuScene, KeyboardConfigScene
+GetLeftTriButton()   → LocalPlayScene
+GetRightTriButton()  → LocalPlayScene
+GetBlueCatRunImg()   → LocalPlayScene
+```
 
-### 4.4 場景間指標傳遞規則
+Borrowers call `AddChild`/`RemoveChild` in `OnEnter`/`OnExit` and restore position/scale on exit.
 
-- `App` 以 `unique_ptr<Scene>` 持有場景(**唯一擁有者**) 
-- 場景之間以 **raw pointer**(non-owning)互相引用，絕對不能 `delete` 
-- 循環引用問題(A 需要 B、B 需要 A)用 `SetXxx(ptr)` setter 在 `AppStart` 建立完兩者後再串接 
+### 4.4 Scene Pointer Rules
+
+- `App` owns scenes via `unique_ptr` (sole owner).
+- Inter-scene references use **raw non-owning pointers**; never `delete`.
+- Circular references (A↔B) resolved via `SetXxx(ptr)` setters after both are constructed in `AppStart`.
 
 ---
 
-## 5. 渲染層
+## 5. Rendering Layer
 
-### 5.1 繼承關係
+### 5.1 Inheritance
 
 ```
-Util::GameObject          (PTSD 引擎基底，持有 m_Drawable、m_Transform、m_ZIndex)
-├── Character              圖片物件(Util::Image 作為 drawable)
-│   └── UI_Triangle_Button 帶「按下」狀態的圖片按鈕
-├── AnimatedCharacter      動畫物件(Util::Animation 作為 drawable)
-│   └── PlayerCat          可操控角色，含動畫狀態機與 IPhysicsBody 介面
-└── GameText               文字物件(Util::Text 作為 drawable)
+Util::GameObject         (PTSD base: m_Drawable, m_Transform, m_ZIndex)
+├── Character            static image (Util::Image)
+│   └── UI_Triangle_Button  pressed/normal image with timer
+├── AnimatedCharacter    animation clip (Util::Animation)
+│   └── PlayerCat        multi-clip state machine + IPhysicsBody
+└── GameText             text (Util::Text), fixed font TerminusTTFWindows-Bold
 ```
 
-### 5.2 Character
+### 5.2 Character (`Character.hpp`)
 
-**檔案**：`Character.hpp` / `Character.cpp`
+| Method | Notes |
+|--------|-------|
+| `SetImage(path)` | hot-swap image (rebuilds Drawable) |
+| `GetPosition()` / `SetPosition(vec2)` | `m_Transform.translation` |
+| `GetSize()` | scaled pixel size via `GetScaledSize()` |
+| `SetScale(vec2)` | negative X = horizontal flip |
+| `IsMouseHovering()` / `IsLeftClicked()` | AABB hit-test via `AppUtil` |
 
-最基礎的圖片物件，封裝 `Util::Image` 
+### 5.3 AnimatedCharacter (`AnimatedCharacter.hpp`)
 
-| 方法 | 說明 |
-|------|------|
-| `SetImage(path)` | 熱替換圖片(會重建 Drawable) |
-| `GetPosition()` | 回傳 `m_Transform.translation` |
-| `SetPosition(vec2)` | 同上 |
-| `GetSize()` | 回傳縮放後的像素大小(呼叫 `GetScaledSize()`) |
-| `SetScale(vec2)` | 修改 `m_Transform.scale`(負 X = 水平翻轉) |
-| `IsMouseHovering()` | AABB 滑鼠懸停偵測(委託 `AppUtil::IsMouseHovering`) |
-| `IsLeftClicked()` | 滑鼠左鍵點擊偵測(委託 `AppUtil::IsLeftClicked`) |
+| Method | Notes |
+|--------|-------|
+| `Play()` / `SetLooping(bool)` / `IsPlaying()` | clip control |
+| `IfAnimationEnds()` | true when current frame == last frame (non-looping end detection) |
 
-### 5.3 AnimatedCharacter
+### 5.4 GameText (`GameText.hpp`)
 
-**檔案**：`AnimatedCharacter.hpp` / `AnimatedCharacter.cpp`
+| Method | Notes |
+|--------|-------|
+| `SetText(string)` / `SetColor(Color)` | dynamic update |
+| `GetSize()` | pixel dimensions (used for alignment math) |
+| `IsMouseHovering()` / `IsLeftClicked()` | AABB hit-test via `AppUtil` |
 
-封裝 `Util::Animation` 建構時傳入幀路徑清單，引擎依 `interval` 自動切幀 
+### 5.5 ZIndex Convention
 
-| 方法 | 說明 |
-|------|------|
-| `Play()` | 開始播放 |
-| `SetLooping(bool)` | 設定是否循環 |
-| `IsPlaying()` | 查詢播放中 |
-| `IfAnimationEnds()` | 當前幀是否為最後一幀(非循環動畫結束偵測) |
-
-`PlayerCat` 繼承此類並擴充為多動畫 clip 的狀態機(詳見 `PHYSICS_DESIGN.md`) 
-
-### 5.4 GameText
-
-**檔案**：`GameText.hpp` / `GameText.cpp`
-
-封裝 `Util::Text` 固定使用 `TerminusTTFWindows-Bold` 字型 
-
-| 方法 | 說明 |
-|------|------|
-| `SetText(string)` | 動態更新文字內容(選單數值變更時使用) |
-| `SetColor(Color)` | 動態更新文字顏色 |
-| `SetVisible(bool)` | 顯示/隱藏 |
-| `GetSize()` | 回傳文字佔用的像素尺寸(用於對齊計算) |
-| `IsMouseHovering()` | AABB 滑鼠懸停偵測(委託 `AppUtil::IsMouseHovering`) |
-| `IsLeftClicked()` | 滑鼠左鍵點擊偵測(委託 `AppUtil::IsLeftClicked`) |
-
-### 5.5 ZIndex 慣例
-
-| 範圍 | 用途 |
-|------|------|
-| `-10` | 白色背景 |
-| `0` | 地板、Header |
-| `5` | Door(門) |
-| `10` | 選單外框、藍貓圖示 |
-| `15` | 三角按鈕 |
-| `20` | ExitGameButton、角色(`20.0 + i * 0.01`)、場景私有文字 |
-| `25` | OptionMenuFrame / KeyboardConfigScene Frame / LevelSelectScene BgFrame |
-| `30` | ChoiceFrame、DoorCountText |
-| `32` | LevelSelectScene 橘色選擇框 |
-| `35` | 選單文字 |
-| `36` | LevelSelectScene 皇冠標記 |
-| `100` | GameText 預設值 |
+| Range | Usage |
+|-------|-------|
+| `-10` | background |
+| `0` | floor, header |
+| `5` | door |
+| `10` | menu frame, blue cat image |
+| `15` | triangle buttons |
+| `20` | ExitGameButton, cats (`20.0 + i*0.01`), scene-local text |
+| `25` | OptionMenuFrame, KeyboardConfigScene frame |
+| `30` | ChoiceFrame, DoorCountText |
+| `32` | LevelSelectScene selector frame |
+| `35` | menu text, level covers, title/time text |
+| `36` | LevelSelectScene crown marks |
+| `100` | GameText default |
 
 ---
 
-## 6. UI 元件
+## 6. UI Components
 
-### UI_Triangle_Button
+### UI_Triangle_Button (`UI_Triangle_Button.hpp`)
 
-**檔案**：`UI_Triangle_Button.hpp` / `UI_Triangle_Button.cpp`
-
-繼承 `Character`，管理「一般 / 按下」兩種圖片狀態 
+Extends `Character` with two-image pressed/normal state and timer.
 
 ```
-正常狀態 ──Press(durationMs)──→ 按下狀態
-              │
-              └── 計時 durationMs 毫秒
-                      ↓
-              自動回到正常狀態
+Normal ──Press(ms)──→ Pressed ──timer expires──→ Normal
 ```
 
-| 方法 | 說明 |
-|------|------|
-| `Press(ms)` | 切換為按下圖片，ms 毫秒後自動還原(預設 75ms) |
-| `UpdateButton()` | **每幀必須呼叫**，負責計時器倒數 |
-| `ResetState()` | 強制還原為正常狀態(場景切換時清除殘留) |
+| Method | Notes |
+|--------|-------|
+| `Press(ms=75)` | switch to pressed image; auto-reverts after `ms` ms |
+| `UpdateButton()` | **call every frame** to tick the timer |
+| `ResetState()` | force back to normal (call on scene enter) |
 
 ---
 
-## 7. 輸入系統
+## 7. Input System
 
-**來源**：PTSD 引擎 `Util/Input.hpp`
+**Source:** PTSD `Util/Input.hpp`
 
-| 函式 | 語意 |
-|------|------|
-| `Util::Input::IsKeyDown(key)` | **這一幀剛按下**(只觸發一次) |
-| `Util::Input::IsKeyPressed(key)` | **持續按住中**(每幀都為 true) |
-| `Util::Input::GetCursorPosition()` | 滑鼠座標(螢幕空間，Y 向上為正) |
+| Function | Semantics |
+|----------|-----------|
+| `IsKeyDown(key)` | pressed **this frame only** |
+| `IsKeyPressed(key)` | held down (true every frame) |
+| `GetCursorPosition()` | mouse in screen space (Y-up) |
 
-### 使用慣例
+**Convention:** use `IsKeyDown` for menu navigation / jump / confirm; `IsKeyPressed` for continuous horizontal movement.
 
-- **選單切換、跳躍、確認**：用 `IsKeyDown`(避免單次動作重複觸發) 
-- **角色水平移動**：用 `IsKeyPressed`(需要持續移動) 
-- **滑鼠點擊**：`IsKeyDown(Util::Keycode::MOUSE_LB)` 搭配 `IsMouseHovering()` 實作(已封裝在 `Character::IsLeftClicked()` 和 `GameText::IsLeftClicked()`) 
+### AppUtil (`AppUtil.hpp`)
 
-### AppUtil 工具函式
-
-**檔案**：`AppUtil.hpp` / `AppUtil.cpp`
-
-| 函式 | 說明 |
-|------|------|
-| `AlignLeft(text, boundaryX)` | 計算文字置左時的中心 X(用於選單標籤對齊) |
-| `AlignRight(text, boundaryX)` | 計算文字置右時的中心 X |
-| `KeycodeToString(key)` | 將 `Util::Keycode` 轉成顯示字串(`UNKNOWN` → `"-"`) |
-| `GetAnyKeyDown()` | 回傳這幀剛被按下的第一個可綁定按鍵 |
-| `IsMouseHovering(obj)` | 對任意 `Util::GameObject` 做 AABB 懸停偵測 |
-| `IsLeftClicked(obj)` | 對任意 `Util::GameObject` 做左鍵點擊偵測 |
-
-`GetAnyKeyDown()` 供 `KeyboardConfigScene` 的按鍵捕捉使用 
+| Function | Notes |
+|----------|-------|
+| `AlignLeft(text, boundX)` / `AlignRight(...)` | center-X for left/right alignment |
+| `KeycodeToString(key)` | `UNKNOWN` → `"-"` |
+| `GetAnyKeyDown()` | returns first bindable key pressed this frame (for KeyboardConfigScene capture) |
+| `IsMouseHovering(obj)` / `IsLeftClicked(obj)` | AABB test on any `Util::GameObject` |
 
 ---
 
-## 8. 設定系統
+## 8. Settings System
 
-### 8.1 PlayerKeyConfig
-
-**檔案**：`KeyboardConfigScene.hpp`
-
-每位玩家的按鍵綁定結構 
+### PlayerKeyConfig (`KeyboardConfigScene.hpp`)
 
 ```cpp
 struct PlayerKeyConfig {
-    Util::Keycode up, down, left, right;  // 移動
-    Util::Keycode jump;
-    Util::Keycode cancel;
-    Util::Keycode shot;
-    Util::Keycode menu;     // 僅 1P 有效
-    Util::Keycode subMenu;  // 僅 1P 有效
+    Util::Keycode up, down, left, right, jump, cancel, shot;
+    Util::Keycode menu;     // 1P only
+    Util::Keycode subMenu;  // 1P only
 };
 ```
 
-**預設值**(靜態常數，供 fallback 使用)：
+**Defaults:**
+- `k_Default1P`: W/S/A/D move, W jump, ESC cancel, SPACE shot, ENTER menu, TAB submenu
+- `k_Default2P`: arrow keys move, UP jump, AC_BACK cancel, R_CTRL shot
+- 3P–8P: all `UNKNOWN` (must be configured manually)
 
-```
-k_Default1P : W/S/A/D 移動，W 跳，ESC 取消，SPACE 射擊，ENTER 選單，TAB 子選單
-k_Default2P : ↑↓←→ 移動，↑ 跳，AC_BACK 取消，R_CTRL 射擊
-3P–8P       : 全部 UNKNOWN(需玩家手動設定)
-```
+### KeyboardConfigScene
 
-### 8.2 KeyboardConfigScene
+- Constructor loads `settings.json` via `SaveManager::LoadKeyConfigs()`.
+- `m_Applied[8]` = committed configs; `m_Pending` = in-edit buffer.
+- `CommitPending()` writes `m_Applied[m_CurrentPlayer]` and calls `SaveManager::SaveKeyConfigs()`.
+- `GetAppliedConfig(i)` → used by `LocalPlayGameScene::SpawnPlayers()`.
+- `GetConfiguredPlayerCount()` → returns count of players with ≥4 non-UNKNOWN keys; used by `LocalPlayScene` to block entry.
+- `menu` and `subMenu` rows are **not selectable** for players other than 1P.
 
-**檔案**：`KeyboardConfigScene.hpp` / `KeyboardConfigScene.cpp`
-
-- 建構子啟動時透過 `SaveManager::LoadKeyConfigs()` 從 `settings.json` 還原上次設定 
-- 持有 `m_Applied[MAX_PLAYERS]`(已確認的設定)與 `m_Pending`(編輯中的暫存) 
-- `CommitPending()` 將暫存寫入 `m_Applied[m_CurrentPlayer]`，並呼叫 `SaveManager::SaveKeyConfigs()` 持久化 
-- `GetAppliedConfig(i)` 供 `LocalPlayGameScene::SpawnPlayers()` 取得按鍵設定 
-- `GetConfiguredPlayerCount()` 回傳已設定足夠按鍵(≥4 個非 UNKNOWN)的玩家數，供 `LocalPlayScene` 顯示警告與阻擋進入遊戲 
-
-### 8.3 OptionMenuScene::Settings
+### OptionMenuScene::Settings
 
 ```cpp
 struct Settings {
-    int  bgColorIndex = 0;   // 背景顏色索引(對應 s_BgColorOptions：WHITE/CREAM/DARK)
-    int  bgmVolume    = 10;  // BGM 音量(0–20)，實際傳入 BGMPlayer 時乘 6
-    int  seVolume     = 10;  // SE 音量(0–20，目前 SE 系統尚未實作)
-    bool dispNumber   = false; // 是否顯示玩家編號
+    int  bgColorIndex = 0;   // WHITE / CREAM / DARK
+    int  bgmVolume    = 10;  // 0–20, multiplied by 6 when passed to BGMPlayer
+    int  seVolume     = 10;  // 0–20 (SE system not yet implemented)
+    bool dispNumber   = false;
 };
 ```
 
-- 建構子啟動時透過 `SaveManager::LoadOptionSettings()` 從 `settings.json` 還原上次設定 
-- `m_Applied` 為生效值，`m_Pending` 為選單操作中的暫存值；按下 OK 才將 `m_Pending` 寫入 `m_Applied`，同時呼叫 `SaveManager::SaveOptionSettings()` 持久化，按下 CANCEL 捨棄 
+- `m_Applied` = live values; `m_Pending` = in-edit buffer; OK commits and persists, CANCEL discards.
 
 ---
 
-## 9. 持久化儲存(SaveManager)
+## 9. SaveManager
 
-**檔案**：`SaveManager.hpp` / `SaveManager.cpp`
+**Files:** `SaveManager.hpp` / `SaveManager.cpp`
 
-`SaveManager` 是純靜態的工具類別，集中管理兩個 JSON 檔案的讀寫，使用 PTSD 引擎已附帶的 **nlohmann/json** 函式庫 
+Pure-static utility class. Uses **nlohmann/json** (bundled with PTSD).
 
-### 9.1 檔案位置
+### File Locations
 
-| 檔案 | 用途 |
-|------|------|
-| `GA_RESOURCE_DIR/Save/settings.json` | Option 設定(背景色、音量)+ 8 位玩家按鍵綁定 |
-| `GA_RESOURCE_DIR/Save/save_data.json` | 10 個關卡的通關狀態與各人數的最佳時間 |
+| File | Contents |
+|------|---------|
+| `GA_RESOURCE_DIR/Save/settings.json` | option settings + 8-player key bindings |
+| `GA_RESOURCE_DIR/Save/save_data.json` | 10-level completion state and best times |
 
-`Save/` 目錄若不存在，`SaveManager` 會在首次寫入時自動建立(`std::filesystem::create_directories`) 
+`Save/` is auto-created on first write via `std::filesystem::create_directories`.
 
-### 9.2 settings.json 結構
+### settings.json Schema
 
 ```json
 {
-  "bgColorIndex": 0,
-  "bgmVolume": 10,
-  "seVolume": 10,
-  "dispNumber": false,
+  "bgColorIndex": 0, "bgmVolume": 10, "seVolume": 10, "dispNumber": false,
   "keyConfigs": [
     { "up": 26, "down": 22, "left": 4, "right": 7,
       "jump": 26, "cancel": 41, "shot": 44, "menu": 40, "subMenu": 43 },
-    { "up": 82, "down": 81, "left": 80, "right": 79,
-      "jump": 82, "cancel": 0, "shot": 228, "menu": 0, "subMenu": 0 },
-    ...
+    …
   ]
 }
 ```
 
-按鍵以 `int` 儲存(`Util::Keycode` 底層為 SDL_Scancode，`UNKNOWN = 0`) 
+Keys stored as `int` (SDL_Scancode; `UNKNOWN = 0`).
 
-### 9.3 save_data.json 結構
+### save_data.json Schema
 
 ```json
 {
   "levels": [
-    {
-      "levelId": 1,
-      "completed": true,
-      "bestTimes": { "2": 45.3, "3": -1.0, "4": -1.0, "5": -1.0,
-                     "6": -1.0, "7": -1.0, "8": -1.0 }
-    },
-    ...
+    { "levelId": 1, "completed": true,
+      "bestTimes": { "2": 45.3, "3": -1.0, … "8": -1.0 } }
   ]
 }
 ```
 
-`bestTimes` 以人數(2–8)為 key，`-1.0` 表示該人數尚未通關 
+`bestTimes` key is player count (2–8); `-1.0` = not yet cleared.
 
-### 9.4 讀寫策略：read-modify-write
+### Read-Modify-Write Strategy
 
-`settings.json` 混合存放 Option 設定和按鍵綁定兩種資料，分別由不同的場景負責寫入   
-為避免場景 A 的寫入覆蓋場景 B 的欄位，`SaveOptionSettings` 和 `SaveKeyConfigs` 都採用：
+Both `SaveOptionSettings` and `SaveKeyConfigs` share `settings.json`. Each reads the file, modifies only its own fields, then writes back — preventing one scene from overwriting the other's data.
 
-```
-1. 讀取現有 JSON(若不存在則建立空物件)
-2. 只修改自己負責的欄位
-3. 寫回完整 JSON
-```
+### API
 
-### 9.5 API 摘要
-
-| 函式 | 說明 |
-|------|------|
-| `SaveOptionSettings(opts)` | 寫入 Option 設定(不覆蓋 keyConfigs) |
-| `LoadOptionSettings(outOpts)` | 讀取 Option 設定 |
-| `SaveKeyConfigs(keys)` | 寫入全 8P 按鍵綁定(不覆蓋 option 欄位) |
-| `LoadKeyConfigs(outKeys)` | 讀取按鍵綁定 |
-| `SaveLevelData(levels)` | 寫入全 10 關存檔 |
-| `LoadLevelData(outLevels)` | 讀取全 10 關存檔 |
-| `UpdateBestTime(idx, p, elapsed)` | 便利函式：僅在新紀錄時寫入 |
-| `FormatTime(seconds)` | 格式化為 `mm:ss.cs`(`-1` → `--:--.--`) |
+| Function | Notes |
+|----------|-------|
+| `SaveOptionSettings(opts)` / `LoadOptionSettings(out)` | option fields only |
+| `SaveKeyConfigs(keys)` / `LoadKeyConfigs(out)` | keyConfigs array only |
+| `SaveLevelData(levels)` / `LoadLevelData(out)` | entire save_data.json |
+| `UpdateBestTime(idx, playerCount, elapsed)` | load → compare → save if new record |
+| `FormatTime(seconds)` | `-1` → `"--:--.--"`, else `"mm:ss.cs"` |
 
 ---
 
-## 10. 資源路徑慣例
+## 10. Resource Path Conventions
 
-所有路徑以 `GA_RESOURCE_DIR` 巨集為根(由 CMake 定義，指向 `resources/` 目錄) 
-
-### 目錄結構
+Root macro: `GA_RESOURCE_DIR` (CMake-defined, points to `resources/`).
 
 ```
 resources/
-├── BGM/
-│   ├── ppc.mp3
-│   ├── pp1.mp3
-│   └── pp2.mp3
-├── Font/
-│   ├── TerminusTTFWindows-Bold-4.49.3.ttf   (主要字型)
-│   ├── FORCEDSQUARE.ttf
-│   └── Monocraft.ttf
+├── BGM/          ppc.mp3  pp1.mp3  pp2.mp3
+├── Font/         TerminusTTFWindows-Bold-4.49.3.ttf  (primary font)
+│                 FORCEDSQUARE.ttf  Monocraft.ttf
 ├── Image/
 │   ├── Background/
-│   │   ├── white_background.png
-│   │   ├── cream_background.png
-│   │   ├── dark_background.png
-│   │   ├── background_floor.png
-│   │   ├── header.png
+│   │   ├── white_background.png / cream_background.png / dark_background.png
+│   │   ├── background_floor.png / header.png
 │   │   ├── door_close.png / door_open.png
-│   │   ├── level_select_frame.png          ← LevelSelectScene 背景框
-│   │   ├── Menu_Frame.png
-│   │   ├── Choice_Frame.png
-│   │   ├── Option_Menu_Frame.png
-│   │   ├── Option_Choice_Frame.png         ← 複用作為關卡選擇框
-│   │   ├── Option_HLine.png
+│   │   ├── level_select_frame.png      ← LevelSelectScene selector frame
+│   │   ├── Menu_Frame.png / Choice_Frame.png
+│   │   ├── Option_Menu_Frame.png / Option_Choice_Frame.png / Option_HLine.png
 │   │   └── Keyboard_Config_Menu_Frame.png
 │   ├── Button/
 │   │   ├── ExitGameButton.png
 │   │   ├── Left_Tri_Button.png / Left_Tri_Button_Full.png
 │   │   └── Right_Tri_Button.png / Right_Tri_Button_Full.png
-│   └── Character/
-│       └── {color}_cat/
-│           ├── {color}_cat_stand_1–8.png    (8 幀)
-│           ├── {color}_cat_run_1–9.png      (9 幀)
-│           ├── {color}_cat_jump_1.png       (起跳→最高點)
-│           ├── {color}_cat_jump_2.png       (最高點→落地前)
-│           ├── {color}_cat_land_1–2.png
-│           └── {color}_cat_push_1–3.png    (3 幀)
-└── Save/                                    ← 持久化資料(自動建立)
-    ├── settings.json                        ← Option 設定 + 按鍵綁定
-    └── save_data.json                       ← 關卡進度與最佳時間
+│   ├── Character/{color}_cat/
+│   │   ├── {color}_cat_stand_1–8.png   (8 frames, 400ms interval, looping)
+│   │   ├── {color}_cat_run_1–9.png     (9 frames, 120ms, looping)
+│   │   ├── {color}_cat_jump_1.png      (rise; 150ms, looping)
+│   │   ├── {color}_cat_jump_2.png      (fall; 150ms, looping)
+│   │   ├── {color}_cat_land_1.png      (80ms, non-looping)
+│   │   └── {color}_cat_push_1–3.png    (3 frames, 120ms, looping)
+│   └── Level_Cover/  LevelOne–LevelFour.png  Crown.png  02.png
+└── Save/         settings.json  save_data.json
 ```
 
-### 角色顏色順序
+**Cat color order** (`GameContext::kCatColorOrder`, index 0–7):**
+blue · red · yellow · green · purple · pink · orange · gray
 
-由 `GameContext::kCatColorOrder` 統一定義：
+### CatAssets (`CatAssets.hpp` — header-only)
 
-```
-index 0 = blue    index 4 = purple
-index 1 = red     index 5 = pink
-index 2 = yellow  index 6 = orange
-index 3 = green   index 7 = gray
-```
-
-### CatAssets 工具(CatAssets.hpp)
-
-| 函式 | 說明 |
-|------|------|
-| `BuildFramePath(color, action, frameNum)` | 建立單幀路徑 |
-| `BuildFramePaths(color, action, numFrames)` | 建立多幀路徑(frame 1 ~ numFrames) |
-| `BuildFullAnimPaths(color)` | 建立完整的 `CatAnimPaths` |
+| Function | Notes |
+|----------|-------|
+| `BuildFramePath(color, action, frameNum)` | single frame path |
+| `BuildFramePaths(color, action, n)` | frames 1..n |
+| `BuildFullAnimPaths(color)` | complete `CatAnimPaths` struct |
 
 ---
 
-## 11. 場景切換流程全覽
+## 11. Scene Transition Overview
 
 ```
 AppStart
-    │
-    ▼
-TitleScene ──ENTER──→ MenuScene ──A/D 選單──→ ExitConfirmScene ──YES──→ ShouldQuit
-                          │                         │
-                          │              ESC/NO──→ MenuScene
+    ↓
+TitleScene ──ENTER──→ MenuScene ──A/D──→ ExitConfirmScene ──YES──→ ShouldQuit
+                          │                    │
+                          │               ESC/NO──→ MenuScene
                           │
-                          ├──→ OptionMenuScene ──ENTER(row0)/mouse──→ KeyboardConfigScene
-                          │         │                                        │
-                          │    OK/ESC/CANCEL ←──────────────────────────────┘
-                          │    (OK 時寫 settings.json)
+                          ├──→ OptionMenuScene ──row0/mouse──→ KeyboardConfigScene
+                          │         │                                   │
+                          │    OK/ESC/CANCEL ←────────────────────────-┘
                           │
-                          └──→ LocalPlayScene ──ENTER(人數 ≤ configuredCount)──→ LocalPlayGameScene
-                                    │                                                    │
-                               ESC/X Button ←──────────────────────────  全員進門──→ LevelSelectScene
-                               → MenuScene                                               │
-                                                                           ENTER/click──→ LevelNScene
-                                                                           ESC──────────→ LocalPlayGameScene
+                          └──→ LocalPlayScene ──ENTER(count≤configured)──→ LocalPlayGameScene
+                                   │                                              │
+                              ESC/X←──────────────────────  all entered──→ LevelSelectScene
+                              → MenuScene                                         │
+                                                               ENTER/click──→ LevelNScene
+                                                               ESC──────────→ LocalPlayGameScene
 ```
 
 ---
 
-## 12. 擴充指引
+## 12. Extension Guide
 
-### 新增一個關卡場景(例如 `LevelOneScene`)
+### Add a Level Scene (e.g. `LevelOneScene`)
 
-1. 建立 `include/LevelOneScene.hpp` 和 `src/LevelOneScene.cpp`，繼承 `Scene`，實作 `OnEnter`、`OnExit`、`Update` 
-2. 在 `App.hpp` 新增 `unique_ptr<Scene> m_LevelOneScene` 
-3. 在 `AppStart.cpp` 建立實例，並呼叫 `m_LevelSelectScene->SetLevelScene(0, m_LevelOneScene.get())` 
-4. 關卡完成時呼叫 `SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, elapsed)` 更新最佳時間 
-5. 在 `CMakeLists.txt` 加入新的 `.cpp` 檔 
+1. Create `include/LevelOneScene.hpp` + `src/LevelOneScene.cpp`, inherit `Scene`.
+2. Declare `unique_ptr<Scene> m_LevelOneScene` in `App.hpp`.
+3. Construct in `AppStart.cpp`; LevelSelectScene routing is currently commented out — uncomment and wire `m_LevelScenes[0]`.
+4. On completion call `SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, elapsed)`.
+5. Add `.cpp` to `CMakeLists.txt`.
 
-### 新增一個全域設定項目
+### Add a Global Setting
 
-1. 在 `OptionMenuScene::Settings` 加入欄位 
-2. 在 `OptionMenuScene` 的 UI 建立對應的列(參考 BG COLOR 列的模式) 
-3. 在 `OptionSettingsData`(`SaveManager.hpp`)加入對應欄位 
-4. 更新 `SaveManager::SaveOptionSettings` 和 `LoadOptionSettings` 讀寫該欄位 
-5. 若設定需跨場景生效，在 `GameContext` 加入對應成員，`OptionMenuScene` 在 OK 時同步寫入 
+1. Add field to `OptionMenuScene::Settings` and `OptionSettingsData` in `SaveManager.hpp`.
+2. Build corresponding UI row in `OptionMenuScene` (follow BG_COLOR pattern).
+3. Update `SaveManager::SaveOptionSettings` / `LoadOptionSettings`.
+4. If the setting must be cross-scene, add a member to `GameContext` and sync in `OptionMenuScene` OK branch.
 
-### 新增一個角色顏色
+### Add a Cat Color
 
-1. 在 `resources/Image/Character/` 下建立 `{color}_cat/` 資料夾，放入所有動畫幀 
-2. 在 `GameContext::kCatColorOrder` 陣列末尾追加顏色名稱字串 
-3. `LocalPlayScene::MAX_PLAYERS` 若需要支援超過 8 人，一併調整
+1. Create `resources/Image/Character/{color}_cat/` with all animation frames.
+2. Append the color string to `GameContext::kCatColorOrder`.
+3. Adjust `LocalPlayScene::MAX_PLAYERS` if supporting more than 8 players.

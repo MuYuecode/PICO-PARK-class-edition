@@ -44,7 +44,6 @@ void ExitConfirmScene::OnEnter() {
     m_Ctx.Root.AddChild(m_ChoiceFrame);
 
     m_MenuFrame->SetScale({408.0f / 695.0f, 287.0f / 218.0f});
-    // m_ExitGameButton->SetPosition({192.3f, 9.0f});
     m_ExitGameButton->SetPosition({188.0f, 15.5f});
 
     m_IsYesSelected = true;
@@ -100,10 +99,6 @@ Scene* ExitConfirmScene::Update() {
             LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
             m_Ctx.ShouldQuit = true;
             return nullptr;
-        }
-        else {
-            LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
-            return m_MenuScene;
         }
     }
 

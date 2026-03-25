@@ -15,7 +15,6 @@ class MenuScene;
 class KeyboardConfigScene;
 class LocalPlayGameScene;
 
-// 選擇人數
 class LocalPlayScene : public Scene {
 public:
     LocalPlayScene(GameContext& ctx,
@@ -35,14 +34,12 @@ public:
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
     void SetGameScene(LocalPlayGameScene* s) { m_GameScene = s; }
 
-    // 回傳目前選擇的遊玩人數
     [[nodiscard]]int GetPlayerCount() const { return m_PlayerCount; }
 
     static constexpr int MIN_PLAYERS = 2;
     static constexpr int MAX_PLAYERS = 8;
 
 private:
-    //  借用自 MenuScene 的共用 UI
     std::shared_ptr<Character>          m_MenuFrame;
     std::shared_ptr<Character>          m_ExitGameButton;
     std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
@@ -52,15 +49,12 @@ private:
     std::shared_ptr<GameText> m_PlayerCountText;  // "nPLAYER GAME"
     std::shared_ptr<GameText> m_NoConfigText;     // "No keyboard config"
 
-    // 狀態
     int m_PlayerCount = MIN_PLAYERS;
 
-    // 切換目標
     MenuScene*           m_MenuScene     = nullptr;
     KeyboardConfigScene* m_KbConfigScene = nullptr;
     LocalPlayGameScene*  m_GameScene     = nullptr;
 
-    // COLOR
     static const Util::Color k_Black;
     static const Util::Color k_Red;
 

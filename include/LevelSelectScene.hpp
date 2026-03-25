@@ -53,26 +53,19 @@ public:
     void   OnExit()  override;
     Scene* Update()  override;
 
-    /**
-     * 設定對應關卡的場景指標(由 AppStart 呼叫)
-     * @param levelIdx 0-indexed(0 = Level 1)
-     * @param scene    關卡場景指標；尚未實作時傳 nullptr
-     */
     // void SetLevelScene(int levelIdx, Scene* scene) {
     //     if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)
     //         m_LevelScenes[levelIdx] = scene;
     // }
 
-    // 關卡格子座標(供外部參考)
     static constexpr int   LEVEL_COUNT = 10;
     static constexpr int   COLS        = 5;
     static constexpr int   ROWS        = 2;
-    static constexpr float CELL_W      = 200.0f;   // 格子橫向間距
-    static constexpr float CELL_H      = 220.0f;   // 格子縱向間距
-    static constexpr float GRID_MID_X  = 0.0f;  // 第 1 欄中心 X
-    static constexpr float GRID_TOP_Y  = 60.0f;  // 第 1 列中心 Y
+    static constexpr float CELL_W      = 200.0f;
+    static constexpr float CELL_H      = 220.0f;
+    static constexpr float GRID_MID_X  = 0.0f;
+    static constexpr float GRID_TOP_Y  = 60.0f;
 
-    /** 回傳第 idx 個格子的中心座標(0-indexed) */
     static glm::vec2 CellPos(int idx);
 
     std::vector<std::string> imagePaths = {
@@ -95,30 +88,25 @@ public:
     };
 
 private:
-    // UI 物件
-    std::shared_ptr<Character> m_SelectorFrame;  // 橘色粗框(隨選擇移動)
+    std::shared_ptr<Character> m_SelectorFrame;
 
-    std::shared_ptr<GameText>  m_TitleText;      // "LEVEL N"
-    std::shared_ptr<GameText>  m_BestTimeText;   // "m PLAYERS BEST TIME: mm:ss.cs"
+    std::shared_ptr<GameText>  m_TitleText;
+    std::shared_ptr<GameText>  m_BestTimeText;
 
-    std::array<std::shared_ptr<Character>, LEVEL_COUNT> m_LevelCover;  // "1"~"10"
-    std::array<std::shared_ptr<Character>, LEVEL_COUNT> m_Crown;  // "★"(完成標記)
+    std::array<std::shared_ptr<Character>, LEVEL_COUNT> m_LevelCover;
+    std::array<std::shared_ptr<Character>, LEVEL_COUNT> m_Crown;
 
-    // 場景狀態
     int m_SelectedIdx = 0;
 
-    std::array<LevelSaveData, LEVEL_COUNT> m_LevelData;   // 從 save_data.json 載入
+    std::array<LevelSaveData, LEVEL_COUNT> m_LevelData;
 
-    //  場景連結(raw non-owning pointer)
     LocalPlayGameScene*             m_LocalPlayGameScene = nullptr;
-    // std::array<Scene*, LEVEL_COUNT> m_LevelScenes;   // 各關卡場景；nullptr = 尚未實作
+    // std::array<Scene*, LEVEL_COUNT> m_LevelScenes;
 
-    //  顏色常數
     static const Util::Color kBlack;
     static const Util::Color kOrange;
     static const Util::Color kGray;
 
-    //  輔助：UI 更新
     void UpdateSelectorPos()  const;
     void UpdateTitleText()    const;
     void UpdateBestTimeText() const;

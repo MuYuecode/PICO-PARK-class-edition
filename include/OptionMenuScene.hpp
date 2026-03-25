@@ -16,28 +16,6 @@
 class MenuScene;
 class KeyboardConfigScene;
 
-/**
- * 遊戲設定選單場景
- * 選單結構(由上至下)：
- *   OPTION(標題，置中)
- *   KEYBOARD CONFIG  |  OPEN
- *   BG COLOR         |  ◀  WHITE  ▶
- *   BGM VOLUME       |  ◀  0      ▶
- *   SE VOLUME        |  ◀  0      ▶
- *   DISP NUMBER      |  ◀  OFF    ▶
- *
- *          OK              CANCEL
- *
- * 操作方式：
- *   W / ↑  : 游標上移
- *   S / ↓  : 游標下移
- *   A / 左鍵點擊左方按鈕 : 目前列左調整
- *   D / 左鍵點擊右方按鈕 : 目前列右調整
- *   ENTER  : 確認(KEYBOARD CONFIG 開啟子頁；OK/CANCEL/ESC 離開)
- *   ESC / X 按鈕 / CANCEL : 取消並返回 MenuScene
- *
- * m_ChoiceFrame 永遠圍住當前選中列的「值」區域(OPEN 或中間文字)
- */
 class OptionMenuScene : public Scene {
 public:
     OptionMenuScene(GameContext& ctx,
@@ -59,8 +37,8 @@ public:
         bool dispNumber   = false;
     };
 
-    Settings m_Applied;   // 真正生效的設定(OK 才寫入)
-    Settings m_Pending;   // 選單開啟期間的暫時操作(會顯示在選單UI上)
+    Settings m_Applied;
+    Settings m_Pending;
 
 private:
     std::shared_ptr<Character> m_ExitGameButton;
@@ -98,7 +76,6 @@ private:
     MenuScene* m_MenuScene = nullptr;
     KeyboardConfigScene* m_KeyboardConfigScene = nullptr;
 
-    // 在 s_BgColorOptions 中新增顏色字串即可
     static const std::vector<std::string> s_BgColorOptions;
     static const std::vector<std::string> s_BgColorPaths;
 
@@ -118,7 +95,6 @@ private:
     static constexpr float COL_OK_X         = -130.0f;
     static constexpr float COL_CANCEL_X     =  130.0f;
 
-    // 輔助函式
     void UpdateChoiceFrame() const;
     void UpdateValueTexts() const;
 
@@ -127,7 +103,6 @@ private:
     void AdjustLeft(int row);
     void AdjustRight(int row);
 
-    // row 5/6 OK, CANCEL 互換邏輯
     void SwapOkCancel();
 };
 

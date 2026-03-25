@@ -22,15 +22,10 @@ public:
     [[nodiscard]] glm::vec2 GetSize() const { return GetScaledSize(); }
 
     void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
-    // 重新設定顏色 用於表達不同意義
     void SetColor(const Util::Color& color) const ;
-    // 重新設定文字 用於選單值變更時更新顯示
     void SetText(const std::string& text) const ;
 
-    // 新增：偵測滑鼠是否懸停在文字範圍內
     [[nodiscard]] bool IsMouseHovering() const;
-
-    // 新增：偵測文字是否被滑鼠左鍵點擊
     [[nodiscard]] bool IsLeftClicked() const;
 };
 

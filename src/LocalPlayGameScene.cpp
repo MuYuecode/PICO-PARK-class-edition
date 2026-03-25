@@ -10,6 +10,9 @@
 #include <array>
 #include <cmath>
 
+using ip = Util::Input ;
+using k  = Util::Keycode ;
+
 LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
                                        LocalPlayScene* localPlayScene,
                                        KeyboardConfigScene* kbConfigScene)
@@ -78,34 +81,33 @@ void LocalPlayGameScene::OnExit() {
 }
 
 Scene* LocalPlayGameScene::Update() {
-    if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE)) {
+
+    if (ip::IsKeyDown(k::ESCAPE)) {
         return m_LocalPlayScene;
     }
 
-    // 讀取輸入
     for (auto& pb : m_Players) {
         auto& st        = pb.agent.state;
         const auto& key = pb.key;
 
         st.moveDir = 0;
 
-        const bool goLeft  = (key.left  != Util::Keycode::UNKNOWN) &&
-                              Util::Input::IsKeyPressed(key.left);
-        const bool goRight = (key.right != Util::Keycode::UNKNOWN) &&
-                              Util::Input::IsKeyPressed(key.right);
+        const bool goLeft  = (key.left  != k::UNKNOWN) &&
+                              ip::IsKeyPressed(key.left);
+        const bool goRight = (key.right != k::UNKNOWN) &&
+                              ip::IsKeyPressed(key.right);
 
         if      (goLeft  && !goRight) st.moveDir = -1;
         else if (goRight && !goLeft)  st.moveDir =  1;
 
-        const bool wantJump = (key.jump != Util::Keycode::UNKNOWN) &&
-                               Util::Input::IsKeyDown(key.jump);
+        const bool wantJump = (key.jump != k::UNKNOWN) &&
+                               ip::IsKeyDown(key.jump);
 
         if (st.grounded && wantJump) {
             CharacterPhysicsSystem::ApplyJump(st);
         }
     }
 
-    // 門碰撞偵測
     const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
     const glm::vec2 doorSize = m_Ctx.Door->GetScaledSize();
     const float halfW = doorSize.x / 2.0f + 10.0f;
@@ -119,8 +121,8 @@ Scene* LocalPlayGameScene::Update() {
         const bool      inRange = (std::abs(pos.x - doorPos.x) <= halfW &&
                                    std::abs(pos.y - doorPos.y) <= halfH);
 
-        const bool pressedUp = (pb.key.up != Util::Keycode::UNKNOWN) &&
-                                Util::Input::IsKeyDown(pb.key.up);
+        const bool pressedUp = (pb.key.up != k::UNKNOWN) &&
+                                ip::IsKeyDown(pb.key.up);
 
         if (inRange && pressedUp) {
             pb.entered = true;
@@ -137,16 +139,12 @@ Scene* LocalPlayGameScene::Update() {
         }
     }
 
-    // 攤平成 vector<PhysicsAgent>(System 需要整體視野)
     std::vector<PhysicsAgent> agents;
     agents.reserve(m_Players.size());
     for (auto& pb : m_Players) agents.push_back(pb.agent);
 
-    // 委託物理系統
-    // m_Physics.Update(agents, m_Ctx.Floor); original
     CharacterPhysicsSystem::Update(agents, m_Ctx.Floor);
 
-    // 把更新後的狀態寫回(System 修改的是副本)
     for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
         m_Players[i].agent.state = agents[i].state;
     }
@@ -164,9 +162,9 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 
         auto cat = std::make_shared<PlayerCat>(
             CatAssets::BuildFullAnimPaths(color),
-            Util::Keycode::UNKNOWN,
-            Util::Keycode::UNKNOWN,
-            Util::Keycode::UNKNOWN);
+            k::UNKNOWN,
+            k::UNKNOWN,
+            k::UNKNOWN);
         cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
 
         PlayerBinding pb;
@@ -176,24 +174,21 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
             pb.key = m_KbConfigScene->GetAppliedConfig(i);
         }
 
-        // 預設按鍵 fallback
         if (i == 0 &&
-            pb.key.left  == Util::Keycode::UNKNOWN &&
-            pb.key.right == Util::Keycode::UNKNOWN) {
+            pb.key.left  == k::UNKNOWN &&
+            pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default1P;
         }
         else if (i == 1 &&
-                 pb.key.left  == Util::Keycode::UNKNOWN &&
-                 pb.key.right == Util::Keycode::UNKNOWN) {
+                 pb.key.left  == k::UNKNOWN &&
+                 pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default2P;
         }
 
-        // 複製 StartupCats[i] 的位置
         if (i < static_cast<int>(m_Ctx.StartupCats.size()) &&
             m_Ctx.StartupCats[i] != nullptr) {
             cat->SetPosition(m_Ctx.StartupCats[i]->GetPosition());
         } else {
-            // Fallback：StartupCats 不夠用時放在地板上
             const float floorY     = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetPosition().y : -340.0f;
             const float floorHalfH = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetScaledSize().y / 2.0f : 0.0f;
             const float charHalfH  = cat->GetScaledSize().y / 2.0f;

@@ -1,72 +1,64 @@
-# 物理模型設計文件
+# Physics System Design
 
-## 架構總覽
+## Architecture Overview
 
 ```
-IPhysicsBody  (純介面，IPhysicsBody.hpp)
+IPhysicsBody  (pure interface, IPhysicsBody.hpp)
 │
-├── PlayerCat          → BodyType::CHARACTER         ← 已完整實作
-├── PushableBox        → BodyType::PUSHABLE_BOX       ← 骨架，待實作
-├── PatrolEnemy        → BodyType::PATROL_ENEMY       ← 骨架，待實作
-├── MovingPlatform     → BodyType::MOVING_PLATFORM    ← 骨架，待實作
-├── ConditionalPlatform → BodyType::CONDITIONAL_PLATFORM ← 骨架，待實作
-└── Bullet             → BodyType::BULLET             ← 骨架，待實作
+├── PlayerCat            → BodyType::CHARACTER          ✅ fully implemented
+├── PushableBox          → BodyType::PUSHABLE_BOX       ⬜ skeleton, TODO
+├── PatrolEnemy          → BodyType::PATROL_ENEMY       ⬜ skeleton, TODO
+├── MovingPlatform       → BodyType::MOVING_PLATFORM    ⬜ skeleton, TODO
+├── ConditionalPlatform  → BodyType::CONDITIONAL_PLATFORM ⬜ skeleton, TODO
+└── Bullet               → BodyType::BULLET             ⬜ skeleton, TODO
 
-PhysicsWorld  (協調者，PhysicsWorld.hpp / .cpp)
-│
-├── Register(body)              每次 OnEnter 把物件登記進來
-├── Unregister(body)            每次 OnExit 移除
-├── Update()                    Scene::Update 每幀呼叫一次
-├── GetBodiesOfType(type)       取得所有指定類型的 body
-├── GetRopesOf(body)            取得與指定 body 連結的繩索
-└── AddRope() / RemoveRope()    繩索管理(StepRopes 尚未實作)
+PhysicsWorld  (coordinator, PhysicsWorld.hpp / .cpp)
+├── Register / Unregister / Clear
+├── Update()                  call once per frame from Scene::Update
+├── GetBodiesOfType(type)
+├── GetRopesOf(body)
+└── AddRope / RemoveRope      rope constraints (StepRopes not yet implemented)
 
-CharacterPhysicsSystem  (純靜態算法，CharacterPhysicsSystem.hpp / .cpp)
-│
-└── static Update(agents, floor)  只處理 CHARACTER 的移動、重力、踩頭、推擠
-                                  PhysicsWorld 負責跨類型事件通知(待完整實作)
+CharacterPhysicsSystem  (pure-static algorithm, CharacterPhysicsSystem.hpp / .cpp)
+└── static Update(agents, floor)   handles CHARACTER movement, gravity, stacking, pushing
+                                   PhysicsWorld handles cross-type events (partial)
 ```
 
 ---
 
-## 各物理模型與介面的對應
+## Body Types and Interface Implementation
 
-### 1. PlayerCat(CHARACTER)— 已完整實作
+### 1. PlayerCat (CHARACTER) — Fully Implemented
 
-`PlayerCat` 已完整實作 `IPhysicsBody`(`PlayerCat.hpp`)：
+`PlayerCat` implements all `IPhysicsBody` pure-virtual methods:
 
 ```cpp
 class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
-    // 已實作所有純虛擬方法：
-    //   GetBodyType()  → CHARACTER
-    //   GetPosition()  → m_Transform.translation
-    //   SetPosition()  → m_Transform.translation = pos
-    //   GetHalfSize()  → abs(GetScaledSize()) * 0.5f
-    //   GetVelocity()  → m_Velocity
-    //   SetVelocity()  → m_Velocity = vel
-    //   IsSolid()      → true
-    //   IsKinematic()  → false
-    //   UseGravity()   → true
-    //   OnCollision()  → 空實作(未來可在此處理「被敵人碰到扣血」等效果)
-    //   PhysicsUpdate() → 未覆寫(CHARACTER 的移動由 CharacterPhysicsSystem 負責)
+    // GetBodyType()  → CHARACTER
+    // GetPosition()  → m_Transform.translation
+    // SetPosition()  → m_Transform.translation = pos
+    // GetHalfSize()  → abs(GetScaledSize()) * 0.5f
+    // GetVelocity()  → m_Velocity
+    // SetVelocity()  → m_Velocity = vel
+    // IsSolid()      → true
+    // IsKinematic()  → false
+    // UseGravity()   → true
+    // OnCollision()  → empty (extend for damage, etc.)
+    // PhysicsUpdate() → not overridden; CHARACTER movement handled by CharacterPhysicsSystem
 };
 ```
 
-`PhysicsAgent` 的結構即為 `shared_ptr<PlayerCat> actor + PhysicsState state`，與 `IPhysicsBody` 整合方式如下：
+> **Current status:** `LocalPlayGameScene` uses `CharacterPhysicsSystem::Update` directly for player physics. `PhysicsWorld::Update()` is not called from `LocalPlayGameScene` — it is reserved for future cross-type interactions (boxes, enemies, platforms).
 
+Registration example (for future level scenes):
 ```cpp
-// LevelScene::OnEnter 登記方式(LocalPlayGameScene 目前尚未使用 m_World)
-m_World.Register(agent.actor);   // actor 已實作 IPhysicsBody，直接傳入即可
+m_World.Register(agent.actor);   // PlayerCat already implements IPhysicsBody
 ```
-
-> **目前狀態**：`LocalPlayGameScene` 使用 `CharacterPhysicsSystem::Update` 處理玩家物理，
-> 並未呼叫 `m_World.Update()` `PhysicsWorld` 留待跨類型互動(箱子、敵人、平台)實作時啟用 
 
 ---
 
-### 2. PushableBox — 骨架(待實作)
+### 2. PushableBox — Skeleton (TODO)
 
-**類別骨架：**
 ```cpp
 // include/PushableBox.hpp
 class PushableBox : public Character, public IPhysicsBody {
@@ -79,7 +71,6 @@ public:
     glm::vec2 GetHalfSize()  const override { return glm::abs(GetScaledSize()) * 0.5f; }
     glm::vec2 GetVelocity()  const override { return m_Velocity; }
     void      SetVelocity(const glm::vec2& v) override { m_Velocity = v; }
-
     bool IsSolid()     const override { return true;  }
     bool IsKinematic() const override { return false; }
     bool UseGravity()  const override { return true;  }
@@ -87,12 +78,12 @@ public:
     void SetWorld(PhysicsWorld* world) { m_World = world; }
 
     void PhysicsUpdate() override {
-        // TODO：
-        // int pushersRight = m_World->CountCharactersPushing(this, +1);
-        // int pushersLeft  = m_World->CountCharactersPushing(this, -1);
-        // if (pushersRight >= m_RequiredPushers) m_Velocity.x = kPushSpeed;
-        // else if (pushersLeft >= m_RequiredPushers) m_Velocity.x = -kPushSpeed;
-        // else m_Velocity.x = 0;
+        // TODO:
+        // int r = m_World->CountCharactersPushing(this, +1);
+        // int l = m_World->CountCharactersPushing(this, -1);
+        // if (r >= m_RequiredPushers)      m_Velocity.x =  kPushSpeed;
+        // else if (l >= m_RequiredPushers) m_Velocity.x = -kPushSpeed;
+        // else                             m_Velocity.x =  0;
         // SetPosition(GetPosition() + m_Velocity);
     }
 
@@ -106,22 +97,17 @@ private:
 
 ---
 
-### 3. PatrolEnemy — 骨架(待實作)
+### 3. PatrolEnemy — Skeleton (TODO)
 
-**類別骨架：**
 ```cpp
 // include/PatrolEnemy.hpp
 class PatrolEnemy : public AnimatedCharacter, public IPhysicsBody {
 public:
-    enum class PatrolMode {
-        HORIZONTAL,  // 在 [leftX, rightX] 間來回
-        WAYPOINTS,   // 依照給定的路徑點列表移動
-        PIPE,        // 從水管出來再回去
-    };
+    enum class PatrolMode { HORIZONTAL, WAYPOINTS, PIPE };
 
     PatrolEnemy(const CatAnimPaths& animPaths, PatrolMode mode);
 
-    BodyType  GetBodyType()  const override { return BodyType::PATROL_ENEMY; }
+    BodyType GetBodyType()  const override { return BodyType::PATROL_ENEMY; }
     bool IsSolid()     const override { return true;  }
     bool IsKinematic() const override { return true;  }
     bool UseGravity()  const override { return false; }
@@ -130,27 +116,26 @@ public:
     void SetWaypoints(const std::vector<glm::vec2>& pts);
 
     void PhysicsUpdate() override {
-        // TODO：依 m_PatrolMode 更新位置
+        // TODO: update position by m_PatrolMode
     }
 
     void OnCollision(const CollisionInfo& info) override {
-        // if (info.other->GetBodyType() == BodyType::CHARACTER) { /* 扣血 */ }
+        // if (info.other->GetBodyType() == BodyType::CHARACTER) { /* damage */ }
     }
 
 private:
     PatrolMode             m_PatrolMode;
-    glm::vec2              m_Velocity   = {0, 0};
+    glm::vec2              m_Velocity    = {0, 0};
     std::vector<glm::vec2> m_Waypoints;
     int                    m_WaypointIdx = 0;
-    bool                   m_Reversed   = false;
+    bool                   m_Reversed    = false;
 };
 ```
 
 ---
 
-### 4. MovingPlatform — 骨架(待實作)
+### 4. MovingPlatform — Skeleton (TODO)
 
-**類別骨架：**
 ```cpp
 // include/MovingPlatform.hpp
 class MovingPlatform : public Character, public IPhysicsBody {
@@ -161,7 +146,7 @@ public:
                    glm::vec2 startPos, glm::vec2 endPos,
                    float speed, MoveAxis axis = MoveAxis::VERTICAL);
 
-    BodyType  GetBodyType()  const override { return BodyType::MOVING_PLATFORM; }
+    BodyType GetBodyType()  const override { return BodyType::MOVING_PLATFORM; }
     bool IsSolid()     const override { return true;  }
     bool IsKinematic() const override { return true;  }
     bool UseGravity()  const override { return false; }
@@ -169,13 +154,12 @@ public:
     void SetWorld(PhysicsWorld* world) { m_World = world; }
 
     void PhysicsUpdate() override {
-        // TODO：更新自身位置 + 攜帶上方的 body
+        // TODO: move between m_Start / m_End + carry riders
     }
 
 private:
     PhysicsWorld* m_World    = nullptr;
-    glm::vec2     m_Start;
-    glm::vec2     m_End;
+    glm::vec2     m_Start, m_End;
     glm::vec2     m_Velocity = {0, 0};
     MoveAxis      m_Axis;
 };
@@ -183,9 +167,10 @@ private:
 
 ---
 
-### 5. ConditionalPlatform — 骨架(待實作)
+### 5. ConditionalPlatform — Skeleton (TODO)
 
-**繼承 MovingPlatform，覆寫 PhysicsUpdate：**
+Extends `MovingPlatform`; only activates when enough riders are on top.
+
 ```cpp
 // include/ConditionalPlatform.hpp
 class ConditionalPlatform : public MovingPlatform {
@@ -197,9 +182,9 @@ public:
     BodyType GetBodyType() const override { return BodyType::CONDITIONAL_PLATFORM; }
 
     void PhysicsUpdate() override {
-        // TODO：
-        // int riders = m_World->CountBodiesOnTop(this);
-        // if (riders >= m_RequiredRiders) MovingPlatform::PhysicsUpdate();
+        // TODO:
+        // if (m_World->CountBodiesOnTop(this) >= m_RequiredRiders)
+        //     MovingPlatform::PhysicsUpdate();
     }
 
 private:
@@ -210,9 +195,8 @@ private:
 
 ---
 
-### 6. Bullet — 骨架(待實作)
+### 6. Bullet — Skeleton (TODO)
 
-**類別骨架：**
 ```cpp
 // include/Bullet.hpp
 class Bullet : public Character, public IPhysicsBody {
@@ -222,7 +206,7 @@ public:
     Bullet(const std::string& imagePath,
            glm::vec2 startPos, glm::vec2 direction, float speed);
 
-    BodyType  GetBodyType()  const override { return BodyType::BULLET; }
+    BodyType GetBodyType()  const override { return BodyType::BULLET; }
     bool IsSolid()     const override { return false; }
     bool IsKinematic() const override { return true;  }
     bool UseGravity()  const override { return false; }
@@ -230,13 +214,12 @@ public:
     void SetWorld(PhysicsWorld* world) { m_World = world; }
 
     void PhysicsUpdate() override {
-        // TODO：移動 + QueryOverlapping 碰撞偵測
+        // TODO: move + QueryOverlapping for collision detection
     }
 
     void OnCollision(const CollisionInfo& info) override {
-        if (info.other->GetBodyType() == BodyType::CHARACTER) {
+        if (info.other->GetBodyType() == BodyType::CHARACTER)
             SetActive(false);
-        }
     }
 
 private:
@@ -248,56 +231,52 @@ private:
 
 ---
 
-### 7. Rope(繩索約束)
+### 7. Rope Constraint
 
-繩索不是獨立的 `IPhysicsBody`，而是由 `PhysicsWorld` 管理的**約束(Constraint)**，
-以 `RopeConstraint` 結構記錄 
+Ropes are **constraints**, not `IPhysicsBody` instances. Managed by `PhysicsWorld` as `RopeConstraint` structs.
 
-**Scene 端的使用方式：**
 ```cpp
-// 兩個角色建立繩索連接
+// Add rope between two bodies
 m_World.AddRope(playerA.actor.get(), playerB.actor.get(),
                 /*maxLen=*/200.0f, /*friction=*/0.5f);
 
-// 解除
 m_World.RemoveRope(playerA.actor.get(), playerB.actor.get());
 ```
 
----
-
-## PhysicsWorld 目前實作狀態
-
-| 功能 | 狀態 |
-|------|------|
-| `Register` / `Unregister` / `Clear` | ✅ 已實作 |
-| `AddRope` / `RemoveRope` / `GetRopesOf` | ✅ 結構已實作 |
-| `GetBodiesOfType` | ✅ 已實作 |
-| `PurgeExpired`(清理失效弱引用) | ✅ 已實作 |
-| `StepPhysicsUpdate`(呼叫各 body 的 `PhysicsUpdate`) | ✅ 已實作 |
-| `StepRopes`(繩索力解析) | ❌ TODO |
-| `StepCollisions`(AABB 碰撞廣播) | ❌ TODO |
-| `CountCharactersPushing` | ❌ TODO(已有骨架) |
-| `CountBodiesOnTop` | ❌ TODO(已有骨架) |
-| `QueryOverlapping` | ❌ TODO(已有骨架) |
+`StepRopes()` is not yet implemented (see status table below).
 
 ---
 
-## Scene 使用方式範例(以未來的 LevelOneScene 為例)
+## PhysicsWorld Implementation Status
+
+| Feature | Status |
+|---------|--------|
+| `Register` / `Unregister` / `Clear` | ✅ |
+| `AddRope` / `RemoveRope` / `GetRopesOf` | ✅ (structure only) |
+| `GetBodiesOfType` | ✅ |
+| `PurgeExpired` (clean stale weak_ptrs, every 60 frames) | ✅ |
+| `StepPhysicsUpdate` (calls `PhysicsUpdate()` on each active body) | ✅ |
+| `StepRopes` (rope force resolution) | ❌ TODO |
+| `StepCollisions` (AABB broadcast via `OnCollision`) | ❌ TODO |
+| `CountCharactersPushing` | ❌ TODO (skeleton commented in source) |
+| `CountBodiesOnTop` | ❌ TODO (skeleton commented in source) |
+| `QueryOverlapping` | ❌ TODO (skeleton commented in source) |
+
+---
+
+## Future Level Scene Usage Pattern
 
 ```cpp
 class LevelOneScene : public Scene {
-    PhysicsWorld              m_World;        // 管理跨類型互動
+    PhysicsWorld              m_World;
     std::vector<PhysicsAgent> m_Agents;
-
-    std::vector<std::shared_ptr<PushableBox>>        m_Boxes;
-    std::vector<std::shared_ptr<MovingPlatform>>     m_Platforms;
-    std::vector<std::shared_ptr<PatrolEnemy>>        m_Enemies;
-
-    float m_ElapsedSeconds = 0.0f;   // 計時(用於最佳時間紀錄)
+    std::vector<std::shared_ptr<PushableBox>>    m_Boxes;
+    std::vector<std::shared_ptr<MovingPlatform>> m_Platforms;
+    std::vector<std::shared_ptr<PatrolEnemy>>    m_Enemies;
+    float m_ElapsedSeconds = 0.0f;
 
     void OnEnter() override {
         m_ElapsedSeconds = 0.0f;
-        // 登記所有物件
         for (auto& a : m_Agents)    m_World.Register(a.actor);
         for (auto& b : m_Boxes)     { b->SetWorld(&m_World); m_World.Register(b); }
         for (auto& p : m_Platforms) { p->SetWorld(&m_World); m_World.Register(p); }
@@ -310,43 +289,36 @@ class LevelOneScene : public Scene {
     }
 
     Scene* Update() override {
-        m_ElapsedSeconds += /* deltaTime */;
+        m_ElapsedSeconds += deltaTime;
 
-        // 1. 讀取輸入 → 寫入 agent.state.moveDir / 呼叫 ApplyJump
-        // 2. CHARACTER 的細緻物理(推擠、踩頭)，直接呼叫靜態方法
+        // Step 1: read input → set agent.state.moveDir / ApplyJump
+        // Step 2: CHARACTER fine physics (pushing, stacking)
         CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
-        // 3. 其他物件的自驅動 + 跨類型碰撞
+        // Step 3: other object self-drive + cross-type collisions
         m_World.Update();
 
-        // 4. 關卡完成判定
-        if (/* 全員到達終點 */) {
-            // 更新最佳時間並持久化
-            SaveManager::UpdateBestTime(
-                0,                              // levelIdx(0 = Level 1)
-                m_Ctx.SelectedPlayerCount,      // playerCount
-                m_ElapsedSeconds);              // 本次耗時(秒)
-            return m_LevelSelectScene;          // 返回關卡選擇
+        if (/* all players at goal */) {
+            SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, m_ElapsedSeconds);
+            return m_LevelSelectScene;
         }
-
         return nullptr;
     }
 };
 ```
 
-> **注意**：`LevelSelectScene` 不使用物理系統，它是純 UI 選單場景，
-> 只做 2D 網格選擇、滑鼠懸停偵測和存檔讀取，不持有任何 `PhysicsWorld` 或 `CharacterPhysicsSystem` 
+> `LevelSelectScene` is a pure UI scene: 2D grid navigation, mouse hover, save-data read. It holds no `PhysicsWorld` or `CharacterPhysicsSystem`.
 
 ---
 
-## CharacterPhysicsSystem 物理常數
+## CharacterPhysicsSystem Constants
 
-| 常數 | 值 | 說明 |
-|------|-----|------|
-| `kGroundMoveSpeed` | 5.0f | 地面移動速度(像素/幀) |
-| `kRunOnPlayerSpeed` | 6.2f | 站在其他角色頭上時的移動速度 |
-| `kJumpForce` | 11.0f | 起跳初速(velocityY) |
-| `kGravity` | 0.75f | 每幀重力加速度(velocityY -= kGravity) |
-| `kScreenHalfW` | 640.0f | 畫面半寬(1280 × 720) |
-| `kScreenHalfH` | 360.0f | 畫面半高 |
-| `HalfWidth()` | 18.0f | 碰撞箱半寬(固定值，避免動畫切換造成突變) |
-| `HalfHeight()` | 23.0f | 碰撞箱半高 |
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `kGroundMoveSpeed` | 5.0f | ground movement speed (px/frame) |
+| `kRunOnPlayerSpeed` | 6.2f | speed when standing on another character |
+| `kJumpForce` | 11.0f | initial jump velocityY |
+| `kGravity` | 0.75f | velocityY -= kGravity each frame |
+| `kScreenHalfW` | 640.0f | half of 1280×720 screen width |
+| `kScreenHalfH` | 360.0f | half of 1280×720 screen height |
+| `HalfWidth()` | 18.0f | collision box half-width (fixed, avoids jitter on animation switch) |
+| `HalfHeight()` | 23.0f | collision box half-height |

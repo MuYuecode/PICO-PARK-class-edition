@@ -63,7 +63,6 @@ void PhysicsWorld::Update() {
     // StepCollisions();
 }
 
-// StepPhysicsUpdate：呼叫所有 active body 的自驅動邏輯
 void PhysicsWorld::StepPhysicsUpdate() const {
     for (auto& wp : m_Bodies) {
         auto sp = wp.lock();
@@ -73,7 +72,6 @@ void PhysicsWorld::StepPhysicsUpdate() const {
     }
 }
 
-// StepRopes：解析繩索約束，對兩端施加力
 // void PhysicsWorld::StepRopes() {
 //     // TODO：實作繩索力解析
 //     //
@@ -104,7 +102,6 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 //     // }
 // }
 
-// StepCollisions：廣播 AABB 碰撞事件
 // void PhysicsWorld::StepCollisions() {
 //     // TODO：實作碰撞廣播
 //     //
@@ -134,7 +131,6 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 //     // }
 // }
 
-// 查詢：計算幾個 CHARACTER 正在往 dir 方向推 target
 // int PhysicsWorld::CountCharactersPushing(const IPhysicsBody* target, int dir) const {
 //     // TODO：實作
 //     //
@@ -172,7 +168,6 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 //     return 0;
 // }
 
-// 查詢：計算幾個 body 站在 target 頂部
 // int PhysicsWorld::CountBodiesOnTop(const IPhysicsBody* target) const {
 //     // TODO：實作(呼叫 IsOnTop)
 //     //
@@ -189,7 +184,6 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 //     return 0;
 // }
 
-// 查詢：AABB 重疊的所有 body
 // std::vector<IPhysicsBody*> PhysicsWorld::QueryOverlapping(const IPhysicsBody* target) const {
 //     std::vector<IPhysicsBody*> result;
 //
@@ -206,8 +200,6 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 //     return result;
 // }
 
-
-// 查詢：所有指定類型的 body
 std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
     std::vector<IPhysicsBody*> result;
     for (auto& wp : m_Bodies) {
@@ -219,14 +211,12 @@ std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
     return result;
 }
 
-// 工具：AABB 重疊判斷
 bool PhysicsWorld::AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) {
     glm::vec2 delta = a->GetPosition() - b->GetPosition();
     glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
     return std::abs(delta.x) < sum.x && std::abs(delta.y) < sum.y;
 }
 
-// 工具：rider 是否站在 platform 頂部
 // bool PhysicsWorld::IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const {
 //     // TODO：實作
 //     //
@@ -247,7 +237,6 @@ bool PhysicsWorld::AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) {
 //     return false;
 // }
 
-// 工具：清理失效的弱引用
 void PhysicsWorld::PurgeExpired() {
     m_Bodies.erase(
         std::remove_if(m_Bodies.begin(), m_Bodies.end(),

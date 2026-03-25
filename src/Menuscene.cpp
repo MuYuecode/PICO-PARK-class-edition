@@ -6,6 +6,9 @@
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
+using ip = Util::Input ;
+using  k = Util::Keycode ;
+
 MenuScene::MenuScene(GameContext&      ctx,
                      Scene*            titleScene,
                      ExitConfirmScene* exitConfirmScene,
@@ -45,7 +48,7 @@ MenuScene::MenuScene(GameContext&      ctx,
     m_RightTriButton = std::make_shared<UI_Triangle_Button>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
-    m_RightTriButton->SetZIndex(15); // 同上
+    m_RightTriButton->SetZIndex(15);
     m_RightTriButton->SetPosition({305.0f, -153.0f});
 
     m_ExitGameText = std::make_shared<GameText>("EXIT GAME", 65, black);
@@ -69,9 +72,7 @@ void MenuScene::OnEnter() {
     m_Ctx.Root.AddChild(m_ExitGameText);
     m_Ctx.Root.AddChild(m_OptionText);
     m_Ctx.Root.AddChild(m_LocalPlayText);
-
-    // m_SelectedIndex = 0;
-
+    
     m_LeftTriButton->ResetState();
     m_RightTriButton->ResetState();
 
@@ -108,19 +109,17 @@ void MenuScene::OnExit() {
 }
 
 Scene* MenuScene::Update() {
-    // m_Physics.Update(m_Agents, m_Ctx.Floor);
     CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
-    if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
+    if (ip::IsKeyDown(k::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
-        LOG_INFO("MenuScene: back to TitleScene");
         return m_TitleScene;
     }
 
-    if (Util::Input::IsKeyDown(Util::Keycode::A)) {
+    if (ip::IsKeyDown(k::A)) {
         HideAllOptions();
         m_SelectedIndex = (m_SelectedIndex + 2) % 3;
         m_LeftTriButton->Press(75.0f);
@@ -128,7 +127,7 @@ Scene* MenuScene::Update() {
         return nullptr;
     }
 
-    if (Util::Input::IsKeyDown(Util::Keycode::D)) {
+    if (ip::IsKeyDown(k::D)) {
         HideAllOptions();
         m_SelectedIndex = (m_SelectedIndex + 1) % 3;
         m_RightTriButton->Press(75.0f);
@@ -136,19 +135,16 @@ Scene* MenuScene::Update() {
         return nullptr;
     }
 
-    if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
+    if (ip::IsKeyDown(k::RETURN)) {
         switch (m_SelectedIndex) {
         case 0:
-            LOG_INFO("MenuScene: ENTER on EXIT GAME");
             if (m_ExitConfirmScene != nullptr) return m_ExitConfirmScene;
             break;
         case 1:
-            LOG_INFO("MenuScene: ENTER on OPTION");
             if (m_OptionScene != nullptr) return m_OptionScene;
             break;
         case 2:
-            LOG_INFO("MenuScene: ENTER on LOCAL PLAY");
-            if (m_LocalPlayScene != nullptr) return m_LocalPlayScene;  // ← stub 解除
+            if (m_LocalPlayScene != nullptr) return m_LocalPlayScene;
             break;
         default:
             break;

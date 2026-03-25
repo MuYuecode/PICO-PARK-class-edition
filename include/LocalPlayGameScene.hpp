@@ -24,11 +24,10 @@ public:
     void SetLevelSelectScene(LevelSelectScene* s) { m_LevelSelectScene = s; }
 
 private:
-    // 場景私有：每位玩家持有一份按鍵設定
     struct PlayerBinding {
         PhysicsAgent    agent;
         PlayerKeyConfig key;
-        bool            entered = false;   // 是否已進入門
+        bool            entered = false;
     };
 
     std::shared_ptr<GameText> m_DoorCountText;

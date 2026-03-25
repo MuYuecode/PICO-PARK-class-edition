@@ -15,7 +15,6 @@
 
 class OptionMenuScene;
 
-// 任一位玩家的鍵盤設定組合
 struct PlayerKeyConfig {
     Util::Keycode up         = Util::Keycode::UNKNOWN;
     Util::Keycode down       = Util::Keycode::UNKNOWN;
@@ -24,10 +23,9 @@ struct PlayerKeyConfig {
     Util::Keycode jump       = Util::Keycode::UNKNOWN;
     Util::Keycode cancel     = Util::Keycode::UNKNOWN;
     Util::Keycode shot       = Util::Keycode::UNKNOWN;
-    Util::Keycode menu       = Util::Keycode::UNKNOWN;  // 僅 1P 有效
-    Util::Keycode subMenu    = Util::Keycode::UNKNOWN;  // 僅 1P 有效
+    Util::Keycode menu       = Util::Keycode::UNKNOWN;  // only 1p
+    Util::Keycode subMenu    = Util::Keycode::UNKNOWN;  // only 1p
 
-    // 回傳此 config 中所有非 UNKNOWN 的按鍵(用於衝突偵測)
     [[nodiscard]] std::vector<Util::Keycode> AllKeys() const;
 };
 
@@ -44,13 +42,11 @@ public:
 
     void SetOptionScene(OptionMenuScene* s) { m_OptionScene = s; }
 
-    // 預設設定(供外部讀取，或未來存檔使用)
     static const PlayerKeyConfig k_Default1P;
     static const PlayerKeyConfig k_Default2P;
 
     static constexpr int MAX_PLAYERS = 8;
 
-    // 回傳已設定足夠按鍵(≥4 個非 UNKNOWN)的玩家數量
     [[nodiscard]] int GetConfiguredPlayerCount() const;
 
     [[nodiscard]] PlayerKeyConfig GetAppliedConfig(int playerIdx) const {
@@ -62,46 +58,34 @@ public:
 
 private:
     std::shared_ptr<Character> m_ExitGameButton;
-
-    // 框架
     std::shared_ptr<Character> m_Frame;
-
-    // 選擇框
     std::shared_ptr<Character> m_ChoiceFrame;
-
-    // 橫線分隔
     std::shared_ptr<Character> m_HLine1;
     std::shared_ptr<Character> m_HLine2;
     std::shared_ptr<Character> m_HLine3;
 
-    // 標題
     std::shared_ptr<GameText> m_TitleText;
 
-    // PLAYER 列
     std::shared_ptr<GameText>           m_PlayerLabel;
     std::shared_ptr<UI_Triangle_Button> m_PlayerLeftBtn;
     std::shared_ptr<GameText>           m_PlayerValue;   // "1P" ~ "8P"
     std::shared_ptr<UI_Triangle_Button> m_PlayerRightBtn;
 
-    // 按鍵綁定列(每列：label + value)
     static constexpr int BIND_COUNT = 9;
     std::array<std::shared_ptr<GameText>, BIND_COUNT> m_BindLabels;
     std::array<std::shared_ptr<GameText>, BIND_COUNT> m_BindValues;
 
-    // 底部按鈕
     std::shared_ptr<GameText> m_OkText;
     std::shared_ptr<GameText> m_CancelText;
     std::shared_ptr<GameText> m_DefaultText;
 
     OptionMenuScene* m_OptionScene = nullptr;
 
-    // 設定狀態
     std::array<PlayerKeyConfig, MAX_PLAYERS> m_Applied;
     PlayerKeyConfig m_Pending;
 
     int  m_CurrentPlayer = 0;
 
-    // ROW
     int  m_SelectedRow  = 0;
     static constexpr int ROW_PLAYER   = 0;
     static constexpr int ROW_BIND_0   = 1;
@@ -112,11 +96,9 @@ private:
     static constexpr int ROW_DEFAULT  = 12;
     static constexpr int ROW_COUNT    = 13;
 
-    // 按鍵捕捉模式
     bool m_WaitingForKey = false;
     int  m_WaitingRow    = -1;
 
-    // COLUMN
     static constexpr float COL_LABEL_X     = -295.0f;
     static constexpr float COL_LEFT_BTN_X  =  130.0f;
     static constexpr float COL_VALUE_X     =  245.0f;
@@ -134,12 +116,10 @@ private:
     static constexpr float ROW_Y_HLINE3   = -240.5f;
     static constexpr float ROW_Y_BTN      = -274.5f;
 
-    // COLOR
     static const Util::Color k_Black;
     static const Util::Color k_Red;
     static const Util::Color k_Grey;
 
-    // 輔助函式
     void LoadPlayer(int playerIdx);
     void CommitPending();
     void ApplyDefault();
