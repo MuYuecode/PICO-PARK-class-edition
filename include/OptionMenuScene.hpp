@@ -11,7 +11,7 @@
 #include "Scene.hpp"
 #include "Character.hpp"
 #include "GameText.hpp"
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 
 class MenuScene;
 class KeyboardConfigScene;
@@ -51,24 +51,24 @@ private:
     std::shared_ptr<GameText> m_KbConfigOpen;        // "OPEN"
 
     std::shared_ptr<GameText>           m_BgColorLabel;
-    std::shared_ptr<UI_Triangle_Button> m_BgColorLeftBtn;
+    std::shared_ptr<UITriangleButton> m_BgColorLeftBtn;
     std::shared_ptr<GameText>           m_BgColorValue;
-    std::shared_ptr<UI_Triangle_Button> m_BgColorRightBtn;
+    std::shared_ptr<UITriangleButton> m_BgColorRightBtn;
 
     std::shared_ptr<GameText>           m_BgmVolumeLabel;
-    std::shared_ptr<UI_Triangle_Button> m_BgmVolumeLeftBtn;
+    std::shared_ptr<UITriangleButton> m_BgmVolumeLeftBtn;
     std::shared_ptr<GameText>           m_BgmVolumeValue;
-    std::shared_ptr<UI_Triangle_Button> m_BgmVolumeRightBtn;
+    std::shared_ptr<UITriangleButton> m_BgmVolumeRightBtn;
 
     std::shared_ptr<GameText>           m_SeVolumeLabel;
-    std::shared_ptr<UI_Triangle_Button> m_SeVolumeLeftBtn;
+    std::shared_ptr<UITriangleButton> m_SeVolumeLeftBtn;
     std::shared_ptr<GameText>           m_SeVolumeValue;
-    std::shared_ptr<UI_Triangle_Button> m_SeVolumeRightBtn;
+    std::shared_ptr<UITriangleButton> m_SeVolumeRightBtn;
 
     std::shared_ptr<GameText>           m_DispNumberLabel;
-    std::shared_ptr<UI_Triangle_Button> m_DispNumberLeftBtn;
+    std::shared_ptr<UITriangleButton> m_DispNumberLeftBtn;
     std::shared_ptr<GameText>           m_DispNumberValue;
-    std::shared_ptr<UI_Triangle_Button> m_DispNumberRightBtn;
+    std::shared_ptr<UITriangleButton> m_DispNumberRightBtn;
 
     std::shared_ptr<GameText> m_OkText;
     std::shared_ptr<GameText> m_CancelText;

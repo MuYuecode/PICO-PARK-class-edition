@@ -32,6 +32,13 @@ struct CatAnimPaths {
 
 class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
 public:
+    static constexpr float kGravity          = 0.75f;
+    static constexpr float kJumpForce        = 11.0f;
+    static constexpr float kGroundMoveSpeed  = 5.0f;
+    static constexpr float kRunOnPlayerSpeed = 6.2f;
+    static constexpr float kHalfWidth        = 18.0f;
+    static constexpr float kHalfHeight       = 23.0f;
+
     PlayerCat(const CatAnimPaths& animPaths,
               Util::Keycode leftKey,
               Util::Keycode rightKey,
@@ -39,30 +46,47 @@ public:
 
     void SetCatAnimState(CatAnimState newState);
     [[nodiscard]] CatAnimState GetCatAnimState() const { return m_CurrentAnimState; }
-
-    void SetInputEnabled(bool enabled)         { m_InputEnabled = enabled; }
-    [[nodiscard]] bool GetInputEnabled() const { return m_InputEnabled;    }
-
-    void SetPosition(const glm::vec2& pos) override { m_Transform.translation = pos; }
-    void SetScale(const glm::vec2& scale)   { m_Transform.scale = scale; }
-    void SetVelocity(const glm::vec2& vel) override { m_Velocity = vel; }
-
-    [[nodiscard]] BodyType GetBodyType() const override { return BodyType::CHARACTER; }
-    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
-    [[nodiscard]] glm::vec2 GetHalfSize() const override { return glm::abs(GetScaledSize()) * 0.5f; }
-    [[nodiscard]] glm::vec2 GetVelocity() const override { return m_Velocity; }
-
-    [[nodiscard]] bool IsSolid() const override { return true; }
-    [[nodiscard]] bool IsKinematic() const override { return false; }
-    [[nodiscard]] bool UseGravity() const override { return true; }
-    void OnCollision(const CollisionInfo& /*info*/) override {}
-
     [[nodiscard]] Util::Keycode GetLeftKey()  const { return m_LeftKey;  }
     [[nodiscard]] Util::Keycode GetRightKey() const { return m_RightKey; }
     [[nodiscard]] Util::Keycode GetJumpKey()  const { return m_JumpKey;  }
 
+    void SetMoveDir(int dir)               { m_MoveDir = dir; }
+
+    void Jump();
+
+    [[nodiscard]] bool IsGrounded() const { return m_Grounded; }
+
+    void SetInputEnabled(bool enabled)         { m_InputEnabled = enabled; }
+    [[nodiscard]] bool GetInputEnabled() const { return m_InputEnabled;    }
+
+    void SetScale(const glm::vec2& scale) { m_Transform.scale = scale; }
+
+    [[nodiscard]] BodyType  GetBodyType() const override { return BodyType::CHARACTER; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
+    void                    SetPosition(const glm::vec2& pos) override
+                                { m_Transform.translation = pos; }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override
+                                { return {kHalfWidth, kHalfHeight}; }
+
+    [[nodiscard]] bool IsSolid()     const override { return true;  }
+    [[nodiscard]] bool IsKinematic() const override { return false; }
+    [[nodiscard]] int  GetMoveDir()  const override { return m_MoveDir; }
+
+    void PhysicsUpdate() override;
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return m_DesiredDelta; }
+
+    void ApplyResolvedDelta(const glm::vec2& delta) override;
+
+    void OnCollision(const CollisionInfo& info) override;
+
+    void PostUpdate() override;
+
+    void NotifyPush() override { m_IsPushing = true; }
+
 private:
     void BuildClips(const CatAnimPaths& paths);
+    void UpdateAnimState();
 
     std::shared_ptr<Util::Animation> m_StandAnim;
     std::shared_ptr<Util::Animation> m_RunAnim;
@@ -78,7 +102,13 @@ private:
     Util::Keycode m_RightKey;
     Util::Keycode m_JumpKey;
 
-    glm::vec2 m_Velocity = {0.0f, 0.0f};
+    int       m_MoveDir      = 0;
+    float     m_VelocityY    = 0.f;
+    bool      m_Grounded     = true;
+    bool      m_PrevGrounded = true;
+    bool      m_IsPushing    = false;
+
+    glm::vec2 m_DesiredDelta = {0.f, 0.f};
 };
 
 #endif // PLAYER_CAT_HPP

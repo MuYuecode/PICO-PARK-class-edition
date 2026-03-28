@@ -3,7 +3,7 @@
 //
 
 #include "LocalPlayScene.hpp"
-#include "Menuscene.hpp"
+#include "MenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
 #include "LocalPlayGameScene.hpp"      // <--- ADD THIS LINE
 #include "Util/Input.hpp"
@@ -20,8 +20,8 @@ LocalPlayScene::LocalPlayScene(GameContext& ctx,
                                MenuScene* menuScene,
                                std::shared_ptr<Character>          menuFrame,
                                std::shared_ptr<Character>          exitGameButton,
-                               std::shared_ptr<UI_Triangle_Button> leftTriButton,
-                               std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                               std::shared_ptr<UITriangleButton> leftTriButton,
+                               std::shared_ptr<UITriangleButton> rightTriButton,
                                std::shared_ptr<Character>          blueCatRunImg,
                                KeyboardConfigScene* kbConfigScene)
     : Scene(ctx)

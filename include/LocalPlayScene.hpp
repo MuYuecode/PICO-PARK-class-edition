@@ -9,7 +9,7 @@
 #include "Character.hpp"
 #include "GameText.hpp"
 
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 
 class MenuScene;
 class KeyboardConfigScene;
@@ -21,8 +21,8 @@ public:
                    MenuScene* menuScene,
                    std::shared_ptr<Character>          menuFrame,
                    std::shared_ptr<Character>          exitGameButton,
-                   std::shared_ptr<UI_Triangle_Button> leftTriButton,
-                   std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                   std::shared_ptr<UITriangleButton> leftTriButton,
+                   std::shared_ptr<UITriangleButton> rightTriButton,
                    std::shared_ptr<Character>          blueCatRunImg,
                    KeyboardConfigScene* kbConfigScene);
     ~LocalPlayScene() override = default;
@@ -42,8 +42,8 @@ public:
 private:
     std::shared_ptr<Character>          m_MenuFrame;
     std::shared_ptr<Character>          m_ExitGameButton;
-    std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
-    std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
+    std::shared_ptr<UITriangleButton> m_LeftTriButton;
+    std::shared_ptr<UITriangleButton> m_RightTriButton;
     std::shared_ptr<Character>          m_BlueCatRunImg;
 
     std::shared_ptr<GameText> m_PlayerCountText;  // "nPLAYER GAME"

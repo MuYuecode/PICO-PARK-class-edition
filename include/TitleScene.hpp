@@ -2,10 +2,10 @@
 #define PICOPART_TITLESCENE_HPP
 
 #include <vector>
-
+#include <memory>
 #include "Scene.hpp"
 #include "GameText.hpp"
-#include "CharacterPhysicsSystem.hpp"
+#include "PhysicsWorld.hpp"
 
 class MenuScene;
 
@@ -21,14 +21,15 @@ public:
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
 
 private:
+    void SetupStaticBoundaries();
+
     std::shared_ptr<GameText> m_TitleSub;
     std::shared_ptr<GameText> m_PressEnterText;
 
     float      m_FlashTimer = 0.0f;
     MenuScene* m_MenuScene  = nullptr;
 
-    CharacterPhysicsSystem      m_Physics;
-    std::vector<PhysicsAgent>   m_Agents;
+    PhysicsWorld m_World;
 };
 
 #endif // PICOPART_TITLESCENE_HPP

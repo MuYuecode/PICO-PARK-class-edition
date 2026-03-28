@@ -8,9 +8,9 @@
 #include "Character.hpp"
 #include <string>
 
-class UI_Triangle_Button : public Character {
+class UITriangleButton : public Character {
 public:
-    UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath);
+    UITriangleButton(std::string normalImagePath, std::string pressedImagePath);
 
     void UpdateButton();
 

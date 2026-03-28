@@ -1,9 +1,10 @@
 #include "App.hpp"
 #include "BGMPlayer.hpp"
 #include "CatAssets.hpp"
+#include "PushableBox.hpp"
 
-#include "Titlescene.hpp"
-#include "Menuscene.hpp"
+#include "TitleScene.hpp"
+#include "MenuScene.hpp"
 #include "ExitConfirmScene.hpp"
 #include "OptionMenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
@@ -52,7 +53,24 @@ void App::Start() {
     }
     m_Root.AddChild(m_Ctx->Door);
 
-    m_Ctx->BGMPlayer = make_unique<BGMPlayer>();
+    m_Ctx->TestBox = make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1); // 假設需要 1 人推動
+    m_Ctx->TestBox->SetZIndex(15.0f); // 讓它跟貓咪同一個圖層
+    {
+        const float floorY     = m_Ctx->Floor->GetPosition().y;
+        const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
+        const float boxHalfH   = m_Ctx->TestBox->GetScaledSize().y / 2.0f;
+
+        // 讓箱子完美貼齊地板
+        m_Ctx->TestBox->SetPosition({400.0f, floorY + floorHalfH + boxHalfH});
+    }
+    m_Root.AddChild(m_Ctx->TestBox);
+    if (m_Ctx->TestBox->GetTextObject()) {
+        m_Ctx->TestBox->GetTextObject()->SetZIndex(16.0f);
+        m_Root.AddChild(m_Ctx->TestBox->GetTextObject());
+    }
+    // ====
+
+    m_Ctx->BGMPlayer = make_shared<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
 
     m_Ctx->StartupCats.clear();
@@ -104,6 +122,7 @@ void App::Start() {
                             : ( centerBlank * 0.5f + static_cast<float>(sideLayer) * spacing);
 
         cat->SetPosition({x, spawnY});
+        cat->SetZIndex(15.0f + static_cast<float>(i) * 0.01f);
 
         const float faceScale = abs(cat->m_Transform.scale.x);
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;

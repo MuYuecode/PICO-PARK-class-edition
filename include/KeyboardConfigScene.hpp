@@ -10,7 +10,7 @@
 #include "Scene.hpp"
 #include "Character.hpp"
 #include "GameText.hpp"
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 #include "Util/Keycode.hpp"
 
 class OptionMenuScene;
@@ -67,9 +67,9 @@ private:
     std::shared_ptr<GameText> m_TitleText;
 
     std::shared_ptr<GameText>           m_PlayerLabel;
-    std::shared_ptr<UI_Triangle_Button> m_PlayerLeftBtn;
+    std::shared_ptr<UITriangleButton> m_PlayerLeftBtn;
     std::shared_ptr<GameText>           m_PlayerValue;   // "1P" ~ "8P"
-    std::shared_ptr<UI_Triangle_Button> m_PlayerRightBtn;
+    std::shared_ptr<UITriangleButton> m_PlayerRightBtn;
 
     static constexpr int BIND_COUNT = 9;
     std::array<std::shared_ptr<GameText>, BIND_COUNT> m_BindLabels;

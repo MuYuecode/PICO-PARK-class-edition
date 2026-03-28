@@ -1,5 +1,5 @@
 #include "ExitConfirmScene.hpp"
-#include "Menuscene.hpp"
+#include "MenuScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -87,19 +87,17 @@ Scene* ExitConfirmScene::Update() {
     }
 
     const bool confirmByKeyboard = Util::Input::IsKeyDown(Util::Keycode::RETURN);
-    const bool confirmByMouse    = m_YesText->IsLeftClicked() || m_NoText->IsLeftClicked();
+    const bool confirmByMouseYes = m_YesText->IsLeftClicked() ;
+    const bool confirmByMouseNo  = m_NoText->IsLeftClicked() ;
 
-    if (confirmByKeyboard || confirmByMouse) {
-        bool chooseYes = m_IsYesSelected;
-        if (confirmByMouse) {
-            chooseYes = m_YesText->IsLeftClicked();
-        }
-
-        if (chooseYes) {
-            LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
-            m_Ctx.ShouldQuit = true;
-            return nullptr;
-        }
+    if ((confirmByKeyboard || confirmByMouseYes) && m_IsYesSelected) {
+        LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
+        m_Ctx.ShouldQuit = true ;
+        return nullptr;
+    }
+    if ((confirmByKeyboard || confirmByMouseNo) && !m_IsYesSelected) {
+        LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
+        return m_MenuScene;
     }
 
     return nullptr;

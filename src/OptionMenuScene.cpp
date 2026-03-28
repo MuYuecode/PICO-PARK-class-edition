@@ -6,7 +6,7 @@
 #include "BGMPlayer.hpp"
 #include "AppUtil.hpp"
 
-#include "Menuscene.hpp"
+#include "MenuScene.hpp"
 #include "OptionMenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
 
@@ -39,7 +39,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
 
     m_OptionMenuFrame = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
-    m_OptionMenuFrame->SetZIndex(25);
+    m_OptionMenuFrame->SetZIndex(20);
 
     m_ChoiceFrame = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png");
@@ -61,7 +61,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgColorLabel->SetZIndex(35);
     m_BgColorLabel->SetPosition({AppUtil::AlignLeft(*m_BgColorLabel, COL_LABEL_X), ROW_Y_BG});
 
-    m_BgColorLeftBtn = make_shared<UI_Triangle_Button>(
+    m_BgColorLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_BgColorLeftBtn->SetZIndex(35);
@@ -71,7 +71,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgColorValue->SetZIndex(35);
     m_BgColorValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BG});
 
-    m_BgColorRightBtn = make_shared<UI_Triangle_Button>(
+    m_BgColorRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_BgColorRightBtn->SetZIndex(35);
@@ -81,7 +81,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgmVolumeLabel->SetZIndex(35);
     m_BgmVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_BgmVolumeLabel, COL_LABEL_X), ROW_Y_BGM});
 
-    m_BgmVolumeLeftBtn = make_shared<UI_Triangle_Button>(
+    m_BgmVolumeLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_BgmVolumeLeftBtn->SetZIndex(35);
@@ -91,7 +91,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgmVolumeValue->SetZIndex(35);
     m_BgmVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BGM});
 
-    m_BgmVolumeRightBtn = make_shared<UI_Triangle_Button>(
+    m_BgmVolumeRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_BgmVolumeRightBtn->SetZIndex(35);
@@ -101,7 +101,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_SeVolumeLabel->SetZIndex(35);
     m_SeVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_SeVolumeLabel, COL_LABEL_X), ROW_Y_SE});
 
-    m_SeVolumeLeftBtn = make_shared<UI_Triangle_Button>(
+    m_SeVolumeLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_SeVolumeLeftBtn->SetZIndex(35);
@@ -111,7 +111,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_SeVolumeValue->SetZIndex(35);
     m_SeVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_SE});
 
-    m_SeVolumeRightBtn = make_shared<UI_Triangle_Button>(
+    m_SeVolumeRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_SeVolumeRightBtn->SetZIndex(35);
@@ -121,7 +121,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_DispNumberLabel->SetZIndex(35);
     m_DispNumberLabel->SetPosition({AppUtil::AlignLeft(*m_DispNumberLabel, COL_LABEL_X), ROW_Y_DISP});
 
-    m_DispNumberLeftBtn = make_shared<UI_Triangle_Button>(
+    m_DispNumberLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_DispNumberLeftBtn->SetZIndex(35);
@@ -131,7 +131,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_DispNumberValue->SetZIndex(35);
     m_DispNumberValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_DISP});
 
-    m_DispNumberRightBtn = make_shared<UI_Triangle_Button>(
+    m_DispNumberRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_DispNumberRightBtn->SetZIndex(35);
@@ -153,7 +153,6 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
         m_Applied.dispNumber   = saved.dispNumber;
     }
 
-    // 確保建構選單時，立刻將讀取到(或預設)的設定套用到全局的 Context 中
     ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
     if (ctx.BGMPlayer) {
         ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);

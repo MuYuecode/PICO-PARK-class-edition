@@ -1,7 +1,3 @@
-//
-// Created by cody2 on 2026/3/19.
-//
-
 #include "PhysicsWorld.hpp"
 #include <algorithm>
 #include <cmath>
@@ -23,7 +19,17 @@ void PhysicsWorld::Unregister(const IPhysicsBody* body) {
 
 void PhysicsWorld::Clear() {
     m_Bodies.clear();
+    m_OwnedStatics.clear();
     m_Ropes.clear();
+}
+
+StaticBody* PhysicsWorld::AddStaticBoundary(glm::vec2 center, glm::vec2 halfSize,
+                                              BodyType type) {
+    auto sb = std::make_shared<StaticBody>(center, halfSize, type);
+    StaticBody* raw = sb.get();
+    m_OwnedStatics.push_back(sb);
+    Register(sb);
+    return raw;
 }
 
 void PhysicsWorld::AddRope(IPhysicsBody* a, IPhysicsBody* b,
@@ -44,161 +50,316 @@ void PhysicsWorld::RemoveRope(IPhysicsBody* a, IPhysicsBody* b) {
 std::vector<RopeConstraint*> PhysicsWorld::GetRopesOf(const IPhysicsBody* body) {
     std::vector<RopeConstraint*> result;
     for (auto& r : m_Ropes) {
-        if (r.bodyA == body || r.bodyB == body) {
-            result.push_back(&r);
-        }
+        if (r.bodyA == body || r.bodyB == body) result.push_back(&r);
     }
     return result;
 }
 
-void PhysicsWorld::Update() {
-    ++m_FrameCount;
-
-    if (m_FrameCount % kPurgeInterval == 0) {
-        PurgeExpired();
+void PhysicsWorld::FreezeAll() const {
+    for (auto& wp : m_Bodies) {
+        if (auto sp = wp.lock()) sp->Freeze();
     }
-
-    StepPhysicsUpdate();
-    // StepRopes();
-    // StepCollisions();
 }
 
-void PhysicsWorld::StepPhysicsUpdate() const {
+void PhysicsWorld::UnfreezeAll() const {
+    for (auto& wp : m_Bodies) {
+        if (auto sp = wp.lock()) sp->Unfreeze();
+    }
+}
+
+void PhysicsWorld::Update() {
+    ++m_FrameCount;
+    if (m_FrameCount % kPurgeInterval == 0) PurgeExpired();
+
+    StepPhysicsUpdate();
+    StepResolveAndApply();
+
     for (auto& wp : m_Bodies) {
         auto sp = wp.lock();
-        if (sp && sp->IsActive()) {
-            sp->PhysicsUpdate();
+        if (sp && sp->IsActive() && !sp->IsFrozen()) {
+            sp->PostUpdate();
         }
     }
 }
 
-// void PhysicsWorld::StepRopes() {
-//     // TODO：實作繩索力解析
-//     //
-//     // for (auto& rope : m_Ropes) {
-//     //     if (!rope.bodyA || !rope.bodyB) continue;
-//     //
-//     //     glm::vec2 posA = rope.bodyA->GetPosition();
-//     //     glm::vec2 posB = rope.bodyB->GetPosition();
-//     //     glm::vec2 delta = posA - posB;
-//     //     float dist = glm::length(delta);
-//     //
-//     //     if (dist <= rope.maxLen) continue;  // 繩索未繃緊，不施力
-//     //
-//     //     // 方向：從 B 指向 A
-//     //     glm::vec2 dir = delta / dist;
-//     //
-//     //     // 力大小(可調整 stiffness)
-//     //     constexpr float stiffness = 0.8f;
-//     //     float forceMag = (dist - rope.maxLen) * stiffness;
-//     //
-//     //     // 施加到速度(乘上 1-friction 模擬阻力)
-//     //     float factor = 1.0f - rope.friction;
-//     //     glm::vec2 velA = rope.bodyA->GetVelocity();
-//     //     glm::vec2 velB = rope.bodyB->GetVelocity();
-//     //
-//     //     rope.bodyA->SetVelocity(velA - dir * forceMag * factor);
-//     //     rope.bodyB->SetVelocity(velB + dir * forceMag * factor);
-//     // }
-// }
+void PhysicsWorld::StepPhysicsUpdate() const {
+    // all non-box active bodies.
+    // Characters run first so their m_MoveDir is already committed when
+    // PushableBox bodies query CountCharactersPushing() in pass 2.
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive() || sp->IsFrozen()) continue;
+        if (sp->GetBodyType() == BodyType::PUSHABLE_BOX) continue;
+        sp->PhysicsUpdate();
+    }
+    // pushable boxes (characters have set their desired deltas).
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive() || sp->IsFrozen()) continue;
+        if (sp->GetBodyType() != BodyType::PUSHABLE_BOX) continue;
+        sp->PhysicsUpdate();
+    }
+}
 
-// void PhysicsWorld::StepCollisions() {
-//     // TODO：實作碰撞廣播
-//     //
-//     // 使用暴力 O(n²) 先行，之後可改為空間分割(Sweep-and-Prune 等)
-//     //
-//     // std::vector<std::shared_ptr<IPhysicsBody>> live;
-//     // for (auto& wp : m_Bodies) {
-//     //     if (auto sp = wp.lock(); sp && sp->IsActive()) live.push_back(sp);
-//     // }
-//     //
-//     // for (int i = 0; i < (int)live.size(); ++i) {
-//     //     for (int j = i + 1; j < (int)live.size(); ++j) {
-//     //         if (!AabbOverlaps(live[i].get(), live[j].get())) continue;
-//     //
-//     //         // 計算法向量與穿透深度
-//     //         glm::vec2 delta   = live[j]->GetPosition() - live[i]->GetPosition();
-//     //         glm::vec2 overlap = live[i]->GetHalfSize() + live[j]->GetHalfSize()
-//     //                             - glm::abs(delta);
-//     //         glm::vec2 normal  = (overlap.x < overlap.y)
-//     //                                 ? glm::vec2{(delta.x < 0 ? -1.f : 1.f), 0}
-//     //                                 : glm::vec2{0, (delta.y < 0 ? -1.f : 1.f)};
-//     //         float depth = std::min(overlap.x, overlap.y);
-//     //
-//     //         live[i]->OnCollision({live[j].get(),  normal, depth});
-//     //         live[j]->OnCollision({live[i].get(), -normal, depth});
-//     //     }
-//     // }
-// }
+void PhysicsWorld::DetectRiding(std::vector<BodyInfo>& infos) {
+    const int n = static_cast<int>(infos.size());
+    for (int i = 0; i < n; ++i) {
+        // Kinematic bodies do not ride anything (they define their own path).
+        if (infos[i].body->IsKinematic()) continue;
 
-// int PhysicsWorld::CountCharactersPushing(const IPhysicsBody* target, int dir) const {
-//     // TODO：實作
-//     //
-//     // int count = 0;
-//     // glm::vec2 tPos    = target->GetPosition();
-//     // glm::vec2 tHalf   = target->GetHalfSize();
-//     //
-//     // for (auto& wp : m_Bodies) {
-//     //     auto sp = wp.lock();
-//     //     if (!sp || !sp->IsActive()) continue;
-//     //     if (sp.get() == target) continue;
-//     //     if (sp->GetBodyType() != BodyType::CHARACTER) continue;
-//     //
-//     //     glm::vec2 cPos  = sp->GetPosition();
-//     //     glm::vec2 cHalf = sp->GetHalfSize();
-//     //
-//     //     // 垂直上需在同層(避免把頭上的角色也算進去)
-//     //     float vertGap = std::abs(cPos.y - tPos.y);
-//     //     if (vertGap > (tHalf.y + cHalf.y) * 0.65f) continue;
-//     //
-//     //     // 側面緊貼判斷
-//     //     float minDistX = tHalf.x + cHalf.x;
-//     //     float dx       = cPos.x - tPos.x;
-//     //     if (std::abs(dx) > minDistX * 1.05f) continue;
-//     //
-//     //     // dir > 0：推者在左邊往右推
-//     //     glm::vec2 vel = sp->GetVelocity();
-//     //     if (dir > 0 && dx < 0 && vel.x > 0) ++count;
-//     //     if (dir < 0 && dx > 0 && vel.x < 0) ++count;
-//     // }
-//     // return count;
-//
-//     (void)target;
-//     (void)dir;
-//     return 0;
-// }
+        const glm::vec2 aPos   = infos[i].body->GetPosition();
+        const glm::vec2 aHalf  = infos[i].body->GetHalfSize();
+        const float     aBot   = aPos.y - aHalf.y;
 
-// int PhysicsWorld::CountBodiesOnTop(const IPhysicsBody* target) const {
-//     // TODO：實作(呼叫 IsOnTop)
-//     //
-//     // int count = 0;
-//     // for (auto& wp : m_Bodies) {
-//     //     auto sp = wp.lock();
-//     //     if (!sp || !sp->IsActive()) continue;
-//     //     if (sp.get() == target) continue;
-//     //     if (IsOnTop(sp.get(), target)) ++count;
-//     // }
-//     // return count;
-//
-//     (void)target;
-//     return 0;
-// }
+        for (int j = 0; j < n; ++j) {
+            if (i == j) continue;
+            if (!infos[j].body->IsSolid()) continue;
 
-// std::vector<IPhysicsBody*> PhysicsWorld::QueryOverlapping(const IPhysicsBody* target) const {
-//     std::vector<IPhysicsBody*> result;
-//
-//     // TODO：實作
-//     //
-//     // for (auto& wp : m_Bodies) {
-//     //     auto sp = wp.lock();
-//     //     if (!sp || !sp->IsActive()) continue;
-//     //     if (sp.get() == target) continue;
-//     //     if (AabbOverlaps(target, sp.get())) result.push_back(sp.get());
-//     // }
-//
-//     (void)target;
-//     return result;
-// }
+            const glm::vec2 bPos  = infos[j].body->GetPosition();
+            const glm::vec2 bHalf = infos[j].body->GetHalfSize();
+            const float     bTop  = bPos.y + bHalf.y;
+
+            const bool vertOk  = std::abs(aBot - bTop) < kRidingTolerance;
+            const bool horizOk = std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) * 0.85f;
+
+            if (vertOk && horizOk) {
+                infos[i].supportIdx = j;
+                break;
+            }
+        }
+    }
+}
+
+glm::vec2 PhysicsWorld::ResolveBody(int idx, glm::vec2 desired,
+                                     std::vector<BodyInfo>& infos) {
+    auto& self     = infos[idx];
+    glm::vec2 selfPos  = self.body->GetPosition();
+    glm::vec2 selfHalf = self.body->GetHalfSize();
+
+    glm::vec2 resolved = desired;
+    self.collidedH = nullptr;
+    self.collidedV = nullptr;
+    self.normalH   = {0.f, 0.f};
+    self.normalV   = {0.f, 0.f};
+
+    const int n = static_cast<int>(infos.size());
+
+    // --- Horizontal pass ---
+    {
+        glm::vec2 testPos = selfPos + glm::vec2{resolved.x, 0.f};
+
+        for (int j = 0; j < n; ++j) {
+            if (j == idx || !infos[j].body->IsSolid()) continue;
+
+            // Use the other body's final resting position if already resolved,
+            // otherwise use its current (pre-move) position.
+            glm::vec2 otherPos = infos[j].body->GetPosition();
+            if (infos[j].resolvedFlag) otherPos += infos[j].resolved;
+
+            const glm::vec2 otherHalf = infos[j].body->GetHalfSize();
+            const glm::vec2 delta     = testPos - otherPos;
+            const glm::vec2 overlap   = (selfHalf + otherHalf) - glm::abs(delta);
+
+            if (overlap.x > 0.f && overlap.y > 0.f) {
+                // Horizontal overlap: push self out horizontally.
+                const float sign = (delta.x >= 0.f) ? 1.f : -1.f;
+                resolved.x = (otherPos.x + (selfHalf.x + otherHalf.x) * sign) - selfPos.x;
+                testPos.x  = selfPos.x + resolved.x;
+
+                // Record contact (take the most recent collision; usually one matters).
+                self.collidedH = infos[j].body.get();
+                self.normalH   = {sign, 0.f};
+            }
+        }
+    }
+
+    // --- Vertical pass (using the resolved horizontal position) ---
+    {
+        glm::vec2 testPos = selfPos + glm::vec2{resolved.x, resolved.y};
+
+        for (int j = 0; j < n; ++j) {
+            if (j == idx || !infos[j].body->IsSolid()) continue;
+
+            glm::vec2 otherPos = infos[j].body->GetPosition();
+            if (infos[j].resolvedFlag) otherPos += infos[j].resolved;
+
+            const glm::vec2 otherHalf = infos[j].body->GetHalfSize();
+            const glm::vec2 delta     = testPos - otherPos;
+            const glm::vec2 overlap   = (selfHalf + otherHalf) - glm::abs(delta);
+
+            if (overlap.x > 0.f && overlap.y > 0.f) {
+                const float sign = (delta.y >= 0.f) ? 1.f : -1.f;
+                resolved.y = (otherPos.y + (selfHalf.y + otherHalf.y) * sign) - selfPos.y;
+                testPos.y  = selfPos.y + resolved.y;
+
+                self.collidedV = infos[j].body.get();
+                self.normalV   = {0.f, sign};
+            }
+        }
+    }
+
+    return resolved;
+}
+
+void PhysicsWorld::StepResolveAndApply() const {
+    // Snapshot live bodies.
+    std::vector<BodyInfo> infos;
+    infos.reserve(m_Bodies.size());
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive()) continue;
+        BodyInfo bi;
+        bi.body    = sp;
+        bi.desired = sp->IsFrozen() ? glm::vec2{0.f, 0.f} : sp->GetDesiredDelta();
+        bi.resolved    = bi.desired;
+        bi.resolvedFlag = false;
+        bi.supportIdx   = -1;
+        infos.push_back(std::move(bi));
+    }
+
+    const int n = static_cast<int>(infos.size());
+
+    // Detect riding relationships before any movement.
+    DetectRiding(infos);
+
+    // Mark kinematic / frozen bodies as immediately resolved (they define
+    // their own motion and need no collision resolution against geometry).
+    for (int i = 0; i < n; ++i) {
+        if (infos[i].body->IsKinematic() || infos[i].body->IsFrozen()) {
+            // Kinematic bodies follow their desired path; static bodies have {0,0}.
+            infos[i].resolved    = infos[i].desired;
+            infos[i].resolvedFlag = true;
+        }
+    }
+
+    // Iterative topological resolution.
+    // Each pass resolves every dynamic body whose support is already resolved.
+    bool anyProgress = true;
+    while (anyProgress) {
+        anyProgress = false;
+
+        for (int i = 0; i < n; ++i) {
+            if (infos[i].resolvedFlag) continue;
+
+            const int supIdx = infos[i].supportIdx;
+
+            // Wait until support is resolved (handles stacking chains).
+            if (supIdx >= 0 && !infos[supIdx].resolvedFlag) continue;
+
+            // Compute the effective desired delta for this body.
+            glm::vec2 effective = infos[i].desired;
+
+            // Stacking carry: inherit the support's horizontal motion.
+            // Static/kinematic supports have resolved = {0,0} (no carry needed).
+            if (supIdx >= 0 && !infos[supIdx].body->IsKinematic()) {
+                effective.x += infos[supIdx].resolved.x;
+            }
+
+            // Resolve against all solid bodies.
+            infos[i].resolved    = ResolveBody(i, effective, infos);
+            infos[i].resolvedFlag = true;
+            anyProgress           = true;
+        }
+    }
+
+    // Safety: if any body is still unresolved (cycle or orphan), resolve it now
+    // without support carry.
+    for (int i = 0; i < n; ++i) {
+        if (!infos[i].resolvedFlag) {
+            infos[i].resolved    = ResolveBody(i, infos[i].desired, infos);
+            infos[i].resolvedFlag = true;
+        }
+    }
+
+    // Phase 2: apply resolved deltas.
+    for (auto& bi : infos) {
+        bi.body->ApplyResolvedDelta(bi.resolved);
+    }
+
+    // Fire OnCollision callbacks.
+    StepCollisionCallbacks(infos);
+}
+
+void PhysicsWorld::StepCollisionCallbacks(const std::vector<BodyInfo>& infos) {
+    for (const auto& bi : infos) {
+        if (bi.collidedH != nullptr) {
+            CollisionInfo ci;
+            ci.other  = bi.collidedH;
+            ci.normal = bi.normalH;
+            bi.body->OnCollision(ci);
+        }
+        if (bi.collidedV != nullptr) {
+            CollisionInfo ci;
+            ci.other  = bi.collidedV;
+            ci.normal = bi.normalV;
+            bi.body->OnCollision(ci);
+        }
+    }
+}
+
+int PhysicsWorld::CountCharactersPushing(const IPhysicsBody* target, int dir) const {
+    std::vector<const IPhysicsBody*> visited;
+    return CountCharactersPushingImpl(target, dir, visited);
+}
+
+int PhysicsWorld::CountCharactersPushingImpl(
+    const IPhysicsBody* target,
+    int dir,
+    std::vector<const IPhysicsBody*>& visited) const
+{
+    if (std::find(visited.begin(), visited.end(), target) != visited.end()) return 0;
+    visited.push_back(target);
+
+    int count = 0;
+    const glm::vec2 tPos  = target->GetPosition();
+    const glm::vec2 tHalf = target->GetHalfSize();
+
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive() || sp.get() == target) continue;
+
+        const glm::vec2 cPos  = sp->GetPosition();
+        const glm::vec2 cHalf = sp->GetHalfSize();
+
+        // Must share the same horizontal band.
+        if (std::abs(cPos.y - tPos.y) > (tHalf.y + cHalf.y) * 0.9f) continue;
+
+        // Must be adjacent (directly touching on the push side).
+        const float minDistX   = tHalf.x + cHalf.x;
+        const float dxToTarget = cPos.x - tPos.x;
+        if (std::abs(dxToTarget) > minDistX + 4.0f) continue;
+
+        // Pusher must be on the origin side of the force:
+        //   pushing right (dir=+1): pusher is to the LEFT  (dxToTarget < 0)
+        //   pushing left  (dir=-1): pusher is to the RIGHT (dxToTarget > 0)
+        if (!((dir > 0 && dxToTarget < 0) || (dir < 0 && dxToTarget > 0))) continue;
+
+        if (sp->GetBodyType() == BodyType::CHARACTER) {
+            // An actively-moving character contributes +1 to the push count.
+            if (sp->GetMoveDir() == dir) {
+                ++count;
+            }
+            // Always recurse regardless of this character's own moveDir.
+            // Rationale: a passive character (not pressing movement keys)
+            // sandwiched between an active pusher and the target still
+            // transmits the upstream force through the chain.
+            //
+            // Scenario verification:
+            //   [A(dir) -> B(0) -> C(box)] : B is passive (moveDir=0), but A
+            //   is found when we recurse into B → C sees count=1.
+            //   [A(dir) -> B(dir) -> C(box)]: B is active, count++ for B, then
+            //   A found in recursion → C sees count=2.
+            //   [A(+1) -> C <- B(-1)]: each direction counted
+            //   independently; net=0.
+            count += CountCharactersPushingImpl(sp.get(), dir, visited);
+        }
+        else if (sp->GetBodyType() == BodyType::PUSHABLE_BOX) {
+            // A box transmits force passively; recurse to discover its own pushers.
+            count += CountCharactersPushingImpl(sp.get(), dir, visited);
+        }
+    }
+    return count;
+}
 
 std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
     std::vector<IPhysicsBody*> result;
@@ -212,30 +373,10 @@ std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
 }
 
 bool PhysicsWorld::AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) {
-    glm::vec2 delta = a->GetPosition() - b->GetPosition();
-    glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
+    const glm::vec2 delta = a->GetPosition() - b->GetPosition();
+    const glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
     return std::abs(delta.x) < sum.x && std::abs(delta.y) < sum.y;
 }
-
-// bool PhysicsWorld::IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const {
-//     // TODO：實作
-//     //
-//     // glm::vec2 rPos   = rider->GetPosition();
-//     // glm::vec2 pPos   = platform->GetPosition();
-//     // glm::vec2 rHalf  = rider->GetHalfSize();
-//     // glm::vec2 pHalf  = platform->GetHalfSize();
-//     //
-//     // float platformTop = pPos.y + pHalf.y;
-//     // float riderBottom = rPos.y - rHalf.y;
-//     //
-//     // bool horizOk = std::abs(rPos.x - pPos.x) < (rHalf.x + pHalf.x) * 0.8f;
-//     // bool vertOk  = std::abs(riderBottom - platformTop) < 6.0f;
-//     // return horizOk && vertOk;
-//
-//     (void)rider;
-//     (void)platform;
-//     return false;
-// }
 
 void PhysicsWorld::PurgeExpired() {
     m_Bodies.erase(

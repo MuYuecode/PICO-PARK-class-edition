@@ -48,22 +48,27 @@ The content is organized as follows:
   CatAssets.hpp
   Character.hpp
   CharacterPhysicsSystem.hpp
-  Exitconfirmscene.hpp
+  ExitConfirmScene.hpp
   GameContext.hpp
   GameText.hpp
   IPhysicsBody.hpp
+  IPushable.hpp
   KeyboardConfigScene.hpp
+  LevelExitScene.hpp
+  LevelOneScene.hpp
   LevelSelectScene.hpp
   LocalPlayGameScene.hpp
   LocalPlayScene.hpp
-  Menuscene.hpp
+  MenuScene.hpp
   OptionMenuScene.hpp
   PhysicsWorld.hpp
   PlayerCat.hpp
-  Savemanager.hpp
+  PushableBox.hpp
+  SaveManager.hpp
   Scene.hpp
-  Titlescene.hpp
-  UI_Triangle_Button.hpp
+  StaticBody.hpp
+  TitleScene.hpp
+  UITriangleButton.hpp
 
 [src]/
   AnimatedCharacter.cpp
@@ -74,20 +79,24 @@ The content is organized as follows:
   BGMPlayer.cpp
   Character.cpp
   CharacterPhysicsSystem.cpp
-  Exitconfirmscene.cpp
+  ExitConfirmScene.cpp
   GameText.cpp
   KeyboardConfigScene.cpp
+  LevelExitScene.cpp
+  LevelOneScene.cpp
   LevelSelectScene.cpp
   LocalPlayGameScene.cpp
   LocalPlayScene.cpp
   main.cpp
-  Menuscene.cpp
+  MenuScene.cpp
   OptionMenuScene.cpp
   PhysicsWorld.cpp
   PlayerCat.cpp
-  Savemanager.cpp
-  Titlescene.cpp
-  UI_Triangle_Button.cpp
+  PushableBox.cpp
+  SaveManager.cpp
+  StaticBody.cpp
+  TitleScene.cpp
+  UITriangleButton.cpp
 
 [Docs]/
   ARCHITECTURE.md
@@ -102,7 +111,10 @@ The content is organized as follows:
   Font/FORCEDSQUARE.ttf
   Font/Monocraft.ttf
   Font/TerminusTTFWindows-Bold-4.49.3.ttf
+  Image/Background/background_ceiling.png
   Image/Background/background_floor.png
+  Image/Background/background_lwall.png
+  Image/Background/background_rwall.png
   Image/Background/Choice_Frame.png
   Image/Background/cream_background.png
   Image/Background/dark_background.png
@@ -317,8 +329,14 @@ The content is organized as follows:
   Image/Character/yellow_cat/yellow_cat_stand_8.png
   Image/Level_Cover/02.png
   Image/Level_Cover/Crown.png
+  Image/Level_Cover/ExitFrame.png
+  Image/Level_Cover/Key.png
+  Image/Level_Cover/LevelExitScene.png
   Image/Level_Cover/LevelFour.png
   Image/Level_Cover/LevelOne.png
+  Image/Level_Cover/LevelOneScene/Box.png
+  Image/Level_Cover/LevelOneScene/Frame.png
+  Image/Level_Cover/LevelOneScene/LevelOneScene.png
   Image/Level_Cover/LevelThree.png
   Image/Level_Cover/LevelTwo.png
   Save/save_data.json
@@ -411,6 +429,7 @@ private:
     std::unique_ptr<Scene> m_LocalPlayScene;
     std::unique_ptr<Scene> m_LocalPlayGameScene;
     std::unique_ptr<Scene> m_LevelSelectScene;
+
 
     Scene* m_CurrentScene = nullptr;
 };
@@ -562,12 +581,12 @@ public:
     Character& operator=(Character&&) = delete;
 
     [[nodiscard]] const std::string& GetImagePath() const { return m_ImagePath; }
-    [[nodiscard]] const glm::vec2& GetPosition() const { return m_Transform.translation; }
+    [[nodiscard]] virtual glm::vec2 GetPosition() const { return m_Transform.translation; }
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
     [[nodiscard]] glm::vec2 GetSize() const { return GetScaledSize(); }
 
     void SetImage(const std::string& ImagePath);
-    void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
+    virtual void SetPosition(const glm::vec2& Position) { m_Transform.translation = Position; }
     void SetScale(const glm::vec2& Scale) { m_Transform.scale = Scale; }
 
     [[nodiscard]] bool IsMouseHovering() const;
@@ -589,60 +608,19 @@ private:
 #ifndef CHARACTER_PHYSICS_SYSTEM_HPP
 #define CHARACTER_PHYSICS_SYSTEM_HPP
 
-#include <memory>
-#include <vector>
-
-#include "PlayerCat.hpp"
-#include "Character.hpp"
-
-struct PhysicsState {
-    float velocityY     = 0.0f;
-    float lastDeltaX    = 0.0f;
-    int   supportIndex  = -1;   // Stand on which character ：-1 = None
-    int   moveDir       = 0;    // -1 / 0 / +1
-    bool  grounded      = true;
-    bool  prevGrounded  = true; // pre time grounded
-    bool  beingStoodOn  = false; // any one stand on head
-};
-
-struct PhysicsAgent {
-    std::shared_ptr<PlayerCat> actor;
-    PhysicsState               state;
-};
-
-class CharacterPhysicsSystem {
-public:
+struct CharacterPhysicsSystem {
+    static constexpr float kGravity          = 0.75f;
+    static constexpr float kJumpForce        = 11.0f;
     static constexpr float kGroundMoveSpeed  = 5.0f;
     static constexpr float kRunOnPlayerSpeed = 6.2f;
-    static constexpr float kJumpForce        = 11.0f;
-    static constexpr float kGravity          = 0.75f;
-
-    static constexpr float kScreenHalfW = 640.0f;
-    static constexpr float kScreenHalfH = 360.0f;
-
-    static void ApplyJump(PhysicsState& state) {
-        state.velocityY    = kJumpForce;
-        state.grounded     = false;
-        state.supportIndex = -1;
-    }
-
-    static void Update(std::vector<PhysicsAgent>& agents,const std::shared_ptr<Character>& floor) ;
-    static float ResolveHorizontal(int idx,float targetX,const std::vector<PhysicsAgent>& agents) ;
-
-private:
-    static float HalfWidth()  ;
-    static float HalfHeight() ;
-
-    static float StandOffset(const std::shared_ptr<Character>& floor) ;
-    static void  ResolveVertical(int idx,std::vector<PhysicsAgent>& agents,const std::shared_ptr<Character>& floor);
-    static bool  IsBeingPushed(int idx,const std::vector<PhysicsAgent>& agents,const std::shared_ptr<Character>& floor) ;
-    static void  UpdateAnimState(int idx,const std::vector<PhysicsAgent>& agents,bool isPushing) ;
+    static constexpr float kScreenHalfW      = 640.0f;
+    static constexpr float kScreenHalfH      = 360.0f;
 };
 
 #endif // CHARACTER_PHYSICS_SYSTEM_HPP
 </file>
 
-<file path="Exitconfirmscene.hpp">
+<file path="ExitConfirmScene.hpp">
 #ifndef EXIT_CONFIRM_SCENE_HPP
 #define EXIT_CONFIRM_SCENE_HPP
 
@@ -693,34 +671,34 @@ private:
 #include "Util/Renderer.hpp"
 #include "Character.hpp"
 #include "PlayerCat.hpp"
+#include "PushableBox.hpp"
+#include <array>
 #include <vector>
 
 struct GameContext {
     Util::Renderer& Root;
 
-    // always exist
-    std::shared_ptr<Character>  Background;
-    std::shared_ptr<BGMPlayer>  BGMPlayer;
+    std::shared_ptr<Character> Background;
+    std::shared_ptr<BGMPlayer> BGMPlayer;
 
-    // In many Scene
     std::shared_ptr<Character> Header;
     std::shared_ptr<Character> Door;
-    std::shared_ptr<Character>  Floor;
+
+    std::shared_ptr<Character> Floor;
+
+    std::shared_ptr<PushableBox> TestBox;
 
     std::vector<std::shared_ptr<PlayerCat>> StartupCats;
-    
-    int SelectedPlayerCount = 2;
-    int CooperativePushPower = 1;
 
-    bool ShouldQuit = false;
+    int  SelectedPlayerCount  = 2;
+    int  CooperativePushPower = 1;
 
-    // character color
     static constexpr std::array<const char*, 8> kCatColorOrder = {
         "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"
     };
 
-    explicit GameContext(Util::Renderer& root)
-        : Root(root) {}
+    explicit GameContext(Util::Renderer& root) : Root(root) {}
+    bool ShouldQuit = false;
 
     GameContext(const GameContext&)            = delete;
     GameContext& operator=(const GameContext&) = delete;
@@ -728,7 +706,7 @@ struct GameContext {
     GameContext& operator=(GameContext&&)      = delete;
 };
 
-#endif //PICOPART_GAMECONTEXT_HPP
+#endif // PICOPART_GAMECONTEXT_HPP
 </file>
 
 <file path="GameText.hpp">
@@ -770,6 +748,7 @@ public:
 //
 // Created by cody2 on 2026/3/19.
 //
+
 #ifndef PHYSICS_BODY_HPP
 #define PHYSICS_BODY_HPP
 
@@ -778,50 +757,78 @@ public:
 class IPhysicsBody;
 
 enum class BodyType {
-    CHARACTER,              // PlayerCat
+    CHARACTER,
     PUSHABLE_BOX,
     PATROL_ENEMY,
     MOVING_PLATFORM,
     CONDITIONAL_PLATFORM,
     ROPE_ENDPOINT,
     BULLET,
+    STATIC_BOUNDARY,
 };
 
 struct CollisionInfo {
-    IPhysicsBody* other    = nullptr;
-    glm::vec2     normal   = {0, 0};
-    float         depth    = 0.0f;
+    IPhysicsBody* other  = nullptr;
+    glm::vec2     normal = {0.f, 0.f};
 };
 
 class IPhysicsBody {
 public:
     virtual ~IPhysicsBody() = default;
 
-    [[nodiscard]] virtual BodyType GetBodyType() const = 0;
+    [[nodiscard]] virtual BodyType  GetBodyType() const = 0;
     [[nodiscard]] virtual glm::vec2 GetPosition() const = 0;
-    virtual void          SetPosition(const glm::vec2& pos) = 0;
-
+    virtual void                    SetPosition(const glm::vec2& pos) = 0;
     [[nodiscard]] virtual glm::vec2 GetHalfSize() const = 0;
 
-    [[nodiscard]] virtual glm::vec2 GetVelocity() const = 0;
-    virtual void      SetVelocity(const glm::vec2& vel) = 0;
-
-    [[nodiscard]] virtual bool IsSolid() const = 0;
+    [[nodiscard]] virtual bool IsSolid()     const = 0;
     [[nodiscard]] virtual bool IsKinematic() const = 0;
-    [[nodiscard]] virtual bool UseGravity() const = 0;
+
+    [[nodiscard]] virtual int GetMoveDir() const { return 0; }
 
     virtual void PhysicsUpdate() {}
 
+    [[nodiscard]] virtual glm::vec2 GetDesiredDelta() const { return {0.f, 0.f}; }
+
+    virtual void ApplyResolvedDelta(const glm::vec2& delta) {
+        SetPosition(GetPosition() + delta);
+    }
+
     virtual void OnCollision(const CollisionInfo& /*info*/) {}
 
+    virtual void PostUpdate() {}
+
+    virtual void NotifyPush() {}
+
+    [[nodiscard]] virtual bool IsFrozen() const { return m_Frozen; }
+    virtual void Freeze()   { m_Frozen = true;  }
+    virtual void Unfreeze() { m_Frozen = false; }
+
     [[nodiscard]] virtual bool IsActive() const { return m_Active; }
-    virtual void SetActive(bool active) { m_Active = active; }
+    virtual void SetActive(bool active)         { m_Active = active; }
 
 protected:
     bool m_Active = true;
+    bool m_Frozen = false;
 };
 
 #endif // PHYSICS_BODY_HPP
+</file>
+
+<file path="IPushable.hpp">
+//
+// Created by cody2 on 2026/3/28.
+//
+
+#ifndef IPUSHABLE_HPP
+#define IPUSHABLE_HPP
+class IPushable {
+public:
+    virtual ~IPushable() = default;
+    [[nodiscard]] virtual int GetRequiredPushers() const = 0;
+};
+
+#endif // IPUSHABLE_HPP
 </file>
 
 <file path="KeyboardConfigScene.hpp">
@@ -837,7 +844,7 @@ protected:
 #include "Scene.hpp"
 #include "Character.hpp"
 #include "GameText.hpp"
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 #include "Util/Keycode.hpp"
 
 class OptionMenuScene;
@@ -894,9 +901,9 @@ private:
     std::shared_ptr<GameText> m_TitleText;
 
     std::shared_ptr<GameText>           m_PlayerLabel;
-    std::shared_ptr<UI_Triangle_Button> m_PlayerLeftBtn;
+    std::shared_ptr<UITriangleButton> m_PlayerLeftBtn;
     std::shared_ptr<GameText>           m_PlayerValue;   // "1P" ~ "8P"
-    std::shared_ptr<UI_Triangle_Button> m_PlayerRightBtn;
+    std::shared_ptr<UITriangleButton> m_PlayerRightBtn;
 
     static constexpr int BIND_COUNT = 9;
     std::array<std::shared_ptr<GameText>, BIND_COUNT> m_BindLabels;
@@ -971,6 +978,14 @@ private:
 };
 
 #endif // PICOPART_KEYBOARDCONFIGSCENE_HPP
+</file>
+
+<file path="LevelExitScene.hpp">
+
+</file>
+
+<file path="LevelOneScene.hpp">
+
 </file>
 
 <file path="LevelSelectScene.hpp">
@@ -1097,10 +1112,12 @@ private:
 #define PICOPART_LOCALPLAYGAMESCENE_HPP
 
 #include <vector>
+#include <memory>
 
 #include "Scene.hpp"
+#include "PlayerCat.hpp"
+#include "PhysicsWorld.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "CharacterPhysicsSystem.hpp"
 
 class LocalPlayScene;
 class LevelSelectScene;
@@ -1108,7 +1125,7 @@ class LevelSelectScene;
 class LocalPlayGameScene : public Scene {
 public:
     LocalPlayGameScene(GameContext& ctx,
-                       LocalPlayScene* localPlayScene,
+                       LocalPlayScene*      localPlayScene,
                        KeyboardConfigScene* kbConfigScene);
     ~LocalPlayGameScene() override = default;
 
@@ -1119,26 +1136,38 @@ public:
     void SetLevelSelectScene(LevelSelectScene* s) { m_LevelSelectScene = s; }
 
 private:
+    // One entry per active player.
     struct PlayerBinding {
-        PhysicsAgent    agent;
-        PlayerKeyConfig key;
-        bool            entered = false;
+        std::shared_ptr<PlayerCat> cat;
+        PlayerKeyConfig            key;
+        bool                       entered = false;
     };
+
+    // Registers floor, walls, and ceiling as StaticBodies in m_World.
+    void SetupStaticBoundaries();
+
+    // Creates PlayerCat instances, assigns key configs, registers into m_World.
+    void SpawnPlayers(int count);
+
+    // Places spawned cats in the initial side formation.
+    void ApplyInitialFormation();
+
+    // Reads touch/direction state and writes m_Ctx.CooperativePushPower.
+    // Pure statistics; does not move any body.
+    void UpdateCooperativePower() const;
+
+    // Updates the "N/total" label above the door.
+    void UpdateDoorCountText() const;
 
     std::shared_ptr<GameText> m_DoorCountText;
     int                       m_EnteredCount = 0;
-    void                      UpdateDoorCountText() const ;
 
     LevelSelectScene*    m_LevelSelectScene = nullptr;
     LocalPlayScene*      m_LocalPlayScene   = nullptr;
     KeyboardConfigScene* m_KbConfigScene    = nullptr;
 
-    CharacterPhysicsSystem     m_Physics;
+    PhysicsWorld               m_World;
     std::vector<PlayerBinding> m_Players;
-
-    void SpawnPlayers(int count);
-    void ApplyInitialFormation();
-    void UpdateCooperativePower() const ;
 };
 
 #endif // PICOPART_LOCALPLAYGAMESCENE_HPP
@@ -1156,7 +1185,7 @@ private:
 #include "Character.hpp"
 #include "GameText.hpp"
 
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 
 class MenuScene;
 class KeyboardConfigScene;
@@ -1168,8 +1197,8 @@ public:
                    MenuScene* menuScene,
                    std::shared_ptr<Character>          menuFrame,
                    std::shared_ptr<Character>          exitGameButton,
-                   std::shared_ptr<UI_Triangle_Button> leftTriButton,
-                   std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                   std::shared_ptr<UITriangleButton> leftTriButton,
+                   std::shared_ptr<UITriangleButton> rightTriButton,
                    std::shared_ptr<Character>          blueCatRunImg,
                    KeyboardConfigScene* kbConfigScene);
     ~LocalPlayScene() override = default;
@@ -1189,8 +1218,8 @@ public:
 private:
     std::shared_ptr<Character>          m_MenuFrame;
     std::shared_ptr<Character>          m_ExitGameButton;
-    std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
-    std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
+    std::shared_ptr<UITriangleButton> m_LeftTriButton;
+    std::shared_ptr<UITriangleButton> m_RightTriButton;
     std::shared_ptr<Character>          m_BlueCatRunImg;
 
     std::shared_ptr<GameText> m_PlayerCountText;  // "nPLAYER GAME"
@@ -1211,15 +1240,15 @@ private:
 #endif // PICOPART_LOCALPLAYSCENE_HPP
 </file>
 
-<file path="Menuscene.hpp">
+<file path="MenuScene.hpp">
 #ifndef MENU_SCENE_HPP
 #define MENU_SCENE_HPP
 
 #include "Scene.hpp"
 #include "Character.hpp"
 #include "GameText.hpp"
-#include "UI_Triangle_Button.hpp"
-#include "CharacterPhysicsSystem.hpp"
+#include "UITriangleButton.hpp"
+#include "PhysicsWorld.hpp"
 
 class ExitConfirmScene;
 class OptionMenuScene;
@@ -1228,50 +1257,50 @@ class LocalPlayScene;
 class MenuScene : public Scene {
 public:
     MenuScene(GameContext& ctx,
-              Scene* titleScene,
+              Scene*            titleScene,
               ExitConfirmScene* exitConfirmScene,
-              OptionMenuScene* optionScene,
-              LocalPlayScene* playerSelectScene);
+              OptionMenuScene*  optionScene,
+              LocalPlayScene*   playerSelectScene);
     ~MenuScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
     Scene* Update()  override;
 
-    void SetTitleScene(Scene* s)                   { m_TitleScene = s; }
+    void SetTitleScene(Scene* s)                  { m_TitleScene       = s; }
     void SetExitConfirmScene(ExitConfirmScene* s)  { m_ExitConfirmScene = s; }
-    void SetOptionScene(OptionMenuScene* s)       { m_OptionScene = s; }
-    void SetLocalPlayScene(LocalPlayScene* s)     { m_LocalPlayScene = s; }
+    void SetOptionScene(OptionMenuScene* s)        { m_OptionScene      = s; }
+    void SetLocalPlayScene(LocalPlayScene* s)      { m_LocalPlayScene   = s; }
 
-    [[nodiscard]] std::shared_ptr<Character> GetMenuFrame()      const { return m_MenuFrame; }
-    [[nodiscard]] std::shared_ptr<Character> GetExitGameButton() const { return m_ExitGameButton; }
-    [[nodiscard]] std::shared_ptr<UI_Triangle_Button> GetLeftTriButton()  const { return m_LeftTriButton;  }  // ← 新增
-    [[nodiscard]] std::shared_ptr<UI_Triangle_Button> GetRightTriButton() const { return m_RightTriButton; }  // ← 新增
-    [[nodiscard]] std::shared_ptr<Character> GetBlueCatRunImg()  const { return m_blue_cat_run_img; }
+    [[nodiscard]] std::shared_ptr<Character>          GetMenuFrame()      const { return m_MenuFrame;      }
+    [[nodiscard]] std::shared_ptr<Character>          GetExitGameButton() const { return m_ExitGameButton; }
+    [[nodiscard]] std::shared_ptr<UITriangleButton>   GetLeftTriButton()  const { return m_LeftTriButton;  }
+    [[nodiscard]] std::shared_ptr<UITriangleButton>   GetRightTriButton() const { return m_RightTriButton; }
+    [[nodiscard]] std::shared_ptr<Character>          GetBlueCatRunImg()  const { return m_blue_cat_run_img; }
 
 private:
-    std::shared_ptr<Character>          m_MenuFrame;
-    std::shared_ptr<Character>          m_ExitGameButton;
-    std::shared_ptr<Character>          m_blue_cat_run_img;
-    std::shared_ptr<UI_Triangle_Button> m_LeftTriButton;
-    std::shared_ptr<UI_Triangle_Button> m_RightTriButton;
+    void SetupStaticBoundaries();
+    void ShowCurrentOption() const;
+    void HideAllOptions()    const;
+
+    std::shared_ptr<Character>        m_MenuFrame;
+    std::shared_ptr<Character>        m_ExitGameButton;
+    std::shared_ptr<Character>        m_blue_cat_run_img;
+    std::shared_ptr<UITriangleButton> m_LeftTriButton;
+    std::shared_ptr<UITriangleButton> m_RightTriButton;
 
     std::shared_ptr<GameText> m_ExitGameText;
     std::shared_ptr<GameText> m_OptionText;
     std::shared_ptr<GameText> m_LocalPlayText;
 
-    CharacterPhysicsSystem    m_Physics;
-    std::vector<PhysicsAgent> m_Agents;
+    PhysicsWorld m_World;
 
     int m_SelectedIndex = 0;
 
-    Scene*             m_TitleScene        = nullptr;
-    ExitConfirmScene*  m_ExitConfirmScene  = nullptr;
-    OptionMenuScene*   m_OptionScene       = nullptr;
-    LocalPlayScene*    m_LocalPlayScene    = nullptr;
-
-    void ShowCurrentOption() const;
-    void HideAllOptions() const;
+    Scene*            m_TitleScene       = nullptr;
+    ExitConfirmScene* m_ExitConfirmScene = nullptr;
+    OptionMenuScene*  m_OptionScene      = nullptr;
+    LocalPlayScene*   m_LocalPlayScene   = nullptr;
 };
 
 #endif // MENU_SCENE_HPP
@@ -1291,7 +1320,7 @@ private:
 #include "Scene.hpp"
 #include "Character.hpp"
 #include "GameText.hpp"
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 
 class MenuScene;
 class KeyboardConfigScene;
@@ -1331,24 +1360,24 @@ private:
     std::shared_ptr<GameText> m_KbConfigOpen;        // "OPEN"
 
     std::shared_ptr<GameText>           m_BgColorLabel;
-    std::shared_ptr<UI_Triangle_Button> m_BgColorLeftBtn;
+    std::shared_ptr<UITriangleButton> m_BgColorLeftBtn;
     std::shared_ptr<GameText>           m_BgColorValue;
-    std::shared_ptr<UI_Triangle_Button> m_BgColorRightBtn;
+    std::shared_ptr<UITriangleButton> m_BgColorRightBtn;
 
     std::shared_ptr<GameText>           m_BgmVolumeLabel;
-    std::shared_ptr<UI_Triangle_Button> m_BgmVolumeLeftBtn;
+    std::shared_ptr<UITriangleButton> m_BgmVolumeLeftBtn;
     std::shared_ptr<GameText>           m_BgmVolumeValue;
-    std::shared_ptr<UI_Triangle_Button> m_BgmVolumeRightBtn;
+    std::shared_ptr<UITriangleButton> m_BgmVolumeRightBtn;
 
     std::shared_ptr<GameText>           m_SeVolumeLabel;
-    std::shared_ptr<UI_Triangle_Button> m_SeVolumeLeftBtn;
+    std::shared_ptr<UITriangleButton> m_SeVolumeLeftBtn;
     std::shared_ptr<GameText>           m_SeVolumeValue;
-    std::shared_ptr<UI_Triangle_Button> m_SeVolumeRightBtn;
+    std::shared_ptr<UITriangleButton> m_SeVolumeRightBtn;
 
     std::shared_ptr<GameText>           m_DispNumberLabel;
-    std::shared_ptr<UI_Triangle_Button> m_DispNumberLeftBtn;
+    std::shared_ptr<UITriangleButton> m_DispNumberLeftBtn;
     std::shared_ptr<GameText>           m_DispNumberValue;
-    std::shared_ptr<UI_Triangle_Button> m_DispNumberRightBtn;
+    std::shared_ptr<UITriangleButton> m_DispNumberRightBtn;
 
     std::shared_ptr<GameText> m_OkText;
     std::shared_ptr<GameText> m_CancelText;
@@ -1390,9 +1419,6 @@ private:
 </file>
 
 <file path="PhysicsWorld.hpp">
-//
-// Created by cody2 on 2026/3/19.
-//
 #ifndef PHYSICS_WORLD_HPP
 #define PHYSICS_WORLD_HPP
 
@@ -1400,23 +1426,49 @@ private:
 #include <vector>
 
 #include "IPhysicsBody.hpp"
+#include "StaticBody.hpp"
 
 struct RopeConstraint {
-    IPhysicsBody* bodyA    = nullptr;
-    IPhysicsBody* bodyB    = nullptr;
-    float         maxLen   = 200.0f;
+    IPhysicsBody* bodyA   = nullptr;
+    IPhysicsBody* bodyB   = nullptr;
+    float         maxLen  = 200.f;
     float         friction = 0.5f;
-
-    // TODO 實作時補充：
-    //   - 計算目前距離 d = distance(A.pos, B.pos)
-    //   - 若 d <= maxLen，不施力
-    //   - 若 d >  maxLen：
-    //       dir = normalize(A.pos - B.pos)   // 從 B 指向 A
-    //       力大小 = (d - maxLen) * stiffness
-    //       A.velocity -= dir * 力 * (1 - friction)
-    //       B.velocity += dir * 力 * (1 - friction)
+    // TODO implement force resolution in StepRopes().
 };
 
+// ------------------------------------------------------------
+// PhysicsWorld
+// Central coordinator for the two-phase physics pipeline:
+//
+//   Phase 1  : StepPhysicsUpdate()
+//               - Calls PhysicsUpdate() on every active, non-frozen body.
+//               - Bodies read input, apply gravity, and produce a desired
+//                 delta via GetDesiredDelta(). Positions are NOT changed.
+//
+//   Middle   : StepResolveAndApply()
+//               - Detects riding relationships (stacking) from the current
+//                 pre-move positions.
+//               - Resolves each body's delta against all solid geometry,
+//                 separating overlaps with horizontal-then-vertical passes.
+//               - Propagates the support body's horizontal delta to riders
+//                 automatically (platform following, cat-on-cat stacking).
+//               - Calls ApplyResolvedDelta() on every body.
+//
+//   Callbacks: StepCollisionCallbacks()
+//               - Calls OnCollision() on each body that encountered a
+//                 solid during resolution, supplying the contact normal.
+//
+// Freeze:
+//   FreezeAll() / UnfreezeAll() toggle the frozen flag on every registered
+//   body, enabling game-pause without destroying simulation state.
+//
+// Scene usage pattern:
+//   1. OnEnter: Register() player cats + PushableBoxes.
+//              AddStaticBoundary() for floor, walls, ceiling.
+//   2. Update: Set moveDir / call Jump() on actors (input phase).
+//              Then call m_World.Update() once per frame.
+//   3. OnExit: m_World.Clear().
+// ------------------------------------------------------------
 class PhysicsWorld {
 public:
     PhysicsWorld()  = default;
@@ -1425,48 +1477,97 @@ public:
     PhysicsWorld(const PhysicsWorld&)            = delete;
     PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
+    // Register a body for inclusion in every future Update() step.
     void Register(const std::shared_ptr<IPhysicsBody>& body);
+
+    // Remove a specific body (matched by pointer identity).
     void Unregister(const IPhysicsBody* body);
+
+    // Unregister all bodies and remove all rope constraints.
+    // Owned StaticBodies created via AddStaticBoundary are also cleared.
     void Clear();
 
+    // Create a StaticBody, take ownership, and register it.
+    // Returns a raw non-owning pointer for identification if needed.
+    StaticBody* AddStaticBoundary(glm::vec2 center, glm::vec2 halfSize,
+                                   BodyType type = BodyType::STATIC_BOUNDARY);
+
+    // Rope constraints (structural wiring only; step not yet implemented).
     void AddRope(IPhysicsBody* a, IPhysicsBody* b,
-                 float maxLen = 200.0f, float friction = 0.5f);
+                 float maxLen = 200.f, float friction = 0.5f);
     void RemoveRope(IPhysicsBody* a, IPhysicsBody* b);
-
-    void Update();
-
-    // 計算「有幾個 CHARACTER body 正在往 dir 方向推 target」
-    // dir: +1 = 向右推(body 在 target 左側往右移)，-1 = 向左推
-    // 用於：PushableBox 判斷是否達到 n 人推動條件
-    // int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
-
-    // 計算「有幾個 body 站在 target 頂部」
-    // 用於：ConditionalPlatform 判斷是否達到 n 人站上條件
-    // int CountBodiesOnTop(const IPhysicsBody* target) const;
-
-    // 回傳所有與 target 的 AABB 有重疊的 body
-    // 用於：Bullet 碰撞偵測、敵人傷害範圍
-    // std::vector<IPhysicsBody*> QueryOverlapping(const IPhysicsBody* target) const;
-
-    [[nodiscard]] std::vector<IPhysicsBody*> GetBodiesOfType(BodyType type) const;
-
     std::vector<RopeConstraint*> GetRopesOf(const IPhysicsBody* body);
 
-private:
-    static bool AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) ;
-    // bool IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const;
+    // Run one complete physics step (Phase 1 -> resolve -> apply -> callbacks).
+    void Update();
 
+    // Freeze / unfreeze all registered bodies (for game pause).
+    void FreezeAll() const ;
+    void UnfreezeAll() const ;
+
+    // Count the number of CHARACTER bodies that are actively pushing toward
+    // "target" in direction "dir" (+1 = right, -1 = left), including chained
+    // pushers and box intermediaries.
+    // Used by PushableBox::PhysicsUpdate() to determine net push force.
+    [[nodiscard]] int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
+
+    // Return all registered active bodies of the given type.
+    [[nodiscard]] std::vector<IPhysicsBody*> GetBodiesOfType(BodyType type) const;
+
+private:
+    // Per-frame working data for one body during resolution.
+    struct BodyInfo {
+        std::shared_ptr<IPhysicsBody> body;
+        glm::vec2 desired      = {0.f, 0.f};
+        glm::vec2 resolved     = {0.f, 0.f};
+        int       supportIdx   = -1;    // index in the snapshot vector (-1 = none)
+        bool      resolvedFlag = false; // true once this body's delta is finalised
+        // Contact tracking for OnCollision callbacks.
+        IPhysicsBody* collidedH  = nullptr;   // body that caused horizontal separation
+        IPhysicsBody* collidedV  = nullptr;   // body that caused vertical separation
+        glm::vec2     normalH    = {0.f, 0.f};
+        glm::vec2     normalV    = {0.f, 0.f};
+    };
+
+    // Phase 1: call PhysicsUpdate() on all active non-frozen bodies.
+    // CHARACTER bodies are updated before PUSHABLE_BOX bodies so that
+    // CountCharactersPushing() sees current-frame move directions.
+    void StepPhysicsUpdate() const;
+
+    // Middle + Phase 2: full resolution pipeline (detect riding, resolve, apply).
+    void StepResolveAndApply() const ;
+
+    // Detect which body in the snapshot is being "ridden" by each dynamic body,
+    // based on the pre-move positions. Populates BodyInfo::supportIdx.
+    static void DetectRiding(std::vector<BodyInfo>& infos);
+
+    // Resolve body at index "idx" with the given "desired" delta against every
+    // solid body in the snapshot. Returns the safe resolved delta and populates
+    // contact tracking fields in infos[idx].
+    static glm::vec2 ResolveBody(int idx, glm::vec2 desired,
+                                  std::vector<BodyInfo>& infos);
+
+    // Fire OnCollision() on each body that recorded a contact during resolution.
+    static void StepCollisionCallbacks(const std::vector<BodyInfo>& infos);
+
+    // Standard AABB overlap test (touching edges are not considered overlapping).
+    static bool AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b);
+
+    // Remove expired weak_ptr entries (runs every kPurgeInterval frames).
     void PurgeExpired();
 
-    void StepPhysicsUpdate() const ;
-    // void StepRopes();
-    // void StepCollisions();
+    // Recursive helper for CountCharactersPushing().
+    int CountCharactersPushingImpl(const IPhysicsBody* target,
+                                    int dir,
+                                    std::vector<const IPhysicsBody*>& visited) const;
 
     std::vector<std::weak_ptr<IPhysicsBody>> m_Bodies;
+    std::vector<std::shared_ptr<StaticBody>> m_OwnedStatics; // owned by world
     std::vector<RopeConstraint>              m_Ropes;
 
     int m_FrameCount = 0;
     static constexpr int kPurgeInterval = 60;
+    static constexpr float kRidingTolerance = 5.f;
 };
 
 #endif // PHYSICS_WORLD_HPP
@@ -1507,6 +1608,13 @@ struct CatAnimPaths {
 
 class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
 public:
+    static constexpr float kGravity          = 0.75f;
+    static constexpr float kJumpForce        = 11.0f;
+    static constexpr float kGroundMoveSpeed  = 5.0f;
+    static constexpr float kRunOnPlayerSpeed = 6.2f;
+    static constexpr float kHalfWidth        = 18.0f;
+    static constexpr float kHalfHeight       = 23.0f;
+
     PlayerCat(const CatAnimPaths& animPaths,
               Util::Keycode leftKey,
               Util::Keycode rightKey,
@@ -1514,30 +1622,47 @@ public:
 
     void SetCatAnimState(CatAnimState newState);
     [[nodiscard]] CatAnimState GetCatAnimState() const { return m_CurrentAnimState; }
-
-    void SetInputEnabled(bool enabled)         { m_InputEnabled = enabled; }
-    [[nodiscard]] bool GetInputEnabled() const { return m_InputEnabled;    }
-
-    void SetPosition(const glm::vec2& pos) override { m_Transform.translation = pos; }
-    void SetScale(const glm::vec2& scale)   { m_Transform.scale = scale; }
-    void SetVelocity(const glm::vec2& vel) override { m_Velocity = vel; }
-
-    [[nodiscard]] BodyType GetBodyType() const override { return BodyType::CHARACTER; }
-    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
-    [[nodiscard]] glm::vec2 GetHalfSize() const override { return glm::abs(GetScaledSize()) * 0.5f; }
-    [[nodiscard]] glm::vec2 GetVelocity() const override { return m_Velocity; }
-
-    [[nodiscard]] bool IsSolid() const override { return true; }
-    [[nodiscard]] bool IsKinematic() const override { return false; }
-    [[nodiscard]] bool UseGravity() const override { return true; }
-    void OnCollision(const CollisionInfo& /*info*/) override {}
-
     [[nodiscard]] Util::Keycode GetLeftKey()  const { return m_LeftKey;  }
     [[nodiscard]] Util::Keycode GetRightKey() const { return m_RightKey; }
     [[nodiscard]] Util::Keycode GetJumpKey()  const { return m_JumpKey;  }
 
+    void SetMoveDir(int dir)               { m_MoveDir = dir; }
+
+    void Jump();
+
+    [[nodiscard]] bool IsGrounded() const { return m_Grounded; }
+
+    void SetInputEnabled(bool enabled)         { m_InputEnabled = enabled; }
+    [[nodiscard]] bool GetInputEnabled() const { return m_InputEnabled;    }
+
+    void SetScale(const glm::vec2& scale) { m_Transform.scale = scale; }
+
+    [[nodiscard]] BodyType  GetBodyType() const override { return BodyType::CHARACTER; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
+    void                    SetPosition(const glm::vec2& pos) override
+                                { m_Transform.translation = pos; }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override
+                                { return {kHalfWidth, kHalfHeight}; }
+
+    [[nodiscard]] bool IsSolid()     const override { return true;  }
+    [[nodiscard]] bool IsKinematic() const override { return false; }
+    [[nodiscard]] int  GetMoveDir()  const override { return m_MoveDir; }
+
+    void PhysicsUpdate() override;
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return m_DesiredDelta; }
+
+    void ApplyResolvedDelta(const glm::vec2& delta) override;
+
+    void OnCollision(const CollisionInfo& info) override;
+
+    void PostUpdate() override;
+
+    void NotifyPush() override { m_IsPushing = true; }
+
 private:
     void BuildClips(const CatAnimPaths& paths);
+    void UpdateAnimState();
 
     std::shared_ptr<Util::Animation> m_StandAnim;
     std::shared_ptr<Util::Animation> m_RunAnim;
@@ -1553,13 +1678,81 @@ private:
     Util::Keycode m_RightKey;
     Util::Keycode m_JumpKey;
 
-    glm::vec2 m_Velocity = {0.0f, 0.0f};
+    int       m_MoveDir      = 0;
+    float     m_VelocityY    = 0.f;
+    bool      m_Grounded     = true;
+    bool      m_PrevGrounded = true;
+    bool      m_IsPushing    = false;
+
+    glm::vec2 m_DesiredDelta = {0.f, 0.f};
 };
 
 #endif // PLAYER_CAT_HPP
 </file>
 
-<file path="Savemanager.hpp">
+<file path="PushableBox.hpp">
+//
+// Created by cody2 on 2026/3/26.
+//
+
+#ifndef PICOPART_PUSHABLEBOX_HPP
+#define PICOPART_PUSHABLEBOX_HPP
+
+#include <memory>
+#include <string>
+
+#include "Character.hpp"
+#include "IPhysicsBody.hpp"
+#include "IPushable.hpp"
+#include "GameText.hpp"
+
+class PhysicsWorld;
+class PushableBox : public Character, public IPhysicsBody, public IPushable {
+public:
+    static constexpr float kGravity   = 0.5f;
+    static constexpr float kPushSpeed = 2.0f;
+
+    PushableBox(const std::string& imagePath, int requiredPushers = 2);
+
+    void SetWorld(PhysicsWorld* world) { m_World = world; }
+
+    [[nodiscard]] int GetRequiredPushers() const override { return m_RequiredPushers; }
+
+    [[nodiscard]] std::shared_ptr<GameText> GetTextObject() const { return m_CountText; }
+
+    [[nodiscard]] BodyType  GetBodyType() const override { return BodyType::PUSHABLE_BOX; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
+    void                    SetPosition(const glm::vec2& pos) override
+                                { Character::SetPosition(pos); }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override
+                                { return glm::abs(GetScaledSize()) * 0.5f; }
+
+    [[nodiscard]] bool IsSolid()     const override { return true;  }
+    [[nodiscard]] bool IsKinematic() const override { return false; }
+
+    void PhysicsUpdate() override;
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return m_DesiredDelta; }
+
+    void ApplyResolvedDelta(const glm::vec2& delta) override;
+
+    void OnCollision(const CollisionInfo& info) override;
+
+private:
+    void NotifyAdjacentPushers(int activeDir) const;
+
+    PhysicsWorld* m_World           = nullptr;
+    int           m_RequiredPushers = 2;
+    float         m_VelocityY       = 0.f;
+    glm::vec2     m_DesiredDelta    = {0.f, 0.f};
+
+    std::shared_ptr<GameText> m_CountText;
+};
+
+#endif // PICOPART_PUSHABLEBOX_HPP
+</file>
+
+<file path="SaveManager.hpp">
 //
 // Created by cody2 on 2026/3/24.
 //
@@ -1675,15 +1868,50 @@ protected:
 #endif //PICOPART_SCENE_HPP
 </file>
 
-<file path="Titlescene.hpp">
+<file path="StaticBody.hpp">
+//
+// Created by cody2 on 2026/3/28.
+//
+
+#ifndef STATIC_BODY_HPP
+#define STATIC_BODY_HPP
+
+#include "IPhysicsBody.hpp"
+class StaticBody final : public IPhysicsBody {
+public:
+    StaticBody(glm::vec2 center, glm::vec2 halfSize,
+               BodyType type = BodyType::STATIC_BOUNDARY);
+
+    [[nodiscard]] BodyType  GetBodyType() const override { return m_Type; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Position; }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override { return m_HalfSize; }
+    [[nodiscard]] bool      IsSolid()     const override { return true; }
+    [[nodiscard]] bool      IsKinematic() const override { return true; }
+
+    void SetPosition(const glm::vec2& /*pos*/) override {}
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return {0.f, 0.f}; }
+
+    void ApplyResolvedDelta(const glm::vec2& /*delta*/) override {}
+
+private:
+    glm::vec2 m_Position;
+    glm::vec2 m_HalfSize;
+    BodyType  m_Type;
+};
+
+#endif // STATIC_BODY_HPP
+</file>
+
+<file path="TitleScene.hpp">
 #ifndef PICOPART_TITLESCENE_HPP
 #define PICOPART_TITLESCENE_HPP
 
 #include <vector>
-
+#include <memory>
 #include "Scene.hpp"
 #include "GameText.hpp"
-#include "CharacterPhysicsSystem.hpp"
+#include "PhysicsWorld.hpp"
 
 class MenuScene;
 
@@ -1699,20 +1927,21 @@ public:
     void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
 
 private:
+    void SetupStaticBoundaries();
+
     std::shared_ptr<GameText> m_TitleSub;
     std::shared_ptr<GameText> m_PressEnterText;
 
     float      m_FlashTimer = 0.0f;
     MenuScene* m_MenuScene  = nullptr;
 
-    CharacterPhysicsSystem      m_Physics;
-    std::vector<PhysicsAgent>   m_Agents;
+    PhysicsWorld m_World;
 };
 
 #endif // PICOPART_TITLESCENE_HPP
 </file>
 
-<file path="UI_Triangle_Button.hpp">
+<file path="UITriangleButton.hpp">
 //
 // Created by cody2 on 2026/3/14.
 //
@@ -1723,9 +1952,9 @@ private:
 #include "Character.hpp"
 #include <string>
 
-class UI_Triangle_Button : public Character {
+class UITriangleButton : public Character {
 public:
-    UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath);
+    UITriangleButton(std::string normalImagePath, std::string pressedImagePath);
 
     void UpdateButton();
 
@@ -1768,9 +1997,10 @@ void App::End() {
 #include "App.hpp"
 #include "BGMPlayer.hpp"
 #include "CatAssets.hpp"
+#include "PushableBox.hpp"
 
-#include "Titlescene.hpp"
-#include "Menuscene.hpp"
+#include "TitleScene.hpp"
+#include "MenuScene.hpp"
 #include "ExitConfirmScene.hpp"
 #include "OptionMenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
@@ -1819,7 +2049,24 @@ void App::Start() {
     }
     m_Root.AddChild(m_Ctx->Door);
 
-    m_Ctx->BGMPlayer = make_unique<BGMPlayer>();
+    m_Ctx->TestBox = make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1); // 假設需要 1 人推動
+    m_Ctx->TestBox->SetZIndex(15.0f); // 讓它跟貓咪同一個圖層
+    {
+        const float floorY     = m_Ctx->Floor->GetPosition().y;
+        const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
+        const float boxHalfH   = m_Ctx->TestBox->GetScaledSize().y / 2.0f;
+
+        // 讓箱子完美貼齊地板
+        m_Ctx->TestBox->SetPosition({400.0f, floorY + floorHalfH + boxHalfH});
+    }
+    m_Root.AddChild(m_Ctx->TestBox);
+    if (m_Ctx->TestBox->GetTextObject()) {
+        m_Ctx->TestBox->GetTextObject()->SetZIndex(16.0f);
+        m_Root.AddChild(m_Ctx->TestBox->GetTextObject());
+    }
+    // ====
+
+    m_Ctx->BGMPlayer = make_shared<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
 
     m_Ctx->StartupCats.clear();
@@ -1871,6 +2118,7 @@ void App::Start() {
                             : ( centerBlank * 0.5f + static_cast<float>(sideLayer) * spacing);
 
         cat->SetPosition({x, spawnY});
+        cat->SetZIndex(15.0f + static_cast<float>(i) * 0.01f);
 
         const float faceScale = abs(cat->m_Transform.scale.x);
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
@@ -2204,231 +2452,13 @@ bool Character::IsLeftClicked() const {
 </file>
 
 <file path="CharacterPhysicsSystem.cpp">
-//
-// Created by cody2 on 2026/3/19.
-//
 #include "CharacterPhysicsSystem.hpp"
-#include <algorithm>
-#include <cmath>
-
-void CharacterPhysicsSystem::Update(std::vector<PhysicsAgent>& agents,
-                                     const std::shared_ptr<Character>& floor) {
-    const int n = static_cast<int>(agents.size());
-
-    for (int i = 0; i < n; ++i) {
-        auto& self = agents[i];
-        if (self.actor == nullptr) continue;
-
-        self.state.prevGrounded = self.state.grounded;
-
-        const int sup = self.state.supportIndex;
-        if (self.state.grounded && sup >= 0 && sup < n &&
-            agents[sup].actor != nullptr) {
-            const float carry = agents[sup].state.lastDeltaX;
-            self.actor->SetPosition({self.actor->GetPosition().x + carry,
-                                     self.actor->GetPosition().y});
-        }
-
-        if (self.state.beingStoodOn && self.state.velocityY > 0.0f) {
-            self.state.velocityY = 0.0f;
-        }
-
-        const float moveSpeed = (self.state.grounded && sup >= 0)
-                                    ? kRunOnPlayerSpeed
-                                    : kGroundMoveSpeed;
-
-        const float prevX     = self.actor->GetPosition().x;
-        const float rawX      = prevX + static_cast<float>(self.state.moveDir) * moveSpeed;
-        const float resolvedX = ResolveHorizontal(i, rawX, agents);
-
-        const bool isPushing = (self.state.moveDir != 0) &&
-                               (std::abs(resolvedX - rawX) >= moveSpeed * 0.5f);
-
-        const float faceScale = std::abs(self.actor->m_Transform.scale.x);
-        if      (self.state.moveDir < 0) self.actor->m_Transform.scale.x = -faceScale;
-        else if (self.state.moveDir > 0) self.actor->m_Transform.scale.x =  faceScale;
-
-        self.actor->SetPosition({resolvedX, self.actor->GetPosition().y});
-
-        ResolveVertical(i, agents, floor);
-
-        self.state.lastDeltaX = self.actor->GetPosition().x - prevX;
-
-        UpdateAnimState(i, agents, isPushing);
-    }
-
-    for (int i = 0; i < n; ++i) agents[i].state.beingStoodOn = false;
-    for (int j = 0; j < n; ++j) {
-        const int s = agents[j].state.supportIndex;
-        if (s >= 0 && s < n) agents[s].state.beingStoodOn = true;
-    }
-}
-
-float CharacterPhysicsSystem::ResolveHorizontal(const int idx,
-                                                  float targetX,
-                                                  const std::vector<PhysicsAgent>& agents) {
-    if (idx < 0 || idx >= static_cast<int>(agents.size()) ||
-        agents[idx].actor == nullptr) {
-        return targetX;
-    }
-
-    const glm::vec2 mePos    = agents[idx].actor->GetPosition();
-    const float     currentX = mePos.x;
-
-    for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
-        if (j == idx || agents[j].actor == nullptr) continue;
-
-        if (agents[idx].state.supportIndex == j) continue;
-        if (agents[j].state.supportIndex == idx) continue;
-
-        const glm::vec2 other   = agents[j].actor->GetPosition();
-        const float     vertGap = std::abs(other.y - mePos.y);
-        const float vertTolerance = HalfHeight() * 1.4f; // ≈ 32.2f
-        if (vertGap >= vertTolerance) continue;
-
-        const float minDist = HalfWidth() + HalfWidth();
-
-        if (targetX > currentX && other.x > currentX) {
-            targetX = std::min(targetX, other.x - minDist);
-        }
-        else if (targetX < currentX && other.x < currentX) {
-            targetX = std::max(targetX, other.x + minDist);
-        }
-    }
-
-    const float boundX = kScreenHalfW - HalfWidth();
-    targetX = std::clamp(targetX, -boundX, boundX);
-
-    return targetX;
-}
-
-float CharacterPhysicsSystem::HalfWidth()  { return 18.0f; }
-float CharacterPhysicsSystem::HalfHeight() { return 23.0f; }
-
-float CharacterPhysicsSystem::StandOffset(const std::shared_ptr<Character>& floor) {
-    const float floorHalfH = (floor != nullptr)
-                                 ? std::abs(floor->GetScaledSize().y) / 2.0f
-                                 : 0.0f;
-    const float catHalfH = HalfHeight();
-    return floorHalfH + catHalfH;
-}
-
-void CharacterPhysicsSystem::ResolveVertical(int idx,
-                                              std::vector<PhysicsAgent>& agents,
-                                              const std::shared_ptr<Character>& floor) {
-    auto& self = agents[idx];
-    if (self.actor == nullptr) return;
-
-    const float oldY = self.actor->GetPosition().y;
-
-    self.state.velocityY -= kGravity;
-    const float targetY = oldY + self.state.velocityY;
-
-    float bestLandingY = -1e9f;
-    int   bestSupport  = -2;   // -2=none, -1=floor, >=0=another character
-
-    if (floor != nullptr) {
-        const float landingY = floor->GetPosition().y + StandOffset(floor);
-        if (oldY >= landingY - 1.0f && targetY <= landingY) {
-            bestLandingY = landingY;
-            bestSupport  = -1;
-        }
-    }
-
-    const glm::vec2 mePos = self.actor->GetPosition();
-    for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
-        if (j == idx || agents[j].actor == nullptr) continue;
-
-        const glm::vec2 other = agents[j].actor->GetPosition();
-        const float bandX     = (HalfWidth() + HalfWidth()) * 0.6f;
-        if (std::abs(other.x - mePos.x) >= bandX) continue;
-
-        const float landingY = other.y + HalfHeight() * 2.0f;
-
-        if (oldY >= landingY - 1.0f && targetY <= landingY && landingY > bestLandingY) {
-            bestLandingY = landingY;
-            bestSupport  = j;
-        }
-    }
-
-    if (bestSupport != -2) {
-        self.actor->SetPosition({mePos.x, bestLandingY});
-        self.state.velocityY    = 0.0f;
-        self.state.grounded     = true;
-        self.state.supportIndex = bestSupport;
-    }
-    else {
-        self.actor->SetPosition({mePos.x, targetY});
-        self.state.grounded     = false;
-        self.state.supportIndex = -1;
-    }
-}
-
-bool CharacterPhysicsSystem::IsBeingPushed(int idx,
-                                            const std::vector<PhysicsAgent>& agents,
-                                            const std::shared_ptr<Character>& /*floor*/) {
-    if (idx < 0 || idx >= static_cast<int>(agents.size()) || agents[idx].actor == nullptr) {
-        return false;
-    }
-
-    const glm::vec2 mePos = agents[idx].actor->GetPosition();
-
-    for (int j = 0; j < static_cast<int>(agents.size()); ++j) {
-        if (j == idx || agents[j].actor == nullptr) continue;
-        if (agents[j].state.moveDir == 0) continue;
-
-        const glm::vec2 other   = agents[j].actor->GetPosition();
-        const float     vertGap = std::abs(other.y - mePos.y);
-        if (vertGap >= HalfHeight()) continue;
-
-        const float minDist = HalfWidth() + HalfWidth();
-        const float dx      = mePos.x - other.x;
-
-        if (agents[j].state.moveDir > 0 && dx > 0.0f && std::abs(dx) <= minDist * 1.1f)
-            return true;
-        if (agents[j].state.moveDir < 0 && dx < 0.0f && std::abs(dx) <= minDist * 1.1f)
-            return true;
-    }
-    return false;
-}
-
-// UpdateAnimState
-void CharacterPhysicsSystem::UpdateAnimState(int idx,
-                                              const std::vector<PhysicsAgent>& agents,
-                                              bool isPushing) {
-    auto& self = agents[idx];
-    if (self.actor == nullptr) return;
-
-    const bool         justLanded = self.state.grounded && !self.state.prevGrounded;
-    const CatAnimState cur        = self.actor->GetCatAnimState();
-
-    CatAnimState next;
-
-    if (!self.state.grounded) {
-        next = (self.state.velocityY > 0.0f)
-                   ? CatAnimState::JUMP_RISE
-                   : CatAnimState::JUMP_FALL;
-    }
-    else if (justLanded || (cur == CatAnimState::LAND && !self.actor->IfAnimationEnds())) {
-        next = CatAnimState::LAND;
-    }
-    else if (isPushing) {
-        next = CatAnimState::PUSH;
-    }
-    else if (self.state.moveDir != 0) {
-        next = CatAnimState::RUN;
-    }
-    else {
-        next = CatAnimState::STAND;
-    }
-
-    self.actor->SetCatAnimState(next);
-}
+// All runtime implementation has been moved to PlayerCat and PhysicsWorld.
 </file>
 
-<file path="Exitconfirmscene.cpp">
+<file path="ExitConfirmScene.cpp">
 #include "ExitConfirmScene.hpp"
-#include "Menuscene.hpp"
+#include "MenuScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -2516,19 +2546,17 @@ Scene* ExitConfirmScene::Update() {
     }
 
     const bool confirmByKeyboard = Util::Input::IsKeyDown(Util::Keycode::RETURN);
-    const bool confirmByMouse    = m_YesText->IsLeftClicked() || m_NoText->IsLeftClicked();
+    const bool confirmByMouseYes = m_YesText->IsLeftClicked() ;
+    const bool confirmByMouseNo  = m_NoText->IsLeftClicked() ;
 
-    if (confirmByKeyboard || confirmByMouse) {
-        bool chooseYes = m_IsYesSelected;
-        if (confirmByMouse) {
-            chooseYes = m_YesText->IsLeftClicked();
-        }
-
-        if (chooseYes) {
-            LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
-            m_Ctx.ShouldQuit = true;
-            return nullptr;
-        }
+    if ((confirmByKeyboard || confirmByMouseYes) && m_IsYesSelected) {
+        LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
+        m_Ctx.ShouldQuit = true ;
+        return nullptr;
+    }
+    if ((confirmByKeyboard || confirmByMouseNo) && !m_IsYesSelected) {
+        LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
+        return m_MenuScene;
     }
 
     return nullptr;
@@ -2677,7 +2705,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_PlayerLabel->SetZIndex(35);
     m_PlayerLabel->SetPosition({AlignLeft(*m_PlayerLabel, COL_LABEL_X), ROW_Y_PLAYER});
 
-    m_PlayerLeftBtn = std::make_shared<UI_Triangle_Button>(
+    m_PlayerLeftBtn = std::make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_PlayerLeftBtn->SetZIndex(35);
@@ -2687,7 +2715,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_PlayerValue->SetZIndex(35);
     m_PlayerValue->SetPosition({COL_VALUE_X, ROW_Y_PLAYER});
 
-    m_PlayerRightBtn = std::make_shared<UI_Triangle_Button>(
+    m_PlayerRightBtn = std::make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_PlayerRightBtn->SetZIndex(35);
@@ -2768,6 +2796,7 @@ void KeyboardConfigScene::OnEnter() {
     m_Ctx.Root.AddChild(m_DefaultText);
 
     m_ExitGameButton->SetPosition({399.2f, 285.1f});
+    m_ExitGameButton->SetVisible(true);
 
     m_PlayerLeftBtn->ResetState();
     m_PlayerRightBtn->ResetState();
@@ -3068,6 +3097,14 @@ int KeyboardConfigScene::GetConfiguredPlayerCount() const {
 }
 </file>
 
+<file path="LevelExitScene.cpp">
+
+</file>
+
+<file path="LevelOneScene.cpp">
+
+</file>
+
 <file path="LevelSelectScene.cpp">
 //
 // Created by cody2 on 2026/3/24.
@@ -3275,24 +3312,56 @@ void LevelSelectScene::UpdateCrowns() const {
 #include "LocalPlayGameScene.hpp"
 #include "LocalPlayScene.hpp"
 #include "LevelSelectScene.hpp"
-
 #include "CatAssets.hpp"
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
-
 #include <algorithm>
-#include <array>
 #include <cmath>
 
-using ip = Util::Input ;
-using k  = Util::Keycode ;
+using ip = Util::Input;
+using k  = Util::Keycode;
 
 LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
-                                       LocalPlayScene* localPlayScene,
+                                       LocalPlayScene*      localPlayScene,
                                        KeyboardConfigScene* kbConfigScene)
     : Scene(ctx)
     , m_LocalPlayScene(localPlayScene)
     , m_KbConfigScene(kbConfigScene) {}
+
+void LocalPlayGameScene::SetupStaticBoundaries() {
+    constexpr float kWallHalfW  = 50.f;
+    constexpr float kWallHalfH  = 400.f;
+    constexpr float kFloorHalfH = 40.f;
+    constexpr float kCeilHalfH  = 40.f;
+
+    float floorSurfaceY  = -360.f;
+    float ceilingSurfaceY = 360.f;
+
+    if (m_Ctx.Floor != nullptr) {
+        floorSurfaceY = m_Ctx.Floor->GetPosition().y
+                      + m_Ctx.Floor->GetScaledSize().y * 0.5f;
+    }
+
+    // Floor: top edge at floorSurfaceY.
+    m_World.AddStaticBoundary(
+        {0.f, floorSurfaceY - kFloorHalfH},
+        {640.f + kWallHalfW, kFloorHalfH});
+
+    // Ceiling: bottom edge at ceilingSurfaceY.
+    m_World.AddStaticBoundary(
+        {0.f, ceilingSurfaceY + kCeilHalfH},
+        {640.f + kWallHalfW, kCeilHalfH});
+
+    // Left boundary wall.
+    m_World.AddStaticBoundary(
+        {-(640.f + kWallHalfW), 0.f},
+        {kWallHalfW, kWallHalfH});
+
+    // Right boundary wall.
+    m_World.AddStaticBoundary(
+        { (640.f + kWallHalfW), 0.f},
+        {kWallHalfW, kWallHalfH});
+}
 
 void LocalPlayGameScene::OnEnter() {
     int playerCount = 2;
@@ -3306,6 +3375,7 @@ void LocalPlayGameScene::OnEnter() {
     m_Ctx.SelectedPlayerCount  = playerCount;
     m_Ctx.CooperativePushPower = 1;
 
+    // Hide the decorative startup cats while gameplay cats are active.
     for (auto& cat : m_Ctx.StartupCats) {
         if (cat != nullptr) {
             cat->SetVisible(false);
@@ -3313,20 +3383,22 @@ void LocalPlayGameScene::OnEnter() {
         }
     }
 
+    m_World.Clear();
     SpawnPlayers(playerCount);
+    SetupStaticBoundaries();
 
     m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
 
     m_EnteredCount = 0;
     const glm::vec2 doorPos   = m_Ctx.Door->GetPosition();
-    const float     doorHalfH = m_Ctx.Door->GetScaledSize().y / 2.0f;
+    const float     doorHalfH = m_Ctx.Door->GetScaledSize().y / 2.f;
 
     m_DoorCountText = std::make_shared<GameText>(
         "0/" + std::to_string(playerCount),
         40,
         Util::Color::FromRGB(0, 0, 0, 255));
-    m_DoorCountText->SetZIndex(30.0f);
-    m_DoorCountText->SetPosition({doorPos.x + 10.0f, doorPos.y + doorHalfH + 25.0f});
+    m_DoorCountText->SetZIndex(30.f);
+    m_DoorCountText->SetPosition({doorPos.x + 10.f, doorPos.y + doorHalfH + 25.f});
     m_Ctx.Root.AddChild(m_DoorCountText);
 
     LOG_INFO("LocalPlayGameScene::OnEnter players={}", playerCount);
@@ -3334,18 +3406,18 @@ void LocalPlayGameScene::OnEnter() {
 
 void LocalPlayGameScene::OnExit() {
     for (auto& pb : m_Players) {
-        if (pb.agent.actor != nullptr) {
-            m_Ctx.Root.RemoveChild(pb.agent.actor);
-        }
+        if (pb.cat != nullptr) m_Ctx.Root.RemoveChild(pb.cat);
     }
 
+    m_World.Clear();
+    m_Players.clear();
+
     m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+
     if (m_DoorCountText != nullptr) {
         m_Ctx.Root.RemoveChild(m_DoorCountText);
         m_DoorCountText = nullptr;
     }
-
-    m_Players.clear();
 
     for (auto& cat : m_Ctx.StartupCats) {
         if (cat != nullptr) cat->SetVisible(true);
@@ -3355,75 +3427,70 @@ void LocalPlayGameScene::OnExit() {
 }
 
 Scene* LocalPlayGameScene::Update() {
-
     if (ip::IsKeyDown(k::ESCAPE)) {
         return m_LocalPlayScene;
     }
 
+    // --- Step 2: input phase ---
+    // SetMoveDir / Jump are called on each cat BEFORE m_World.Update().
+    // This is the correct input step of the two-phase contract.
     for (auto& pb : m_Players) {
-        auto& st        = pb.agent.state;
+        if (pb.entered || pb.cat == nullptr) continue;
+
         const auto& key = pb.key;
+        int moveDir = 0;
 
-        st.moveDir = 0;
+        const bool goLeft  = (key.left  != k::UNKNOWN) && ip::IsKeyPressed(key.left);
+        const bool goRight = (key.right != k::UNKNOWN) && ip::IsKeyPressed(key.right);
 
-        const bool goLeft  = (key.left  != k::UNKNOWN) &&
-                              ip::IsKeyPressed(key.left);
-        const bool goRight = (key.right != k::UNKNOWN) &&
-                              ip::IsKeyPressed(key.right);
+        if      (goLeft  && !goRight) moveDir = -1;
+        else if (goRight && !goLeft)  moveDir =  1;
 
-        if      (goLeft  && !goRight) st.moveDir = -1;
-        else if (goRight && !goLeft)  st.moveDir =  1;
+        pb.cat->SetMoveDir(moveDir);
 
-        const bool wantJump = (key.jump != k::UNKNOWN) &&
-                               ip::IsKeyDown(key.jump);
-
-        if (st.grounded && wantJump) {
-            CharacterPhysicsSystem::ApplyJump(st);
+        const bool wantJump = (key.jump != k::UNKNOWN) && ip::IsKeyDown(key.jump);
+        if (pb.cat->IsGrounded() && wantJump) {
+            pb.cat->Jump();
         }
     }
 
+    // --- Step 3: door-entry check (before physics so positions are still correct) ---
     const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
     const glm::vec2 doorSize = m_Ctx.Door->GetScaledSize();
-    const float halfW = doorSize.x / 2.0f + 10.0f;
-    const float halfH = doorSize.y / 2.0f + 10.0f;
+    const float halfW = doorSize.x / 2.f + 10.f;
+    const float halfH = doorSize.y / 2.f + 10.f;
 
     for (auto& pb : m_Players) {
-        if (pb.entered)                  continue;
-        if (pb.agent.actor == nullptr)   continue;
+        if (pb.entered || pb.cat == nullptr) continue;
 
-        const glm::vec2 pos    = pb.agent.actor->GetPosition();
+        const glm::vec2 pos     = pb.cat->GetPosition();
         const bool      inRange = (std::abs(pos.x - doorPos.x) <= halfW &&
                                    std::abs(pos.y - doorPos.y) <= halfH);
-
-        const bool pressedUp = (pb.key.up != k::UNKNOWN) &&
-                                ip::IsKeyDown(pb.key.up);
+        const bool pressedUp    = (pb.key.up != k::UNKNOWN) &&
+                                   ip::IsKeyDown(pb.key.up);
 
         if (inRange && pressedUp) {
             pb.entered = true;
             ++m_EnteredCount;
-            pb.agent.actor->SetVisible(false);
-            pb.agent.actor->SetInputEnabled(false);
-            pb.agent.actor->SetPosition({640, -360});
+            pb.cat->SetVisible(false);
+            pb.cat->SetInputEnabled(false);
+            pb.cat->SetActive(false);           // remove from physics
+            pb.cat->SetPosition({640.f, -360.f});
             UpdateDoorCountText();
 
             if (m_EnteredCount == m_Ctx.SelectedPlayerCount) {
-                LOG_INFO("LocalPlayGameScene all players entered the door, going to LevelSelectScene");
+                LOG_INFO("LocalPlayGameScene: all players entered -> LevelSelectScene");
                 return m_LevelSelectScene;
             }
         }
     }
 
-    std::vector<PhysicsAgent> agents;
-    agents.reserve(m_Players.size());
-    for (auto& pb : m_Players) agents.push_back(pb.agent);
+    // --- Step 4: unified two-phase physics ---
+    m_World.Update();
 
-    CharacterPhysicsSystem::Update(agents, m_Ctx.Floor);
-
-    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
-        m_Players[i].agent.state = agents[i].state;
-    }
-
+    // --- Step 5: game statistics (pure read, no physics displacement) ---
     UpdateCooperativePower();
+
     return nullptr;
 }
 
@@ -3432,77 +3499,71 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
     m_Players.reserve(static_cast<size_t>(count));
 
     for (int i = 0; i < count; ++i) {
-        const std::string color = GameContext::kCatColorOrder[static_cast<size_t>(i)];
+        const std::string color =
+            GameContext::kCatColorOrder[static_cast<size_t>(i)];
 
         auto cat = std::make_shared<PlayerCat>(
             CatAssets::BuildFullAnimPaths(color),
-            k::UNKNOWN,
-            k::UNKNOWN,
-            k::UNKNOWN);
-        cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
+            k::UNKNOWN, k::UNKNOWN, k::UNKNOWN);
+        cat->SetZIndex(20.f + static_cast<float>(i) * 0.01f);
 
         PlayerBinding pb;
-        pb.agent.actor = cat;
+        pb.cat = cat;
 
         if (m_KbConfigScene != nullptr) {
             pb.key = m_KbConfigScene->GetAppliedConfig(i);
         }
 
-        if (i == 0 &&
-            pb.key.left  == k::UNKNOWN &&
-            pb.key.right == k::UNKNOWN) {
+        // Fall back to defaults if the player has no configured keys.
+        if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default1P;
         }
-        else if (i == 1 &&
-                 pb.key.left  == k::UNKNOWN &&
-                 pb.key.right == k::UNKNOWN) {
+        else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default2P;
-        }
-
-        if (i < static_cast<int>(m_Ctx.StartupCats.size()) &&
-            m_Ctx.StartupCats[i] != nullptr) {
-            cat->SetPosition(m_Ctx.StartupCats[i]->GetPosition());
-        } else {
-            const float floorY     = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetPosition().y : -340.0f;
-            const float floorHalfH = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetScaledSize().y / 2.0f : 0.0f;
-            const float charHalfH  = cat->GetScaledSize().y / 2.0f;
-            cat->SetPosition({0.0f, floorY + floorHalfH + charHalfH});
         }
 
         m_Players.push_back(pb);
         m_Ctx.Root.AddChild(cat);
     }
+
+    ApplyInitialFormation();
+
+    // Register every cat with the world after their initial positions are set.
+    for (auto& pb : m_Players) {
+        m_World.Register(pb.cat);
+    }
 }
 
 void LocalPlayGameScene::ApplyInitialFormation() {
-    const float floorY     = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetPosition().y : -340.0f;
-    const float floorHalfH = (m_Ctx.Floor != nullptr) ? m_Ctx.Floor->GetScaledSize().y / 2.0f : 0.0f;
+    const float floorY     = (m_Ctx.Floor != nullptr)
+                                 ? m_Ctx.Floor->GetPosition().y : -340.f;
+    const float floorHalfH = (m_Ctx.Floor != nullptr)
+                                 ? m_Ctx.Floor->GetScaledSize().y / 2.f : 0.f;
 
-    const float halfW0  = (m_Players.empty() || m_Players[0].agent.actor == nullptr)
-                              ? 32.0f
-                              : std::max(16.0f, std::abs(m_Players[0].agent.actor->GetScaledSize().x) * 0.5f);
+    const float halfW0  = m_Players.empty() || m_Players[0].cat == nullptr
+                              ? 32.f
+                              : std::max(16.f, std::abs(
+                                    m_Players[0].cat->GetScaledSize().x) * 0.5f);
     const float spacing     = halfW0 * 1.7f;
-    const float centerBlank = spacing * 2.0f;
+    const float centerBlank = spacing * 2.f;
 
     for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
         auto& pb = m_Players[i];
-        if (pb.agent.actor == nullptr) continue;
+        if (pb.cat == nullptr) continue;
 
-        const float charHalfH   = pb.agent.actor->GetScaledSize().y / 2.0f;
-        const float standOffset = floorHalfH + charHalfH;
-        const float spawnY      = floorY + standOffset;
+        const float charHalfH = pb.cat->GetScaledSize().y / 2.f;
+        const float spawnY    = floorY + floorHalfH + charHalfH;
 
-        const bool  isLeftSide = (i % 2 == 0);
-        const int   sideLayer  = i / 2;
-        const float x = isLeftSide
+        const bool  isLeft    = (i % 2 == 0);
+        const int   sideLayer = i / 2;
+        const float x = isLeft
                             ? (-centerBlank * 0.5f - static_cast<float>(sideLayer) * spacing)
                             : ( centerBlank * 0.5f + static_cast<float>(sideLayer) * spacing);
 
-        pb.agent.actor->SetPosition({x, spawnY});
-        pb.agent.state = PhysicsState{};
+        pb.cat->SetPosition({x, spawnY});
 
-        const float faceScale = std::abs(pb.agent.actor->m_Transform.scale.x);
-        pb.agent.actor->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
+        const float faceScale = std::abs(pb.cat->m_Transform.scale.x);
+        pb.cat->m_Transform.scale.x = isLeft ? faceScale : -faceScale;
     }
 }
 
@@ -3510,27 +3571,34 @@ void LocalPlayGameScene::UpdateCooperativePower() const {
     int bestGroup = 1;
 
     for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
-        if (m_Players[i].agent.state.moveDir == 0) continue;
+        const auto& pi = m_Players[i];
+        if (pi.entered || pi.cat == nullptr) continue;
+        if (pi.cat->GetMoveDir() == 0) continue;
 
         int group = 1;
+
         for (int j = 0; j < static_cast<int>(m_Players.size()); ++j) {
             if (i == j) continue;
+            const auto& pj = m_Players[j];
+            if (pj.entered || pj.cat == nullptr) continue;
 
-            const bool sameDir = (m_Players[i].agent.state.moveDir ==
-                                  m_Players[j].agent.state.moveDir);
+            const bool sameDir = (pi.cat->GetMoveDir() == pj.cat->GetMoveDir());
 
-            const glm::vec2 pi = m_Players[i].agent.actor->GetPosition();
-            const glm::vec2 pj = m_Players[j].agent.actor->GetPosition();
+            const glm::vec2 posI = pi.cat->GetPosition();
+            const glm::vec2 posJ = pj.cat->GetPosition();
 
-            const float halfWi = std::max(16.0f, std::abs(m_Players[i].agent.actor->GetScaledSize().x) * 0.5f);
-            const float halfWj = std::max(16.0f, std::abs(m_Players[j].agent.actor->GetScaledSize().x) * 0.5f);
+            const float halfWI = std::max(16.f,
+                                          std::abs(pi.cat->GetScaledSize().x) * 0.5f);
+            const float halfWJ = std::max(16.f,
+                                          std::abs(pj.cat->GetScaledSize().x) * 0.5f);
 
             const bool touching =
-                std::abs(pi.x - pj.x) <= (halfWi + halfWj) * 1.02f &&
-                std::abs(pi.y - pj.y) <= 40.0f;
+                std::abs(posI.x - posJ.x) <= (halfWI + halfWJ) * 1.02f &&
+                std::abs(posI.y - posJ.y) <= 40.f;
 
             if (sameDir && touching) ++group;
         }
+
         bestGroup = std::max(bestGroup, group);
     }
 
@@ -3551,7 +3619,7 @@ void LocalPlayGameScene::UpdateDoorCountText() const {
 //
 
 #include "LocalPlayScene.hpp"
-#include "Menuscene.hpp"
+#include "MenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
 #include "LocalPlayGameScene.hpp"      // <--- ADD THIS LINE
 #include "Util/Input.hpp"
@@ -3568,8 +3636,8 @@ LocalPlayScene::LocalPlayScene(GameContext& ctx,
                                MenuScene* menuScene,
                                std::shared_ptr<Character>          menuFrame,
                                std::shared_ptr<Character>          exitGameButton,
-                               std::shared_ptr<UI_Triangle_Button> leftTriButton,
-                               std::shared_ptr<UI_Triangle_Button> rightTriButton,
+                               std::shared_ptr<UITriangleButton> leftTriButton,
+                               std::shared_ptr<UITriangleButton> rightTriButton,
                                std::shared_ptr<Character>          blueCatRunImg,
                                KeyboardConfigScene* kbConfigScene)
     : Scene(ctx)
@@ -3739,17 +3807,17 @@ int main(int, char**) {
 }
 </file>
 
-<file path="Menuscene.cpp">
-#include "Menuscene.hpp"
+<file path="MenuScene.cpp">
+#include "MenuScene.hpp"
 #include "ExitConfirmScene.hpp"
 #include "OptionMenuScene.hpp"
-#include "LocalPlayScene.hpp"   // ← 新增
+#include "LocalPlayScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-using ip = Util::Input ;
-using  k = Util::Keycode ;
+using ip = Util::Input;
+using k  = Util::Keycode;
 
 MenuScene::MenuScene(GameContext&      ctx,
                      Scene*            titleScene,
@@ -3767,40 +3835,66 @@ MenuScene::MenuScene(GameContext&      ctx,
     m_MenuFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
     m_MenuFrame->SetZIndex(10);
-    m_MenuFrame->SetPosition({0.0f, -105.0f});
+    m_MenuFrame->SetPosition({0.f, -105.f});
 
     m_ExitGameButton = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Button/ExitGameButton.png");
-    m_ExitGameButton->SetZIndex(20);
-    m_ExitGameButton->SetPosition({331.0f, -14.0f});
+    m_ExitGameButton->SetZIndex(30);
+    m_ExitGameButton->SetPosition({331.f, -14.f});
 
     m_blue_cat_run_img = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Character/blue_cat/blue_cat_run_img.png");
     m_blue_cat_run_img->SetZIndex(10);
     m_blue_cat_run_img->SetScale({1.2f, 1.2f});
-    m_blue_cat_run_img->SetPosition({0.0f, -74.0f});
+    m_blue_cat_run_img->SetPosition({0.f, -74.f});
 
-    m_LeftTriButton = std::make_shared<UI_Triangle_Button>(
+    m_LeftTriButton = std::make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
-
     m_LeftTriButton->SetZIndex(15);
-    m_LeftTriButton->SetPosition({-305.0f, -153.0f});
+    m_LeftTriButton->SetPosition({-305.f, -153.f});
 
-    m_RightTriButton = std::make_shared<UI_Triangle_Button>(
+    m_RightTriButton = std::make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_RightTriButton->SetZIndex(15);
-    m_RightTriButton->SetPosition({305.0f, -153.0f});
+    m_RightTriButton->SetPosition({305.f, -153.f});
 
     m_ExitGameText = std::make_shared<GameText>("EXIT GAME", 65, black);
-    m_ExitGameText->SetPosition({0.0f, -153.0f});
+    m_ExitGameText->SetPosition({0.f, -153.f});
 
     m_OptionText = std::make_shared<GameText>("OPTION", 65, black);
-    m_OptionText->SetPosition({0.0f, -153.0f});
+    m_OptionText->SetPosition({0.f, -153.f});
 
     m_LocalPlayText = std::make_shared<GameText>(" LOCAL PLAY MODE", 65, black);
-    m_LocalPlayText->SetPosition({0.0f, -153.0f});
+    m_LocalPlayText->SetPosition({0.f, -153.f});
+}
+
+void MenuScene::SetupStaticBoundaries() {
+    constexpr float kWallHalfW  = 50.f;
+    constexpr float kWallHalfH  = 400.f;
+    constexpr float kFloorHalfH = 40.f;
+
+    float floorSurfaceY = -360.f;
+    if (m_Ctx.Floor != nullptr) {
+        floorSurfaceY = m_Ctx.Floor->GetPosition().y
+                      + m_Ctx.Floor->GetScaledSize().y * 0.5f;
+    }
+
+    // Floor collider: top edge sits at floorSurfaceY.
+    m_World.AddStaticBoundary(
+        {0.f, floorSurfaceY - kFloorHalfH},
+        {640.f + kWallHalfW, kFloorHalfH});
+
+    // Left wall.
+    m_World.AddStaticBoundary(
+        {-(640.f + kWallHalfW), 0.f},
+        {kWallHalfW, kWallHalfH});
+
+    // Right wall.
+    m_World.AddStaticBoundary(
+        { (640.f + kWallHalfW), 0.f},
+        {kWallHalfW, kWallHalfH});
 }
 
 void MenuScene::OnEnter() {
@@ -3814,7 +3908,7 @@ void MenuScene::OnEnter() {
     m_Ctx.Root.AddChild(m_ExitGameText);
     m_Ctx.Root.AddChild(m_OptionText);
     m_Ctx.Root.AddChild(m_LocalPlayText);
-    
+
     m_LeftTriButton->ResetState();
     m_RightTriButton->ResetState();
 
@@ -3823,15 +3917,17 @@ void MenuScene::OnEnter() {
     m_ExitGameButton->SetVisible(true);
     m_MenuFrame->SetVisible(true);
 
-    m_Agents.clear();
+    m_World.Clear();
+
     for (auto& cat : m_Ctx.StartupCats) {
         if (cat == nullptr) continue;
         cat->SetInputEnabled(false);
-
-        PhysicsAgent agent;
-        agent.actor = cat;
-        m_Agents.push_back(agent);
+        cat->SetMoveDir(0);
+        m_World.Register(cat);
     }
+
+    SetupStaticBoundaries();
+
     ShowCurrentOption();
 }
 
@@ -3847,24 +3943,23 @@ void MenuScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_OptionText);
     m_Ctx.Root.RemoveChild(m_LocalPlayText);
 
-    m_Agents.clear();
+    m_World.Clear();
 }
 
 Scene* MenuScene::Update() {
-    CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
+    m_World.Update();
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
-    if (ip::IsKeyDown(k::ESCAPE) ||
-        m_ExitGameButton->IsLeftClicked()) {
+    if (ip::IsKeyDown(k::ESCAPE) || m_ExitGameButton->IsLeftClicked()) {
         return m_TitleScene;
     }
 
     if (ip::IsKeyDown(k::A)) {
         HideAllOptions();
         m_SelectedIndex = (m_SelectedIndex + 2) % 3;
-        m_LeftTriButton->Press(75.0f);
+        m_LeftTriButton->Press(75.f);
         ShowCurrentOption();
         return nullptr;
     }
@@ -3872,24 +3967,17 @@ Scene* MenuScene::Update() {
     if (ip::IsKeyDown(k::D)) {
         HideAllOptions();
         m_SelectedIndex = (m_SelectedIndex + 1) % 3;
-        m_RightTriButton->Press(75.0f);
+        m_RightTriButton->Press(75.f);
         ShowCurrentOption();
         return nullptr;
     }
 
     if (ip::IsKeyDown(k::RETURN)) {
         switch (m_SelectedIndex) {
-        case 0:
-            if (m_ExitConfirmScene != nullptr) return m_ExitConfirmScene;
-            break;
-        case 1:
-            if (m_OptionScene != nullptr) return m_OptionScene;
-            break;
-        case 2:
-            if (m_LocalPlayScene != nullptr) return m_LocalPlayScene;
-            break;
-        default:
-            break;
+        case 0: if (m_ExitConfirmScene != nullptr) return m_ExitConfirmScene; break;
+        case 1: if (m_OptionScene      != nullptr) return m_OptionScene;      break;
+        case 2: if (m_LocalPlayScene   != nullptr) return m_LocalPlayScene;   break;
+        default: break;
         }
     }
 
@@ -3918,7 +4006,7 @@ void MenuScene::HideAllOptions() const {
 #include "BGMPlayer.hpp"
 #include "AppUtil.hpp"
 
-#include "Menuscene.hpp"
+#include "MenuScene.hpp"
 #include "OptionMenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
 
@@ -3951,7 +4039,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
 
     m_OptionMenuFrame = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
-    m_OptionMenuFrame->SetZIndex(25);
+    m_OptionMenuFrame->SetZIndex(20);
 
     m_ChoiceFrame = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png");
@@ -3973,7 +4061,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgColorLabel->SetZIndex(35);
     m_BgColorLabel->SetPosition({AppUtil::AlignLeft(*m_BgColorLabel, COL_LABEL_X), ROW_Y_BG});
 
-    m_BgColorLeftBtn = make_shared<UI_Triangle_Button>(
+    m_BgColorLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_BgColorLeftBtn->SetZIndex(35);
@@ -3983,7 +4071,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgColorValue->SetZIndex(35);
     m_BgColorValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BG});
 
-    m_BgColorRightBtn = make_shared<UI_Triangle_Button>(
+    m_BgColorRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_BgColorRightBtn->SetZIndex(35);
@@ -3993,7 +4081,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgmVolumeLabel->SetZIndex(35);
     m_BgmVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_BgmVolumeLabel, COL_LABEL_X), ROW_Y_BGM});
 
-    m_BgmVolumeLeftBtn = make_shared<UI_Triangle_Button>(
+    m_BgmVolumeLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_BgmVolumeLeftBtn->SetZIndex(35);
@@ -4003,7 +4091,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_BgmVolumeValue->SetZIndex(35);
     m_BgmVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_BGM});
 
-    m_BgmVolumeRightBtn = make_shared<UI_Triangle_Button>(
+    m_BgmVolumeRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_BgmVolumeRightBtn->SetZIndex(35);
@@ -4013,7 +4101,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_SeVolumeLabel->SetZIndex(35);
     m_SeVolumeLabel->SetPosition({AppUtil::AlignLeft(*m_SeVolumeLabel, COL_LABEL_X), ROW_Y_SE});
 
-    m_SeVolumeLeftBtn = make_shared<UI_Triangle_Button>(
+    m_SeVolumeLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_SeVolumeLeftBtn->SetZIndex(35);
@@ -4023,7 +4111,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_SeVolumeValue->SetZIndex(35);
     m_SeVolumeValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_SE});
 
-    m_SeVolumeRightBtn = make_shared<UI_Triangle_Button>(
+    m_SeVolumeRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_SeVolumeRightBtn->SetZIndex(35);
@@ -4033,7 +4121,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_DispNumberLabel->SetZIndex(35);
     m_DispNumberLabel->SetPosition({AppUtil::AlignLeft(*m_DispNumberLabel, COL_LABEL_X), ROW_Y_DISP});
 
-    m_DispNumberLeftBtn = make_shared<UI_Triangle_Button>(
+    m_DispNumberLeftBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_DispNumberLeftBtn->SetZIndex(35);
@@ -4043,7 +4131,7 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
     m_DispNumberValue->SetZIndex(35);
     m_DispNumberValue->SetPosition({COL_VALUE_X - 5.0f, ROW_Y_DISP});
 
-    m_DispNumberRightBtn = make_shared<UI_Triangle_Button>(
+    m_DispNumberRightBtn = make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_DispNumberRightBtn->SetZIndex(35);
@@ -4065,7 +4153,6 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
         m_Applied.dispNumber   = saved.dispNumber;
     }
 
-    // 確保建構選單時，立刻將讀取到(或預設)的設定套用到全局的 Context 中
     ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
     if (ctx.BGMPlayer) {
         ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
@@ -4403,10 +4490,6 @@ void OptionMenuScene::UpdateChoiceFrame() const {
 </file>
 
 <file path="PhysicsWorld.cpp">
-//
-// Created by cody2 on 2026/3/19.
-//
-
 #include "PhysicsWorld.hpp"
 #include <algorithm>
 #include <cmath>
@@ -4428,7 +4511,17 @@ void PhysicsWorld::Unregister(const IPhysicsBody* body) {
 
 void PhysicsWorld::Clear() {
     m_Bodies.clear();
+    m_OwnedStatics.clear();
     m_Ropes.clear();
+}
+
+StaticBody* PhysicsWorld::AddStaticBoundary(glm::vec2 center, glm::vec2 halfSize,
+                                              BodyType type) {
+    auto sb = std::make_shared<StaticBody>(center, halfSize, type);
+    StaticBody* raw = sb.get();
+    m_OwnedStatics.push_back(sb);
+    Register(sb);
+    return raw;
 }
 
 void PhysicsWorld::AddRope(IPhysicsBody* a, IPhysicsBody* b,
@@ -4449,161 +4542,316 @@ void PhysicsWorld::RemoveRope(IPhysicsBody* a, IPhysicsBody* b) {
 std::vector<RopeConstraint*> PhysicsWorld::GetRopesOf(const IPhysicsBody* body) {
     std::vector<RopeConstraint*> result;
     for (auto& r : m_Ropes) {
-        if (r.bodyA == body || r.bodyB == body) {
-            result.push_back(&r);
-        }
+        if (r.bodyA == body || r.bodyB == body) result.push_back(&r);
     }
     return result;
 }
 
-void PhysicsWorld::Update() {
-    ++m_FrameCount;
-
-    if (m_FrameCount % kPurgeInterval == 0) {
-        PurgeExpired();
+void PhysicsWorld::FreezeAll() const {
+    for (auto& wp : m_Bodies) {
+        if (auto sp = wp.lock()) sp->Freeze();
     }
-
-    StepPhysicsUpdate();
-    // StepRopes();
-    // StepCollisions();
 }
 
-void PhysicsWorld::StepPhysicsUpdate() const {
+void PhysicsWorld::UnfreezeAll() const {
+    for (auto& wp : m_Bodies) {
+        if (auto sp = wp.lock()) sp->Unfreeze();
+    }
+}
+
+void PhysicsWorld::Update() {
+    ++m_FrameCount;
+    if (m_FrameCount % kPurgeInterval == 0) PurgeExpired();
+
+    StepPhysicsUpdate();
+    StepResolveAndApply();
+
     for (auto& wp : m_Bodies) {
         auto sp = wp.lock();
-        if (sp && sp->IsActive()) {
-            sp->PhysicsUpdate();
+        if (sp && sp->IsActive() && !sp->IsFrozen()) {
+            sp->PostUpdate();
         }
     }
 }
 
-// void PhysicsWorld::StepRopes() {
-//     // TODO：實作繩索力解析
-//     //
-//     // for (auto& rope : m_Ropes) {
-//     //     if (!rope.bodyA || !rope.bodyB) continue;
-//     //
-//     //     glm::vec2 posA = rope.bodyA->GetPosition();
-//     //     glm::vec2 posB = rope.bodyB->GetPosition();
-//     //     glm::vec2 delta = posA - posB;
-//     //     float dist = glm::length(delta);
-//     //
-//     //     if (dist <= rope.maxLen) continue;  // 繩索未繃緊，不施力
-//     //
-//     //     // 方向：從 B 指向 A
-//     //     glm::vec2 dir = delta / dist;
-//     //
-//     //     // 力大小(可調整 stiffness)
-//     //     constexpr float stiffness = 0.8f;
-//     //     float forceMag = (dist - rope.maxLen) * stiffness;
-//     //
-//     //     // 施加到速度(乘上 1-friction 模擬阻力)
-//     //     float factor = 1.0f - rope.friction;
-//     //     glm::vec2 velA = rope.bodyA->GetVelocity();
-//     //     glm::vec2 velB = rope.bodyB->GetVelocity();
-//     //
-//     //     rope.bodyA->SetVelocity(velA - dir * forceMag * factor);
-//     //     rope.bodyB->SetVelocity(velB + dir * forceMag * factor);
-//     // }
-// }
+void PhysicsWorld::StepPhysicsUpdate() const {
+    // all non-box active bodies.
+    // Characters run first so their m_MoveDir is already committed when
+    // PushableBox bodies query CountCharactersPushing() in pass 2.
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive() || sp->IsFrozen()) continue;
+        if (sp->GetBodyType() == BodyType::PUSHABLE_BOX) continue;
+        sp->PhysicsUpdate();
+    }
+    // pushable boxes (characters have set their desired deltas).
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive() || sp->IsFrozen()) continue;
+        if (sp->GetBodyType() != BodyType::PUSHABLE_BOX) continue;
+        sp->PhysicsUpdate();
+    }
+}
 
-// void PhysicsWorld::StepCollisions() {
-//     // TODO：實作碰撞廣播
-//     //
-//     // 使用暴力 O(n²) 先行，之後可改為空間分割(Sweep-and-Prune 等)
-//     //
-//     // std::vector<std::shared_ptr<IPhysicsBody>> live;
-//     // for (auto& wp : m_Bodies) {
-//     //     if (auto sp = wp.lock(); sp && sp->IsActive()) live.push_back(sp);
-//     // }
-//     //
-//     // for (int i = 0; i < (int)live.size(); ++i) {
-//     //     for (int j = i + 1; j < (int)live.size(); ++j) {
-//     //         if (!AabbOverlaps(live[i].get(), live[j].get())) continue;
-//     //
-//     //         // 計算法向量與穿透深度
-//     //         glm::vec2 delta   = live[j]->GetPosition() - live[i]->GetPosition();
-//     //         glm::vec2 overlap = live[i]->GetHalfSize() + live[j]->GetHalfSize()
-//     //                             - glm::abs(delta);
-//     //         glm::vec2 normal  = (overlap.x < overlap.y)
-//     //                                 ? glm::vec2{(delta.x < 0 ? -1.f : 1.f), 0}
-//     //                                 : glm::vec2{0, (delta.y < 0 ? -1.f : 1.f)};
-//     //         float depth = std::min(overlap.x, overlap.y);
-//     //
-//     //         live[i]->OnCollision({live[j].get(),  normal, depth});
-//     //         live[j]->OnCollision({live[i].get(), -normal, depth});
-//     //     }
-//     // }
-// }
+void PhysicsWorld::DetectRiding(std::vector<BodyInfo>& infos) {
+    const int n = static_cast<int>(infos.size());
+    for (int i = 0; i < n; ++i) {
+        // Kinematic bodies do not ride anything (they define their own path).
+        if (infos[i].body->IsKinematic()) continue;
 
-// int PhysicsWorld::CountCharactersPushing(const IPhysicsBody* target, int dir) const {
-//     // TODO：實作
-//     //
-//     // int count = 0;
-//     // glm::vec2 tPos    = target->GetPosition();
-//     // glm::vec2 tHalf   = target->GetHalfSize();
-//     //
-//     // for (auto& wp : m_Bodies) {
-//     //     auto sp = wp.lock();
-//     //     if (!sp || !sp->IsActive()) continue;
-//     //     if (sp.get() == target) continue;
-//     //     if (sp->GetBodyType() != BodyType::CHARACTER) continue;
-//     //
-//     //     glm::vec2 cPos  = sp->GetPosition();
-//     //     glm::vec2 cHalf = sp->GetHalfSize();
-//     //
-//     //     // 垂直上需在同層(避免把頭上的角色也算進去)
-//     //     float vertGap = std::abs(cPos.y - tPos.y);
-//     //     if (vertGap > (tHalf.y + cHalf.y) * 0.65f) continue;
-//     //
-//     //     // 側面緊貼判斷
-//     //     float minDistX = tHalf.x + cHalf.x;
-//     //     float dx       = cPos.x - tPos.x;
-//     //     if (std::abs(dx) > minDistX * 1.05f) continue;
-//     //
-//     //     // dir > 0：推者在左邊往右推
-//     //     glm::vec2 vel = sp->GetVelocity();
-//     //     if (dir > 0 && dx < 0 && vel.x > 0) ++count;
-//     //     if (dir < 0 && dx > 0 && vel.x < 0) ++count;
-//     // }
-//     // return count;
-//
-//     (void)target;
-//     (void)dir;
-//     return 0;
-// }
+        const glm::vec2 aPos   = infos[i].body->GetPosition();
+        const glm::vec2 aHalf  = infos[i].body->GetHalfSize();
+        const float     aBot   = aPos.y - aHalf.y;
 
-// int PhysicsWorld::CountBodiesOnTop(const IPhysicsBody* target) const {
-//     // TODO：實作(呼叫 IsOnTop)
-//     //
-//     // int count = 0;
-//     // for (auto& wp : m_Bodies) {
-//     //     auto sp = wp.lock();
-//     //     if (!sp || !sp->IsActive()) continue;
-//     //     if (sp.get() == target) continue;
-//     //     if (IsOnTop(sp.get(), target)) ++count;
-//     // }
-//     // return count;
-//
-//     (void)target;
-//     return 0;
-// }
+        for (int j = 0; j < n; ++j) {
+            if (i == j) continue;
+            if (!infos[j].body->IsSolid()) continue;
 
-// std::vector<IPhysicsBody*> PhysicsWorld::QueryOverlapping(const IPhysicsBody* target) const {
-//     std::vector<IPhysicsBody*> result;
-//
-//     // TODO：實作
-//     //
-//     // for (auto& wp : m_Bodies) {
-//     //     auto sp = wp.lock();
-//     //     if (!sp || !sp->IsActive()) continue;
-//     //     if (sp.get() == target) continue;
-//     //     if (AabbOverlaps(target, sp.get())) result.push_back(sp.get());
-//     // }
-//
-//     (void)target;
-//     return result;
-// }
+            const glm::vec2 bPos  = infos[j].body->GetPosition();
+            const glm::vec2 bHalf = infos[j].body->GetHalfSize();
+            const float     bTop  = bPos.y + bHalf.y;
+
+            const bool vertOk  = std::abs(aBot - bTop) < kRidingTolerance;
+            const bool horizOk = std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) * 0.85f;
+
+            if (vertOk && horizOk) {
+                infos[i].supportIdx = j;
+                break;
+            }
+        }
+    }
+}
+
+glm::vec2 PhysicsWorld::ResolveBody(int idx, glm::vec2 desired,
+                                     std::vector<BodyInfo>& infos) {
+    auto& self     = infos[idx];
+    glm::vec2 selfPos  = self.body->GetPosition();
+    glm::vec2 selfHalf = self.body->GetHalfSize();
+
+    glm::vec2 resolved = desired;
+    self.collidedH = nullptr;
+    self.collidedV = nullptr;
+    self.normalH   = {0.f, 0.f};
+    self.normalV   = {0.f, 0.f};
+
+    const int n = static_cast<int>(infos.size());
+
+    // --- Horizontal pass ---
+    {
+        glm::vec2 testPos = selfPos + glm::vec2{resolved.x, 0.f};
+
+        for (int j = 0; j < n; ++j) {
+            if (j == idx || !infos[j].body->IsSolid()) continue;
+
+            // Use the other body's final resting position if already resolved,
+            // otherwise use its current (pre-move) position.
+            glm::vec2 otherPos = infos[j].body->GetPosition();
+            if (infos[j].resolvedFlag) otherPos += infos[j].resolved;
+
+            const glm::vec2 otherHalf = infos[j].body->GetHalfSize();
+            const glm::vec2 delta     = testPos - otherPos;
+            const glm::vec2 overlap   = (selfHalf + otherHalf) - glm::abs(delta);
+
+            if (overlap.x > 0.f && overlap.y > 0.f) {
+                // Horizontal overlap: push self out horizontally.
+                const float sign = (delta.x >= 0.f) ? 1.f : -1.f;
+                resolved.x = (otherPos.x + (selfHalf.x + otherHalf.x) * sign) - selfPos.x;
+                testPos.x  = selfPos.x + resolved.x;
+
+                // Record contact (take the most recent collision; usually one matters).
+                self.collidedH = infos[j].body.get();
+                self.normalH   = {sign, 0.f};
+            }
+        }
+    }
+
+    // --- Vertical pass (using the resolved horizontal position) ---
+    {
+        glm::vec2 testPos = selfPos + glm::vec2{resolved.x, resolved.y};
+
+        for (int j = 0; j < n; ++j) {
+            if (j == idx || !infos[j].body->IsSolid()) continue;
+
+            glm::vec2 otherPos = infos[j].body->GetPosition();
+            if (infos[j].resolvedFlag) otherPos += infos[j].resolved;
+
+            const glm::vec2 otherHalf = infos[j].body->GetHalfSize();
+            const glm::vec2 delta     = testPos - otherPos;
+            const glm::vec2 overlap   = (selfHalf + otherHalf) - glm::abs(delta);
+
+            if (overlap.x > 0.f && overlap.y > 0.f) {
+                const float sign = (delta.y >= 0.f) ? 1.f : -1.f;
+                resolved.y = (otherPos.y + (selfHalf.y + otherHalf.y) * sign) - selfPos.y;
+                testPos.y  = selfPos.y + resolved.y;
+
+                self.collidedV = infos[j].body.get();
+                self.normalV   = {0.f, sign};
+            }
+        }
+    }
+
+    return resolved;
+}
+
+void PhysicsWorld::StepResolveAndApply() const {
+    // Snapshot live bodies.
+    std::vector<BodyInfo> infos;
+    infos.reserve(m_Bodies.size());
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive()) continue;
+        BodyInfo bi;
+        bi.body    = sp;
+        bi.desired = sp->IsFrozen() ? glm::vec2{0.f, 0.f} : sp->GetDesiredDelta();
+        bi.resolved    = bi.desired;
+        bi.resolvedFlag = false;
+        bi.supportIdx   = -1;
+        infos.push_back(std::move(bi));
+    }
+
+    const int n = static_cast<int>(infos.size());
+
+    // Detect riding relationships before any movement.
+    DetectRiding(infos);
+
+    // Mark kinematic / frozen bodies as immediately resolved (they define
+    // their own motion and need no collision resolution against geometry).
+    for (int i = 0; i < n; ++i) {
+        if (infos[i].body->IsKinematic() || infos[i].body->IsFrozen()) {
+            // Kinematic bodies follow their desired path; static bodies have {0,0}.
+            infos[i].resolved    = infos[i].desired;
+            infos[i].resolvedFlag = true;
+        }
+    }
+
+    // Iterative topological resolution.
+    // Each pass resolves every dynamic body whose support is already resolved.
+    bool anyProgress = true;
+    while (anyProgress) {
+        anyProgress = false;
+
+        for (int i = 0; i < n; ++i) {
+            if (infos[i].resolvedFlag) continue;
+
+            const int supIdx = infos[i].supportIdx;
+
+            // Wait until support is resolved (handles stacking chains).
+            if (supIdx >= 0 && !infos[supIdx].resolvedFlag) continue;
+
+            // Compute the effective desired delta for this body.
+            glm::vec2 effective = infos[i].desired;
+
+            // Stacking carry: inherit the support's horizontal motion.
+            // Static/kinematic supports have resolved = {0,0} (no carry needed).
+            if (supIdx >= 0 && !infos[supIdx].body->IsKinematic()) {
+                effective.x += infos[supIdx].resolved.x;
+            }
+
+            // Resolve against all solid bodies.
+            infos[i].resolved    = ResolveBody(i, effective, infos);
+            infos[i].resolvedFlag = true;
+            anyProgress           = true;
+        }
+    }
+
+    // Safety: if any body is still unresolved (cycle or orphan), resolve it now
+    // without support carry.
+    for (int i = 0; i < n; ++i) {
+        if (!infos[i].resolvedFlag) {
+            infos[i].resolved    = ResolveBody(i, infos[i].desired, infos);
+            infos[i].resolvedFlag = true;
+        }
+    }
+
+    // Phase 2: apply resolved deltas.
+    for (auto& bi : infos) {
+        bi.body->ApplyResolvedDelta(bi.resolved);
+    }
+
+    // Fire OnCollision callbacks.
+    StepCollisionCallbacks(infos);
+}
+
+void PhysicsWorld::StepCollisionCallbacks(const std::vector<BodyInfo>& infos) {
+    for (const auto& bi : infos) {
+        if (bi.collidedH != nullptr) {
+            CollisionInfo ci;
+            ci.other  = bi.collidedH;
+            ci.normal = bi.normalH;
+            bi.body->OnCollision(ci);
+        }
+        if (bi.collidedV != nullptr) {
+            CollisionInfo ci;
+            ci.other  = bi.collidedV;
+            ci.normal = bi.normalV;
+            bi.body->OnCollision(ci);
+        }
+    }
+}
+
+int PhysicsWorld::CountCharactersPushing(const IPhysicsBody* target, int dir) const {
+    std::vector<const IPhysicsBody*> visited;
+    return CountCharactersPushingImpl(target, dir, visited);
+}
+
+int PhysicsWorld::CountCharactersPushingImpl(
+    const IPhysicsBody* target,
+    int dir,
+    std::vector<const IPhysicsBody*>& visited) const
+{
+    if (std::find(visited.begin(), visited.end(), target) != visited.end()) return 0;
+    visited.push_back(target);
+
+    int count = 0;
+    const glm::vec2 tPos  = target->GetPosition();
+    const glm::vec2 tHalf = target->GetHalfSize();
+
+    for (auto& wp : m_Bodies) {
+        auto sp = wp.lock();
+        if (!sp || !sp->IsActive() || sp.get() == target) continue;
+
+        const glm::vec2 cPos  = sp->GetPosition();
+        const glm::vec2 cHalf = sp->GetHalfSize();
+
+        // Must share the same horizontal band.
+        if (std::abs(cPos.y - tPos.y) > (tHalf.y + cHalf.y) * 0.9f) continue;
+
+        // Must be adjacent (directly touching on the push side).
+        const float minDistX   = tHalf.x + cHalf.x;
+        const float dxToTarget = cPos.x - tPos.x;
+        if (std::abs(dxToTarget) > minDistX + 4.0f) continue;
+
+        // Pusher must be on the origin side of the force:
+        //   pushing right (dir=+1): pusher is to the LEFT  (dxToTarget < 0)
+        //   pushing left  (dir=-1): pusher is to the RIGHT (dxToTarget > 0)
+        if (!((dir > 0 && dxToTarget < 0) || (dir < 0 && dxToTarget > 0))) continue;
+
+        if (sp->GetBodyType() == BodyType::CHARACTER) {
+            // An actively-moving character contributes +1 to the push count.
+            if (sp->GetMoveDir() == dir) {
+                ++count;
+            }
+            // Always recurse regardless of this character's own moveDir.
+            // Rationale: a passive character (not pressing movement keys)
+            // sandwiched between an active pusher and the target still
+            // transmits the upstream force through the chain.
+            //
+            // Scenario verification:
+            //   [A(dir) -> B(0) -> C(box)] : B is passive (moveDir=0), but A
+            //   is found when we recurse into B → C sees count=1.
+            //   [A(dir) -> B(dir) -> C(box)]: B is active, count++ for B, then
+            //   A found in recursion → C sees count=2.
+            //   [A(+1) -> C <- B(-1)]: each direction counted
+            //   independently; net=0.
+            count += CountCharactersPushingImpl(sp.get(), dir, visited);
+        }
+        else if (sp->GetBodyType() == BodyType::PUSHABLE_BOX) {
+            // A box transmits force passively; recurse to discover its own pushers.
+            count += CountCharactersPushingImpl(sp.get(), dir, visited);
+        }
+    }
+    return count;
+}
 
 std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
     std::vector<IPhysicsBody*> result;
@@ -4617,30 +4865,10 @@ std::vector<IPhysicsBody*> PhysicsWorld::GetBodiesOfType(BodyType type) const {
 }
 
 bool PhysicsWorld::AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) {
-    glm::vec2 delta = a->GetPosition() - b->GetPosition();
-    glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
+    const glm::vec2 delta = a->GetPosition() - b->GetPosition();
+    const glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
     return std::abs(delta.x) < sum.x && std::abs(delta.y) < sum.y;
 }
-
-// bool PhysicsWorld::IsOnTop(const IPhysicsBody* rider, const IPhysicsBody* platform) const {
-//     // TODO：實作
-//     //
-//     // glm::vec2 rPos   = rider->GetPosition();
-//     // glm::vec2 pPos   = platform->GetPosition();
-//     // glm::vec2 rHalf  = rider->GetHalfSize();
-//     // glm::vec2 pHalf  = platform->GetHalfSize();
-//     //
-//     // float platformTop = pPos.y + pHalf.y;
-//     // float riderBottom = rPos.y - rHalf.y;
-//     //
-//     // bool horizOk = std::abs(rPos.x - pPos.x) < (rHalf.x + pHalf.x) * 0.8f;
-//     // bool vertOk  = std::abs(riderBottom - platformTop) < 6.0f;
-//     // return horizOk && vertOk;
-//
-//     (void)rider;
-//     (void)platform;
-//     return false;
-// }
 
 void PhysicsWorld::PurgeExpired() {
     m_Bodies.erase(
@@ -4656,6 +4884,7 @@ void PhysicsWorld::PurgeExpired() {
 //
 
 #include "PlayerCat.hpp"
+#include <cmath>
 
 namespace {
 
@@ -4663,12 +4892,10 @@ std::shared_ptr<Util::Animation> MakeAnim(const std::vector<std::string>& paths,
                                            int intervalMs,
                                            bool looping) {
     if (paths.empty()) return nullptr;
-    // play=false(由 SetCatAnimState 觸發)，cooldown=0
     return std::make_shared<Util::Animation>(paths, false, intervalMs, looping, 0);
 }
 
-} // namespace
-
+}
 PlayerCat::PlayerCat(const CatAnimPaths& animPaths,
                      Util::Keycode leftKey,
                      Util::Keycode rightKey,
@@ -4681,10 +4908,7 @@ PlayerCat::PlayerCat(const CatAnimPaths& animPaths,
     , m_JumpKey(jumpKey)
 {
     BuildClips(animPaths);
-    // 初始顯示 STAND，直接播放
-    if (m_StandAnim) {
-        m_StandAnim->Play();
-    }
+    if (m_StandAnim) m_StandAnim->Play();
 }
 
 void PlayerCat::BuildClips(const CatAnimPaths& paths) {
@@ -4693,7 +4917,6 @@ void PlayerCat::BuildClips(const CatAnimPaths& paths) {
         m_StandAnim->SetLooping(true);
         m_StandAnim->SetInterval(400);
     }
-
     m_RunAnim      = MakeAnim(paths.run,       120, true);
     m_JumpRiseAnim = MakeAnim(paths.jump_rise, 150, true);
     m_JumpFallAnim = MakeAnim(paths.jump_fall, 150, true);
@@ -4701,34 +4924,242 @@ void PlayerCat::BuildClips(const CatAnimPaths& paths) {
     m_PushAnim     = MakeAnim(paths.push,      120, true);
 }
 
-void PlayerCat::SetCatAnimState(CatAnimState newState) {
-    if (m_CurrentAnimState == CatAnimState::LAND &&
-        newState != CatAnimState::LAND &&
-        !IfAnimationEnds()) {
+void PlayerCat::Jump() {
+    m_VelocityY = kJumpForce;
+    m_Grounded  = false;
+}
+
+void PlayerCat::PhysicsUpdate() {
+    m_PrevGrounded = m_Grounded;
+    m_Grounded  = false;
+    m_IsPushing = false;
+    m_VelocityY -= kGravity;
+
+    // Read input directly when this cat owns real key bindings.
+    // For cats with UNKNOWN keys (spawned in LocalPlayGameScene),
+    // m_MoveDir is still set by the external SetMoveDir() call in the scene.
+    if (m_InputEnabled &&
+        (m_LeftKey  != Util::Keycode::UNKNOWN ||
+         m_RightKey != Util::Keycode::UNKNOWN)) {
+        const bool goLeft  = (m_LeftKey  != Util::Keycode::UNKNOWN) &&
+                              Util::Input::IsKeyPressed(m_LeftKey);
+        const bool goRight = (m_RightKey != Util::Keycode::UNKNOWN) &&
+                              Util::Input::IsKeyPressed(m_RightKey);
+        if      (goLeft  && !goRight) m_MoveDir = -1;
+        else if (goRight && !goLeft)  m_MoveDir =  1;
+        else                          m_MoveDir =  0;
+         }
+
+    // Jump is handled here using m_PrevGrounded because m_Grounded
+    // has already been reset to false at this point.
+    if (m_InputEnabled &&
+        m_JumpKey != Util::Keycode::UNKNOWN &&
+        m_PrevGrounded &&
+        Util::Input::IsKeyDown(m_JumpKey)) {
+        Jump();
+        }
+
+    const float vx = static_cast<float>(m_MoveDir) * kGroundMoveSpeed;
+    m_DesiredDelta = {vx, m_VelocityY};
+
+    const float faceScale = std::abs(m_Transform.scale.x);
+    if      (m_MoveDir < 0) m_Transform.scale.x = -faceScale;
+    else if (m_MoveDir > 0) m_Transform.scale.x =  faceScale;
+}
+
+
+void PlayerCat::ApplyResolvedDelta(const glm::vec2& delta) {
+    SetPosition(GetPosition() + delta);
+}
+
+void PlayerCat::OnCollision(const CollisionInfo& info) {
+    if (info.normal.y > 0.5f) {
+        m_VelocityY = 0.f;
+        m_Grounded  = true;
+    }
+
+    // Ceiling contact: normal points down toward this body.
+    if (info.normal.y < -0.5f) {
+        if (m_VelocityY > 0.f) m_VelocityY = 0.f;
+    }
+
+    if (std::abs(info.normal.x) > 0.5f && m_MoveDir != 0) {
+        const bool movingRight  = (m_MoveDir > 0);
+        const bool blockedRight = (info.normal.x < -0.5f);
+        if (movingRight == blockedRight) {
+            m_IsPushing = true;
+        }
+    }
+}
+
+void PlayerCat::PostUpdate() {
+    UpdateAnimState();
+}
+
+void PlayerCat::UpdateAnimState() {
+    // Hold LAND animation until the clip finishes.
+    if (GetCatAnimState() == CatAnimState::LAND && !IfAnimationEnds()) {
         return;
     }
 
-    if (newState == m_CurrentAnimState) return;
+    const bool justLanded = m_Grounded && !m_PrevGrounded;
+    CatAnimState next;
+
+    if (!m_Grounded) {
+        next = (m_VelocityY > 0.f) ? CatAnimState::JUMP_RISE : CatAnimState::JUMP_FALL;
+    }
+    else if (justLanded) {
+        next = CatAnimState::LAND;
+    }
+    else if (m_IsPushing) {
+        next = CatAnimState::PUSH;
+    }
+    else if (m_MoveDir != 0) {
+        next = CatAnimState::RUN;
+    }
+    else {
+        next = CatAnimState::STAND;
+    }
+
+    SetCatAnimState(next);
+}
+
+void PlayerCat::SetCatAnimState(CatAnimState newState) {
+    if (newState == m_CurrentAnimState) return ;
     m_CurrentAnimState = newState;
 
-    std::shared_ptr<Util::Animation> target = nullptr;
+    std::shared_ptr<Util::Animation> target;
     switch (newState) {
-        case CatAnimState::STAND:     target = m_StandAnim;     break;
-        case CatAnimState::RUN:       target = m_RunAnim;       break;
-        case CatAnimState::JUMP_RISE: target = m_JumpRiseAnim;  break;
-        case CatAnimState::JUMP_FALL: target = m_JumpFallAnim;  break;
-        case CatAnimState::LAND:      target = m_LandAnim;      break;
-        case CatAnimState::PUSH:      target = m_PushAnim;      break;
+        case CatAnimState::STAND:     target = m_StandAnim;    break;
+        case CatAnimState::RUN:       target = m_RunAnim;      break;
+        case CatAnimState::JUMP_RISE: target = m_JumpRiseAnim; break;
+        case CatAnimState::JUMP_FALL: target = m_JumpFallAnim; break;
+        case CatAnimState::LAND:      target = m_LandAnim;     break;
+        case CatAnimState::PUSH:      target = m_PushAnim;     break;
     }
 
     if (target) {
-        m_Drawable = target;
+        SetDrawable(target);
+        target->SetCurrentFrame(0);
         target->Play();
     }
 }
 </file>
 
-<file path="Savemanager.cpp">
+<file path="PushableBox.cpp">
+//
+// Created by cody2 on 2026/3/27.
+//
+
+#include "PushableBox.hpp"
+#include "PhysicsWorld.hpp"
+#include <algorithm>
+#include <cmath>
+#include <string>
+
+PushableBox::PushableBox(const std::string& imagePath, int requiredPushers)
+    : Character(imagePath)
+    , m_RequiredPushers(requiredPushers)
+{
+    const Util::Color orange = Util::Color::FromRGB(255, 140, 0, 255);
+    m_CountText = std::make_shared<GameText>(
+        std::to_string(requiredPushers), 30, orange);
+}
+
+void PushableBox::PhysicsUpdate() {
+    m_VelocityY -= kGravity;
+
+    int netRight = 0;
+    int netLeft  = 0;
+    if (m_World != nullptr) {
+        netRight = m_World->CountCharactersPushing(this, +1);
+        netLeft  = m_World->CountCharactersPushing(this, -1);
+    }
+    const int net = netRight - netLeft;
+
+    const int deficit = std::max(0, m_RequiredPushers - std::abs(net));
+    if (m_CountText != nullptr) {
+        m_CountText->SetText(std::to_string(deficit));
+    }
+
+    float vx = 0.f;
+    if (std::abs(net) >= m_RequiredPushers) {
+        vx = (net > 0) ? kPushSpeed : -kPushSpeed;
+    }
+
+    m_DesiredDelta = {vx, m_VelocityY};
+
+    if (net > 0) {
+        NotifyAdjacentPushers(+1);
+    }
+    else if (net < 0) {
+        NotifyAdjacentPushers(-1);
+    }
+    else {
+        if (netRight > 0) NotifyAdjacentPushers(+1);
+        if (netLeft  > 0) NotifyAdjacentPushers(-1);
+    }
+}
+
+void PushableBox::NotifyAdjacentPushers(int activeDir) const {
+    if (m_World == nullptr) return;
+
+    const auto chars = m_World->GetBodiesOfType(BodyType::CHARACTER);
+
+    const glm::vec2 myPos  = GetPosition();
+    const glm::vec2 myHalf = GetHalfSize();
+
+    constexpr float kTouchTolerance      = 1.15f;
+    constexpr float kVerticalBandFactor  = 0.90f;
+
+    for (auto* ch : chars) {
+        if (!ch->IsActive() || ch->IsFrozen()) continue;
+
+        const int moveDir = ch->GetMoveDir();
+        if (moveDir == 0) continue;
+
+        const glm::vec2 chPos  = ch->GetPosition();
+        const glm::vec2 chHalf = ch->GetHalfSize();
+
+        if (std::abs(chPos.y - myPos.y) >= (chHalf.y + myHalf.y) * kVerticalBandFactor) {
+            continue;
+        }
+
+        const float dx      = chPos.x - myPos.x;
+        const float minDist = chHalf.x + myHalf.x;
+        if (std::abs(dx) > minDist * kTouchTolerance) continue;
+
+        const bool charIsOnPushSide =
+            (activeDir > 0) ? (dx < 0 && moveDir > 0)
+                            : (dx > 0 && moveDir < 0);
+
+        if (charIsOnPushSide) {
+            ch->NotifyPush();
+        }
+    }
+}
+
+void PushableBox::ApplyResolvedDelta(const glm::vec2& delta) {
+    const glm::vec2 newPos = GetPosition() + delta;
+    SetPosition(newPos);
+
+    if (m_CountText != nullptr) {
+        const float topY = newPos.y + GetHalfSize().y + 14.f;
+        m_CountText->SetPosition({newPos.x, topY});
+    }
+}
+
+void PushableBox::OnCollision(const CollisionInfo& info) {
+    if (info.normal.y > 0.5f) {
+        m_VelocityY = 0.f;
+    }
+    if (info.normal.y < -0.5f) {
+        if (m_VelocityY > 0.f) m_VelocityY = 0.f;
+    }
+}
+</file>
+
+<file path="SaveManager.cpp">
 //
 // Created by cody2 on 2026/3/24.
 //
@@ -4970,9 +5401,22 @@ bool SaveManager::UpdateBestTime(int levelIdx, int playerCount, float elapsed) {
 }
 </file>
 
-<file path="Titlescene.cpp">
-#include "Titlescene.hpp"
-#include "Menuscene.hpp"
+<file path="StaticBody.cpp">
+//
+// Created by cody2 on 2026/3/28.
+//
+
+#include "StaticBody.hpp"
+
+StaticBody::StaticBody(glm::vec2 center, glm::vec2 halfSize, BodyType type)
+    : m_Position(center)
+    , m_HalfSize(glm::abs(halfSize))
+    , m_Type(type) {}
+</file>
+
+<file path="TitleScene.cpp">
+#include "TitleScene.hpp"
+#include "MenuScene.hpp"
 
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -4986,12 +5430,40 @@ TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
 
     m_TitleSub = std::make_shared<GameText>("- CLASSIC EDITED -", 46, orange);
     m_TitleSub->SetZIndex(0);
-    m_TitleSub->SetPosition({0.0f, -22.5f});
+    m_TitleSub->SetPosition({0.f, -22.5f});
 
     m_PressEnterText = std::make_shared<GameText>("PRESS ENTER KEY", 66, orange);
     m_PressEnterText->SetZIndex(0);
-    m_PressEnterText->SetPosition({0.0f, -155.0f});
+    m_PressEnterText->SetPosition({0.f, -155.f});
 }
+
+void TitleScene::SetupStaticBoundaries() {
+    constexpr float kWallHalfW  = 50.f;   // thickness of left/right walls
+    constexpr float kWallHalfH  = 400.f;  // height of left/right wall colliders
+    constexpr float kFloorHalfH = 40.f;   // thickness of the floor collider
+
+    float floorSurfaceY = -360.f;  // fallback if Floor is null
+    if (m_Ctx.Floor != nullptr) {
+        floorSurfaceY = m_Ctx.Floor->GetPosition().y
+                      + m_Ctx.Floor->GetScaledSize().y * 0.5f;
+    }
+
+    // Floor: center is below the surface, top edge sits at floorSurfaceY.
+    m_World.AddStaticBoundary(
+        {0.f, floorSurfaceY - kFloorHalfH},
+        {640.f + kWallHalfW, kFloorHalfH});
+
+    // Left boundary wall.
+    m_World.AddStaticBoundary(
+        {-(640.f + kWallHalfW), 0.f},
+        {kWallHalfW, kWallHalfH});
+
+    // Right boundary wall.
+    m_World.AddStaticBoundary(
+        { (640.f + kWallHalfW), 0.f},
+        {kWallHalfW, kWallHalfH});
+}
+
 
 void TitleScene::OnEnter() {
     LOG_INFO("TitleScene::OnEnter");
@@ -5000,10 +5472,13 @@ void TitleScene::OnEnter() {
     m_Ctx.Root.AddChild(m_TitleSub);
     m_Ctx.Root.AddChild(m_PressEnterText);
 
-    m_FlashTimer = 0.0f;
+    m_FlashTimer = 0.f;
     m_PressEnterText->SetVisible(true);
 
-    m_Agents.clear();
+    // Clear any leftover state from a previous visit.
+    m_World.Clear();
+
+    // Register the decorative startup cats.
     for (int i = 0; i < static_cast<int>(m_Ctx.StartupCats.size()); ++i) {
         auto& cat = m_Ctx.StartupCats[i];
         if (cat == nullptr) continue;
@@ -5011,10 +5486,17 @@ void TitleScene::OnEnter() {
         cat->SetInputEnabled(i < 2);
         cat->SetCatAnimState(CatAnimState::STAND);
 
-        PhysicsAgent agent;
-        agent.actor = cat;
-        m_Agents.push_back(agent);
+        m_World.Register(cat);
     }
+
+    // Register the test pushable box if present.
+    if (m_Ctx.TestBox != nullptr) {
+        m_Ctx.TestBox->SetWorld(&m_World);
+        m_World.Register(m_Ctx.TestBox);
+    }
+
+    // Register immovable boundary geometry derived from the visual Floor.
+    SetupStaticBoundaries();
 }
 
 void TitleScene::OnExit() {
@@ -5027,75 +5509,73 @@ void TitleScene::OnExit() {
         if (cat != nullptr) cat->SetInputEnabled(false);
     }
 
-    m_Agents.clear();
+    m_World.Clear();
 }
 
 Scene* TitleScene::Update() {
     m_FlashTimer += Util::Time::GetDeltaTimeMs();
-    if (m_FlashTimer >= 1000.0f) {
+    if (m_FlashTimer >= 1000.f) {
         m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
-        m_FlashTimer = 0.0f;
+        m_FlashTimer = 0.f;
     }
 
-    for (auto& agent : m_Agents) {
-        if (agent.actor == nullptr) continue;
-        auto& st = agent.state;
+    for (auto& cat : m_Ctx.StartupCats) {
+        if (cat == nullptr) continue;
 
-        st.moveDir = 0;
+        cat->SetMoveDir(0);  // default: no horizontal input
 
-        if (agent.actor->GetInputEnabled()) {
-            const Util::Keycode lk = agent.actor->GetLeftKey();
-            const Util::Keycode rk = agent.actor->GetRightKey();
-            const Util::Keycode jk = agent.actor->GetJumpKey();
+        if (!cat->GetInputEnabled()) continue;
 
-            const bool goLeft  = (lk != Util::Keycode::UNKNOWN) &&
-                                  Util::Input::IsKeyPressed(lk);
-            const bool goRight = (rk != Util::Keycode::UNKNOWN) &&
-                                  Util::Input::IsKeyPressed(rk);
+        const Util::Keycode lk = cat->GetLeftKey();
+        const Util::Keycode rk = cat->GetRightKey();
+        const Util::Keycode jk = cat->GetJumpKey();
 
-            if      (goLeft  && !goRight) st.moveDir = -1;
-            else if (goRight && !goLeft)  st.moveDir =  1;
+        const bool goLeft  = (lk != Util::Keycode::UNKNOWN) &&
+                              Util::Input::IsKeyPressed(lk);
+        const bool goRight = (rk != Util::Keycode::UNKNOWN) &&
+                              Util::Input::IsKeyPressed(rk);
 
-            const bool wantJump = (jk != Util::Keycode::UNKNOWN) &&
-                                   Util::Input::IsKeyDown(jk);
+        if      (goLeft  && !goRight) cat->SetMoveDir(-1);
+        else if (goRight && !goLeft)  cat->SetMoveDir( 1);
 
-            if (st.grounded && wantJump) {
-                CharacterPhysicsSystem::ApplyJump(st);
-            }
+        const bool wantJump = (jk != Util::Keycode::UNKNOWN) &&
+                               Util::Input::IsKeyDown(jk);
+
+        if (cat->IsGrounded() && wantJump) {
+            cat->Jump();
         }
     }
 
-    CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
+    m_World.Update();
 
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
-        LOG_INFO("TitleScene: ENTER pressed → MenuScene");
+        LOG_INFO("TitleScene: ENTER pressed -> MenuScene");
         return m_MenuScene;
     }
-
     return nullptr;
 }
 </file>
 
-<file path="UI_Triangle_Button.cpp">
+<file path="UITriangleButton.cpp">
 //
 // Created by cody2 on 2026/3/14.
 //
 
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 #include "Util/Time.hpp"
 
-UI_Triangle_Button::UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath)
+UITriangleButton::UITriangleButton(std::string normalImagePath, std::string pressedImagePath)
     : Character(normalImagePath),
       m_NormalImagePath(std::move(normalImagePath)),
       m_PressedImagePath(std::move(pressedImagePath)) {
 }
 
-void UI_Triangle_Button::Press(float durationMs) {
+void UITriangleButton::Press(float durationMs) {
     SetImage(m_PressedImagePath);
     m_PressTimer = durationMs;
 }
 
-void UI_Triangle_Button::UpdateButton() {
+void UITriangleButton::UpdateButton() {
     if (m_PressTimer > 0.0f) {
         m_PressTimer -= Util::Time::GetDeltaTimeMs();
 
@@ -5106,7 +5586,7 @@ void UI_Triangle_Button::UpdateButton() {
     }
 }
 
-void UI_Triangle_Button::ResetState() {
+void UITriangleButton::ResetState() {
     m_PressTimer = 0.0f;
     SetImage(m_NormalImagePath);
 }
@@ -5115,7 +5595,8 @@ void UI_Triangle_Button::ResetState() {
 <file path="ARCHITECTURE.md">
 # Architecture Overview
 
-> Physics system → `PHYSICS_DESIGN.md`. This document covers everything else.
+> Physics system (pipeline, body types, chain pushing) → `PHYSICS_DESIGN.md`.
+> This document covers everything else.
 
 ## Contents
 1. [Entry Point & Main Loop](#1-entry-point--main-loop)
@@ -5197,6 +5678,7 @@ struct GameContext {
     shared_ptr<BGMPlayer>  BGMPlayer;
     shared_ptr<Character>  Header;
     shared_ptr<Character>  Door;        // switched open/close by LocalPlayGameScene
+    shared_ptr<PushableBox> TestBox;    // demo box on title screen
 
     // 8 decoration cats shared between title screen and gameplay
     vector<shared_ptr<PlayerCat>> StartupCats;
@@ -5214,6 +5696,7 @@ struct GameContext {
 **Rules:**
 - Permanent objects are added to the render tree once in `AppStart`; scenes must not remove them (`LevelSelectScene` hides `Header` via `SetVisible`, not `RemoveChild`).
 - Cross-scene game state (`SelectedPlayerCount`, `CooperativePushPower`) lives here; scenes must not read each other's members directly.
+- `TestBox` is a `PushableBox` used for the title-screen physics demo. It is registered into `TitleScene`'s local `PhysicsWorld` during `TitleScene::OnEnter()`, and un-registered when `m_World.Clear()` is called on exit.
 
 ---
 
@@ -5236,18 +5719,46 @@ protected:
 
 ### 4.2 Scene Catalogue
 
-| Scene | File | Role | Destinations |
-|-------|------|------|-------------|
-| `TitleScene` | `Titlescene` | title screen, flashing prompt, 8 cats | MenuScene |
-| `MenuScene` | `Menuscene` | main menu (EXIT / OPTION / LOCAL PLAY) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
-| `ExitConfirmScene` | `Exitconfirmscene` | YES/NO quit dialog | MenuScene (or ShouldQuit) |
-| `OptionMenuScene` | `OptionMenuScene` | bg color, volume, disp number; saves on OK | MenuScene, KeyboardConfigScene |
-| `KeyboardConfigScene` | `KeyboardConfigScene` | key binding (1P–8P); saves on CommitPending | OptionMenuScene |
-| `LocalPlayScene` | `LocalPlayScene` | select player count (2–8) | MenuScene, LocalPlayGameScene |
-| `LocalPlayGameScene` | `LocalPlayGameScene` | multi-player physics, door entry | LocalPlayScene, LevelSelectScene |
-| `LevelSelectScene` | `LevelSelectScene` | 10-level grid, crown marks, best times | LocalPlayGameScene (ESC), LevelNScene (ENTER) |
+| Scene | Role | Physics | Destinations |
+|-------|------|---------|-------------|
+| `TitleScene` | title screen, flashing prompt, 8 cats + TestBox | `PhysicsWorld` (floor + walls; cats + TestBox) | MenuScene |
+| `MenuScene` | main menu (EXIT / OPTION / LOCAL PLAY) | `PhysicsWorld` (floor + walls; startup cats) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
+| `ExitConfirmScene` | YES/NO quit dialog | none | MenuScene (or ShouldQuit) |
+| `OptionMenuScene` | bg color, volume, disp number; saves on OK | none | MenuScene, KeyboardConfigScene |
+| `KeyboardConfigScene` | key binding (1P–8P); saves on CommitPending | none | OptionMenuScene |
+| `LocalPlayScene` | select player count (2–8) | none | MenuScene, LocalPlayGameScene |
+| `LocalPlayGameScene` | multi-player physics, door entry | `PhysicsWorld` (floor + ceiling + walls; player cats) | LocalPlayScene, LevelSelectScene |
+| `LevelSelectScene` | 10-level grid, crown marks, best times | none | LocalPlayGameScene (ESC), LevelNScene (ENTER) |
+| `LevelOneScene` | actual gameplay level | `PhysicsWorld` (to be implemented) | **not yet implemented** |
+| `LevelExitScene` | confirmation before exiting a level | none | **not yet implemented** |
 
-### 4.3 Shared UI Object Borrowing Pattern
+`LevelOneScene` is the scene where the actual cooperative level takes place. `LevelExitScene` is a confirmation dialog (analogous to `ExitConfirmScene`) that appears when players try to exit mid-level. Both are currently empty stubs with no implementation.
+
+### 4.3 PhysicsWorld Lifecycle in Scenes
+
+Scenes that own a `PhysicsWorld` member (`TitleScene`, `MenuScene`,
+`LocalPlayGameScene`) follow a strict pattern:
+
+```
+OnEnter:
+    m_World.Clear()
+    Register all dynamic bodies (cats, boxes)
+    AddStaticBoundary for floor / ceiling / walls
+    (for PushableBox: call box->SetWorld(&m_World) before Register)
+
+Update:
+    // 1. input phase: SetMoveDir / Jump on cats
+    m_World.Update()   ← single call drives the entire two-phase pipeline
+
+OnExit:
+    m_World.Clear()
+```
+
+The `PhysicsWorld` internally orders body updates correctly (characters before
+boxes) and resolves collisions topologically (supports before riders). Callers
+need only provide the input and call `Update()` once.
+
+### 4.4 Shared UI Object Borrowing Pattern
 
 `MenuScene` owns these objects and exposes them via getters:
 
@@ -5267,7 +5778,7 @@ GetBlueCatRunImg()   → LocalPlayScene
 
 Borrowers call `AddChild`/`RemoveChild` in `OnEnter`/`OnExit` and restore position/scale on exit.
 
-### 4.4 Scene Pointer Rules
+### 4.5 Scene Pointer Rules
 
 - `App` owns scenes via `unique_ptr` (sole owner).
 - Inter-scene references use **raw non-owning pointers**; never `delete`.
@@ -5282,7 +5793,8 @@ Borrowers call `AddChild`/`RemoveChild` in `OnEnter`/`OnExit` and restore positi
 ```
 Util::GameObject         (PTSD base: m_Drawable, m_Transform, m_ZIndex)
 ├── Character            static image (Util::Image)
-│   └── UI_Triangle_Button  pressed/normal image with timer
+│   ├── UITriangleButton pressed/normal image with timer
+│   └── PushableBox      physics box + optional GameText counter label
 ├── AnimatedCharacter    animation clip (Util::Animation)
 │   └── PlayerCat        multi-clip state machine + IPhysicsBody
 └── GameText             text (Util::Text), fixed font TerminusTTFWindows-Bold
@@ -5316,25 +5828,27 @@ Util::GameObject         (PTSD base: m_Drawable, m_Transform, m_ZIndex)
 ### 5.5 ZIndex Convention
 
 | Range | Usage |
-|-------|-------|
+|------|-------|
 | `-10` | background |
-| `0` | floor, header |
+| `0` | floor, header, title-scene subtitle/prompt text |
 | `5` | door |
 | `10` | menu frame, blue cat image |
-| `15` | triangle buttons |
-| `20` | ExitGameButton, cats (`20.0 + i*0.01`), scene-local text |
-| `25` | OptionMenuFrame, KeyboardConfigScene frame |
-| `30` | ChoiceFrame, DoorCountText |
-| `32` | LevelSelectScene selector frame |
-| `35` | menu text, level covers, title/time text |
-| `36` | LevelSelectScene crown marks |
-| `100` | GameText default |
+| `15` | triangle buttons, `PushableBox` body, startup cats (`15.0 + i*0.01`) |
+| `16` | `PushableBox` counter text |
+| `20` | Option menu frame, ExitConfirm choice frame |
+| `20` | LocalPlay gameplay cats |
+| `25` | ExitConfirm texts, KeyboardConfig frame |
+| `30` | ExitGameButton, Option/Keyboard choice frame, door count text |
+| `32` | LevelSelect selector frame |
+| `35` | Option/Keyboard UI texts & buttons, level covers, LevelSelect title/best-time text |
+| `36` | LevelSelect crown marks |
+| `100` | GameText default (when not explicitly overridden) |
 
 ---
 
 ## 6. UI Components
 
-### UI_Triangle_Button (`UI_Triangle_Button.hpp`)
+### UITriangleButton (`UITriangleButton.hpp`)
 
 Extends `Character` with two-image pressed/normal state and timer.
 
@@ -5486,6 +6000,7 @@ resources/
 │   ├── Background/
 │   │   ├── white_background.png / cream_background.png / dark_background.png
 │   │   ├── background_floor.png / header.png
+│   │   ├── background_lwall.png / background_rwall.png  (decorative; physics = StaticBody)
 │   │   ├── door_close.png / door_open.png
 │   │   ├── level_select_frame.png      ← LevelSelectScene selector frame
 │   │   ├── Menu_Frame.png / Choice_Frame.png
@@ -5502,11 +6017,13 @@ resources/
 │   │   ├── {color}_cat_jump_2.png      (fall; 150ms, looping)
 │   │   ├── {color}_cat_land_1.png      (80ms, non-looping)
 │   │   └── {color}_cat_push_1–3.png    (3 frames, 120ms, looping)
-│   └── Level_Cover/  LevelOne–LevelFour.png  Crown.png  02.png
+│   └── Level_Cover/
+│       ├── LevelOne–LevelFour.png  Crown.png  02.png  ExitFrame.png  Key.png
+│       └── LevelOneScene/  Box.png  Frame.png  LevelOneScene.png
 └── Save/         settings.json  save_data.json
 ```
 
-**Cat color order** (`GameContext::kCatColorOrder`, index 0–7):**
+**Cat color order** (`GameContext::kCatColorOrder`, index 0–7):
 blue · red · yellow · green · purple · pink · orange · gray
 
 ### CatAssets (`CatAssets.hpp` — header-only)
@@ -5536,8 +6053,11 @@ TitleScene ──ENTER──→ MenuScene ──A/D──→ ExitConfirmScene �
                                    │                                              │
                               ESC/X←──────────────────────  all entered──→ LevelSelectScene
                               → MenuScene                                         │
-                                                               ENTER/click──→ LevelNScene
+                                                               ENTER/click──→ LevelOneScene (TODO)
                                                                ESC──────────→ LocalPlayGameScene
+
+LevelOneScene (TODO) ──completion──→ LevelExitScene (TODO) ──confirm──→ LevelSelectScene
+                      ──ESC / abort──→ LevelExitScene (TODO)
 ```
 
 ---
@@ -5546,11 +6066,54 @@ TitleScene ──ENTER──→ MenuScene ──A/D──→ ExitConfirmScene �
 
 ### Add a Level Scene (e.g. `LevelOneScene`)
 
-1. Create `include/LevelOneScene.hpp` + `src/LevelOneScene.cpp`, inherit `Scene`.
-2. Declare `unique_ptr<Scene> m_LevelOneScene` in `App.hpp`.
-3. Construct in `AppStart.cpp`; LevelSelectScene routing is currently commented out — uncomment and wire `m_LevelScenes[0]`.
-4. On completion call `SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, elapsed)`.
-5. Add `.cpp` to `CMakeLists.txt`.
+`LevelOneScene` and `LevelExitScene` are declared but contain no implementation
+yet. When ready:
+
+1. Implement `LevelOneScene` in `include/LevelOneScene.hpp` + `src/LevelOneScene.cpp`,
+   inheriting `Scene`. Give it a `PhysicsWorld m_World` member.
+2. In `OnEnter`: clear the world, spawn cats + boxes (with `box->SetWorld(&m_World)`),
+   call `SetupStaticBoundaries()` which uses `m_World.AddStaticBoundary()` for
+   floor, ceiling, and all wall geometry.
+3. In `Update`: read input → `SetMoveDir`/`Jump` on cats → `m_World.Update()`.
+4. On completion: call `SaveManager::UpdateBestTime(levelIdx, playerCount, elapsed)`,
+   then transition to `LevelExitScene` (the level-exit confirmation).
+5. Implement `LevelExitScene` similarly to `ExitConfirmScene` (YES/NO pattern).
+6. In `AppStart.cpp`, construct both scenes, wire them via `LevelSelectScene`'s
+   currently-commented-out `m_LevelScenes[0]` slot.
+
+### Add Wall Geometry in a Level
+
+All in-level walls that should block movement must be registered as `StaticBody`
+objects via `m_World.AddStaticBoundary(center, halfSize)`. The visual wall
+sprite (`Character`) is added to the renderer separately; it is purely decorative.
+The `StaticBody` has `IsSolid() = true` and `IsKinematic() = true`, so all
+dynamic bodies (cats, boxes) are resolved against it via AABB separation.
+
+```cpp
+// Example: a narrow vertical wall at x = 200, spanning y = -200 to +200
+m_World.AddStaticBoundary({200.f, 0.f}, {10.f, 200.f});
+```
+
+### Add a PushableBox in a Level
+
+```cpp
+auto box = std::make_shared<PushableBox>(
+    GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png",
+    /*requiredPushers=*/2);
+box->SetPosition({x, y});
+box->SetZIndex(15.f);
+box->SetWorld(&m_World);          // must precede Register
+
+m_World.Register(box);
+m_Ctx.Root.AddChild(box);
+if (box->GetTextObject()) {
+    box->GetTextObject()->SetZIndex(16.f);
+    m_Ctx.Root.AddChild(box->GetTextObject());
+}
+```
+
+On `OnExit`, remove both the box and its text from `m_Ctx.Root`, then call
+`m_World.Clear()`.
 
 ### Add a Global Setting
 
@@ -5569,7 +6132,7 @@ TitleScene ──ENTER──→ MenuScene ──A/D──→ ExitConfirmScene �
 <file path="CLASS_RELATIONSHIPS.md">
 # Class Relationships
 
-> Method listings → `ARCHITECTURE.md §5`.  Physics interface skeletons → `PHYSICS_DESIGN.md`.
+> Method listings → `ARCHITECTURE.md §5`.  Physics pipeline detail → `PHYSICS_DESIGN.md`.
 > This document focuses on OOP structure: inheritance, composition, dependency.
 
 ## Contents
@@ -5588,21 +6151,31 @@ TitleScene ──ENTER──→ MenuScene ──A/D──→ ExitConfirmScene �
 ```
 Util::GameObject              (PTSD engine base — all renderable objects)
 ├── Character                 Character.hpp / .cpp
-│   └── UI_Triangle_Button    UI_Triangle_Button.hpp / .cpp
+│   ├── UITriangleButton      UITriangleButton.hpp / .cpp
+│   └── PushableBox           PushableBox.hpp / .cpp  (also implements IPhysicsBody + IPushable)
 ├── AnimatedCharacter         AnimatedCharacter.hpp / .cpp
-│   └── PlayerCat             PlayerCat.hpp / .cpp
-│           └── IPhysicsBody  IPhysicsBody.hpp   (multiple inheritance, fully implemented)
+│   └── PlayerCat             PlayerCat.hpp / .cpp    (also implements IPhysicsBody)
 └── GameText                  GameText.hpp / .cpp
 
+IPhysicsBody                  IPhysicsBody.hpp  (pure-virtual ABC)
+├── PlayerCat                 (CHARACTER — via multiple inheritance, fully implemented)
+├── PushableBox               (PUSHABLE_BOX — via multiple inheritance, fully implemented)
+└── StaticBody                StaticBody.hpp / .cpp  (STATIC_BOUNDARY, fully implemented)
+
+IPushable                     IPushable.hpp  (secondary pure-virtual ABC)
+└── PushableBox               (only method: GetRequiredPushers())
+
 Scene                         Scene.hpp  (pure-virtual ABC)
-├── TitleScene                Titlescene.hpp / .cpp
-├── MenuScene                 Menuscene.hpp / .cpp
-├── ExitConfirmScene          Exitconfirmscene.hpp / .cpp
-├── OptionMenuScene           OptionMenuScene.hpp / .cpp
-├── KeyboardConfigScene       KeyboardConfigScene.hpp / .cpp
-├── LocalPlayScene            LocalPlayScene.hpp / .cpp
-├── LocalPlayGameScene        LocalPlayGameScene.hpp / .cpp
-└── LevelSelectScene          LevelSelectScene.hpp / .cpp
+├── TitleScene
+├── MenuScene
+├── ExitConfirmScene
+├── OptionMenuScene
+├── KeyboardConfigScene
+├── LocalPlayScene
+├── LocalPlayGameScene
+├── LevelSelectScene
+├── LevelOneScene             (not yet implemented — empty stub)
+└── LevelExitScene            (not yet implemented — empty stub)
 
 SaveManager                   SaveManager.hpp / .cpp  (pure-static utility, no base class)
 ```
@@ -5614,7 +6187,7 @@ SaveManager                   SaveManager.hpp / .cpp  (pure-static utility, no b
 ### 2.1 `Character`
 **IS-A** `Util::GameObject`. Encapsulates a static image (`Util::Image`). Handles AABB mouse interaction. Base for all image-type UI elements.
 
-### 2.2 `UI_Triangle_Button`
+### 2.2 `UITriangleButton`
 **IS-A** `Character`. Adds two-image pressed/normal switching and a countdown timer (`m_PressTimer`). Uses `Character::SetImage()` for visual feedback without object reconstruction.
 
 ### 2.3 `AnimatedCharacter`
@@ -5628,9 +6201,21 @@ class PlayerCat : public AnimatedCharacter, public IPhysicsBody { … };
 //                       ↑ render             ↑ physics interface
 ```
 
-Holds six animation clips (stand / run / jump_rise / jump_fall / land / push) with a state machine.
+Holds six animation clips (stand / run / jump_rise / jump_fall / land / push) driven by a state machine in `PostUpdate() → UpdateAnimState()`.
 
-### 2.5 `GameText`
+### 2.5 `PushableBox`
+**IS-A** `Character` (renders a static image) + **IS-A** `IPhysicsBody` + **IS-A** `IPushable`.
+
+```cpp
+class PushableBox : public Character, public IPhysicsBody, public IPushable { … };
+```
+
+Carries an owned `GameText` (`m_CountText`) that displays the remaining number of pushers needed. Both the box and its text must be added to the renderer separately.
+
+### 2.6 `StaticBody`
+**IS-A** `IPhysicsBody` only — no render component. Used exclusively for invisible collision geometry (floor, ceiling, walls). Created and owned by `PhysicsWorld` via `AddStaticBoundary()`.
+
+### 2.7 `GameText`
 **IS-A** `Util::GameObject`. `m_Drawable` is `Util::Text`. Parallel to `Character` and `AnimatedCharacter`.
 
 ---
@@ -5703,54 +6288,107 @@ m_Crown[LEVEL_COUNT]         ← Character array with Crown.png (ZIndex 36)
 
 ## 4. Physics System Composition
 
-### 4.1 Structure
+### 4.1 Overview
+
+The physics system is built around three layers: the `IPhysicsBody` interface
+that every simulated object must implement, the concrete body types (`PlayerCat`,
+`PushableBox`, `StaticBody`), and `PhysicsWorld` as the single per-scene
+coordinator that runs the entire two-phase pipeline.
 
 ```
-LocalPlayGameScene
-├── calls (static)  CharacterPhysicsSystem::Update   (stateless algorithm)
-├── HAS-A  vector<PlayerBinding>  m_Players
-│              └── PlayerBinding
-│                    ├── PhysicsAgent  agent
-│                    │     ├── shared_ptr<PlayerCat>  actor
-│                    │     └── PhysicsState            state
-│                    ├── PlayerKeyConfig               key
-│                    └── bool                          entered
-└── reads  GameContext::Floor (floor reference) / GameContext::Door (image swap)
+Scene (e.g. LocalPlayGameScene, TitleScene, MenuScene)
+│
+└── HAS-A  PhysicsWorld  m_World
+               │
+               ├── owns (via m_OwnedStatics)  StaticBody[]   (floor / ceiling / walls)
+               ├── weak_ptr refs              PlayerCat[]    (registered on spawn)
+               └── weak_ptr refs              PushableBox[]  (registered on spawn)
 ```
 
-### 4.2 `PhysicsState` — POD data, no methods
+### 4.2 `IPhysicsBody` — The Physics Interface
+
+Every simulated object implements this pure-virtual ABC. The key methods are:
 
 ```cpp
-struct PhysicsState {
-    float velocityY;      // vertical velocity
-    float lastDeltaX;     // last frame's horizontal delta (carry calc)
-    int   supportIndex;   // index of character being stood on (-1 = none)
-    int   moveDir;        // -1 / 0 / +1
-    bool  grounded;
-    bool  prevGrounded;   // previous frame (landing detection)
-    bool  beingStoodOn;   // someone is on this character's head
-};
+GetBodyType()        // enum tag for type dispatch
+GetPosition() / SetPosition()
+GetHalfSize()        // AABB half-dimensions (x and y)
+IsSolid()            // true = blocks other bodies
+IsKinematic()        // true = moves by own logic, not resolved against geometry
+GetDesiredDelta()    // the delta this body *wants* to move this frame
+ApplyResolvedDelta() // apply the collision-resolved delta (may differ from desired)
+OnCollision()        // called post-resolution with contact normal
+PhysicsUpdate()      // per-frame self-drive (gravity, input, push queries)
+PostUpdate()         // called after ApplyResolvedDelta; used for animation updates
+NotifyPush()         // called by PushableBox to set the push animation on a cat
+GetMoveDir()         // current horizontal intent (-1 / 0 / +1); CHARACTER only meaningful
 ```
 
-### 4.3 `PhysicsAgent` — DTO
+### 4.3 `IPushable` — Pushable Object Contract
+
+A lightweight secondary interface requiring only:
 
 ```cpp
-struct PhysicsAgent {
-    shared_ptr<PlayerCat> actor;
-    PhysicsState          state;
-};
+int GetRequiredPushers() const;   // how many net pushing characters are needed
 ```
 
-Packs actor + state so `CharacterPhysicsSystem::Update` can process all characters with a uniform view.
+`PushableBox` implements this. Future types such as `ConditionalPlatform` may
+also implement it to express activation thresholds.
 
-### 4.4 `CharacterPhysicsSystem` — Stateless Service
+### 4.4 `StaticBody` — Immovable Collision Geometry
 
-All methods are `static`. No instance state. Can be reused by any scene.
+`StaticBody` is a pure-physics object (no visual component). It is always
+`IsSolid() = true` and `IsKinematic() = true`, which causes `PhysicsWorld` to
+mark it as resolved immediately with delta `{0,0}`. All dynamic bodies
+resolve against it but it never moves itself. Created and owned exclusively by
+`PhysicsWorld::AddStaticBoundary()`.
 
-```cpp
-static void  Update(vector<PhysicsAgent>&, const shared_ptr<Character>& floor);
-static float ResolveHorizontal(int idx, float targetX, const vector<PhysicsAgent>&);
-static void  ApplyJump(PhysicsState& state);
+### 4.5 `PhysicsWorld` — Pipeline Coordinator
+
+`PhysicsWorld` is a **non-copyable value member** of each scene that needs
+physics. It runs the full two-phase pipeline on every `Update()` call:
+
+```
+Phase 1: StepPhysicsUpdate()
+         → all CHARACTER bodies call PhysicsUpdate() (commit desired deltas + moveDir)
+         → all PUSHABLE_BOX bodies call PhysicsUpdate() (query CountCharactersPushing)
+
+Resolve: StepResolveAndApply()
+         → DetectRiding (stacking relationships)
+         → topological collision resolution (supports first, riders after)
+         → ApplyResolvedDelta on all bodies
+
+Callbacks: StepCollisionCallbacks()
+           → OnCollision() on each body that recorded a contact normal
+
+PostUpdate: PostUpdate() on all active non-frozen bodies
+```
+
+See `PHYSICS_DESIGN.md §2` for the full annotated pipeline.
+
+### 4.6 `CharacterPhysicsSystem` — Constants Only
+
+After the refactoring, `CharacterPhysicsSystem` is a constants-only header.
+Its former `static void Update(...)`, `ResolveHorizontal(...)`, and
+`ApplyJump(...)` methods no longer exist. The constants (`kGravity`,
+`kJumpForce`, `kGroundMoveSpeed`, etc.) are still useful as shared documentation.
+All runtime logic lives in `PlayerCat::PhysicsUpdate()` and `PhysicsWorld`.
+
+### 4.7 Scene ↔ PhysicsWorld Contract
+
+```
+OnEnter:
+    m_World.Clear()
+    for each cat: m_World.Register(cat)
+    for each box: box->SetWorld(&m_World); m_World.Register(box)
+    SetupStaticBoundaries()   // calls m_World.AddStaticBoundary(...)
+
+Update (each frame):
+    // 1. read input → call SetMoveDir / Jump on cats
+    // 2. m_World.Update()   ← single call drives the entire pipeline
+
+OnExit:
+    m_World.Clear()
 ```
 
 ---
@@ -5796,20 +6434,30 @@ Arrows = `#include` dependency.
 ```
 main.cpp
   └── App.hpp
-        ├── Scene.hpp ──── GameContext.hpp ─── Character.hpp, PlayerCat.hpp, BGMPlayer.hpp
+        ├── Scene.hpp ──── GameContext.hpp ─── Character.hpp, PlayerCat.hpp,
+        │                                       PushableBox.hpp, BGMPlayer.hpp
         └── Scene subclasses (all #include Scene.hpp)
 
-CharacterPhysicsSystem.hpp ── PlayerCat.hpp, Character.hpp
+IPhysicsBody.hpp ── (no game-class dependencies; only glm)
 
-LocalPlayGameScene.hpp ── CharacterPhysicsSystem.hpp, KeyboardConfigScene.hpp, Scene.hpp
+IPushable.hpp    ── (no dependencies)
+
+StaticBody.hpp   ── IPhysicsBody.hpp
+
+PlayerCat.hpp    ── AnimatedCharacter.hpp, IPhysicsBody.hpp
+
+PushableBox.hpp  ── Character.hpp, IPhysicsBody.hpp, IPushable.hpp, GameText.hpp
+
+PhysicsWorld.hpp ── IPhysicsBody.hpp, StaticBody.hpp
+
+LocalPlayGameScene.hpp ── Scene.hpp, PlayerCat.hpp, PhysicsWorld.hpp,
+                          KeyboardConfigScene.hpp
 
 LevelSelectScene.hpp ── Scene.hpp, Character.hpp, GameText.hpp, SaveManager.hpp
 
 SaveManager.hpp ── (no game-class dependencies; only std:: and nlohmann/json)
 
-OptionMenuScene.cpp / KeyboardConfigScene.cpp ── SaveManager.hpp
-
-PlayerCat.hpp ── AnimatedCharacter.hpp, IPhysicsBody.hpp
+CharacterPhysicsSystem.hpp ── (no dependencies; constants only)
 
 CatAssets.hpp ── PlayerCat.hpp   (header-only utility)
 
@@ -5819,7 +6467,8 @@ AppUtil.hpp ── Character.hpp, GameText.hpp, Util/Keycode.hpp
 **Design rules enforced:**
 - `SaveManager` never `#include`s any Scene or game-object header (unidirectional dependency).
 - `CharacterPhysicsSystem` never `#include`s any Scene.
-- `GameContext` only includes the concrete types it needs (`Character`, `PlayerCat`, `BGMPlayer`), not Scenes.
+- `IPhysicsBody`, `IPushable`, and `StaticBody` do not include any Scene or concrete game-object headers.
+- `GameContext` only includes the concrete types it holds (`Character`, `PlayerCat`, `PushableBox`, `BGMPlayer`), not Scenes.
 - Scenes depend on `GameContext`, not on each other's full headers (forward declarations + raw pointers).
 
 ---
@@ -5828,13 +6477,15 @@ AppUtil.hpp ── Character.hpp, GameText.hpp, Util/Keycode.hpp
 
 | Pattern | Location | Description |
 |---------|----------|-------------|
-| **Template Method** | `Scene` ABC | `OnEnter`/`OnExit`/`Update` contract enforced, subclasses fill details |
+| **Template Method** | `Scene` ABC | `OnEnter`/`OnExit`/`Update` contract enforced; subclasses fill details |
 | **State Machine** | `App::State`, `PlayerCat` animation | App uses enum for START/UPDATE/END; PlayerCat uses `CatAnimState` for clip switching |
-| **Stateless Service** | `CharacterPhysicsSystem`, `SaveManager` | All-static algorithm/utility classes reusable by multiple scenes |
-| **DTO** | `PhysicsAgent`, `PhysicsState`, `OptionSettingsData`, `KeyConfigData`, `LevelSaveData` | Data packets crossing Scene↔System / SaveManager boundaries |
+| **Two-Phase Pipeline** | `PhysicsWorld::Update` | Phase 1 computes desired deltas; Phase 2 resolves collisions and applies; clean separation prevents mid-frame interference |
+| **Topological Resolution** | `PhysicsWorld::StepResolveAndApply` | Resolve supports before riders — iterative passes handle stacking chains of arbitrary depth |
+| **Stateless Utility** | `SaveManager`, `CharacterPhysicsSystem` (constants) | All-static classes reusable by multiple scenes with no instance state |
+| **DTO** | `OptionSettingsData`, `KeyConfigData`, `LevelSaveData` | Data packets crossing Scene ↔ SaveManager boundaries |
 | **Borrowing** | MenuScene shared UI | Fixed `shared_ptr` owner; borrowers pair AddChild/RemoveChild in OnEnter/OnExit |
-| **Dependency Injection** | Scene constructors | Avoid global access; dependencies passed in from outside |
-| **Abstract Base Class** | `Scene`, `IPhysicsBody` | Compile-time enforcement of complete interface |
+| **Dependency Injection** | Scene constructors, `PushableBox::SetWorld` | Avoid global access; dependencies passed in from outside |
+| **Abstract Base Class** | `Scene`, `IPhysicsBody`, `IPushable` | Compile-time enforcement of complete interface |
 | **Composition over Inheritance** | Scenes borrowing MenuScene UI | Avoids deep inheritance tree, reduces coupling |
 | **Pending / Applied** | `KeyboardConfigScene`, `OptionMenuScene` | In-edit buffer; committed to live value and persisted only on OK |
 | **Read-Modify-Write** | `SaveManager` | `settings.json` shared by two scenes; each modifies only its own fields |
@@ -5846,14 +6497,14 @@ AppUtil.hpp ── Character.hpp, GameText.hpp, Util/Keycode.hpp
 
 > Static OOP structure → `CLASS_RELATIONSHIPS.md`.
 > Scene transition diagram → `ARCHITECTURE.md §11`.
-> Physics object skeletons → `PHYSICS_DESIGN.md`.
+> Physics object interface and chain-push algorithm → `PHYSICS_DESIGN.md`.
 > This document covers **runtime** data flow, call sequences, and coordination.
 
 ## Contents
 1. [Main Loop Data Flow](#1-main-loop-data-flow)
 2. [Scene Lifecycle Protocol](#2-scene-lifecycle-protocol)
 3. [Input → Physics → Render Pipeline](#3-input--physics--render-pipeline)
-4. [CharacterPhysicsSystem Call Order](#4-characterphysicssystem-call-order)
+4. [PhysicsWorld Internal Pipeline](#4-physicsworld-internal-pipeline)
 5. [GameContext as Cross-scene Bus](#5-gamecontext-as-cross-scene-bus)
 6. [Settings Confirmation Pattern](#6-settings-confirmation-pattern)
 7. [Character Animation State Machine](#7-character-animation-state-machine)
@@ -5909,57 +6560,185 @@ Violations:
 
 ## 3. Input → Physics → Render Pipeline
 
-Full per-frame flow in `LocalPlayGameScene::Update()`:
+The complete per-frame flow in a physics-enabled scene (shown for
+`LocalPlayGameScene::Update()`):
 
 ```
-Step 1  Read input
-        Util::Input::IsKeyPressed(key.left/right)  → agent.state.moveDir
-        Util::Input::IsKeyDown(key.jump) + state.grounded
-            → CharacterPhysicsSystem::ApplyJump(state)
-               sets velocityY = kJumpForce, grounded = false
+Step 1  Read input → set move directions on each cat
+        IsKeyPressed(key.left / key.right) → cat->SetMoveDir(dir)
+        IsKeyDown(key.jump) && cat->IsGrounded() → cat->Jump()
+            Jump() sets: m_VelocityY = kJumpForce, m_Grounded = false
 
-Step 2  Door collision check (UP key)
-        IsKeyDown(key.up) && actor within door AABB
-            → pb.entered = true, actor->SetVisible(false)
-            → ++m_EnteredCount, UpdateDoorCountText()
-            → if all entered → return m_LevelSelectScene
+Step 2  Door-entry check (positional logic; runs before physics)
+        If cat within door AABB && IsKeyDown(key.up):
+            pb.entered = true, cat->SetActive(false), ++m_EnteredCount
+            if all entered → return m_LevelSelectScene
 
-Step 3  Snapshot agents into vector<PhysicsAgent> (copy, not reference)
+Step 3  Unified physics pipeline
+        m_World.Update()
+        → Phase 1 : all cats + boxes self-drive (PhysicsUpdate)
+        → Resolve  : collision resolution (AABB separation, stacking carry)
+        → Apply    : ApplyResolvedDelta → positions updated
+        → Callbacks: OnCollision → grounded flags, velocityY clamps, m_IsPushing
+        → PostUpdate: animation state machine
 
-Step 4  CharacterPhysicsSystem::Update(agents, floor)
-
-Step 5  Write updated state back to m_Players[i].agent.state
-
-Step 6  UpdateCooperativePower()
-        → compute largest same-direction touching group
-        → write to m_Ctx.CooperativePushPower
-
-Step 7  Root.Update() (called by App, not Scene)
+Step 4  Game statistics (pure read, no displacement)
+        UpdateCooperativePower() → writes m_Ctx.CooperativePushPower
 ```
 
-**Why copy in Step 3?**  
-`CharacterPhysicsSystem` needs all characters' *old* positions as the consistent baseline for this frame's collision resolution. Without a snapshot, when character i=1 moves, character i=2 would see the *new* position of i=1, causing asymmetric collision results.
+**Ordering rule:** `SetMoveDir()` and `Jump()` must be called **before**
+`m_World.Update()` because `PhysicsWorld::StepPhysicsUpdate()` reads
+`GetMoveDir()` and integrates velocity during `PhysicsUpdate()`. Any input
+applied after `m_World.Update()` would silently take effect one frame late.
+
+**Why no agent snapshot?** The old architecture used a per-frame `vector<PhysicsAgent>` copy to give `CharacterPhysicsSystem` a consistent baseline. The new architecture achieves the same guarantee via the two-pass ordering inside `StepPhysicsUpdate()` (characters commit desired deltas before boxes query them) and the topological resolution order in `StepResolveAndApply()` (supports resolved before riders). No external snapshot is required.
 
 ---
 
-## 4. CharacterPhysicsSystem Call Order
+## 4. PhysicsWorld Internal Pipeline
 
-Per agent `i` in `Update()`:
+`PhysicsWorld::Update()` internally orchestrates four sub-steps. This section
+documents what happens inside each one.
+
+### 4.1 Phase 1 — `StepPhysicsUpdate()`
 
 ```
-1. record prevGrounded
-2. Carry: if grounded && supportIndex >= 0
-          → add agents[sup].lastDeltaX to own X (rider inherits platform motion)
-3. Head-block: if beingStoodOn && velocityY > 0 → velocityY = 0
-4. Horizontal move + collision: ResolveHorizontal(i, rawX, agents)
-5. Face direction flip (scale.x sign)
-6. Vertical physics: ResolveVertical(i, agents, floor)
-7. Update lastDeltaX
-8. Animation state: UpdateAnimState(i, agents, isPushing)
+Pass A (non-PUSHABLE_BOX bodies):
+    for each active, non-frozen body except PUSHABLE_BOX:
+        body->PhysicsUpdate()
 
-After loop:
-9. Recompute beingStoodOn for all agents
+    PlayerCat::PhysicsUpdate():
+        m_Grounded = false          // will be restored by OnCollision
+        m_IsPushing = false         // will be restored by NotifyAdjacentPushers
+        m_VelocityY -= kGravity
+        read own keys (if m_InputEnabled && key bindings are not UNKNOWN)
+        m_DesiredDelta = {moveDir * kGroundMoveSpeed, m_VelocityY}
+        flip m_Transform.scale.x to face movement direction
+
+Pass B (PUSHABLE_BOX bodies):
+    for each active, non-frozen PUSHABLE_BOX:
+        box->PhysicsUpdate()
+
+    PushableBox::PhysicsUpdate():
+        m_VelocityY -= kGravity
+        netRight = m_World->CountCharactersPushing(this, +1)
+        netLeft  = m_World->CountCharactersPushing(this, -1)
+        net = netRight - netLeft
+        update m_CountText (deficit = max(0, required - |net|))
+        vx = kPushSpeed * sign(net)  if |net| >= requiredPushers, else 0
+        m_DesiredDelta = {vx, m_VelocityY}
+        if moving: NotifyAdjacentPushers(activeDir)
+            → calls ch->NotifyPush() on adjacent characters on the push side
 ```
+
+**Why does Pass B come second?** `CountCharactersPushing()` reads `GetMoveDir()`
+on CHARACTER bodies. If boxes ran first, they would see stale `moveDir` values
+from the previous frame. The two-pass ordering guarantees all `moveDir` values
+are current-frame before any box queries them.
+
+### 4.2 Resolve — `StepResolveAndApply()`
+
+```
+1. Snapshot:  build vector<BodyInfo> from all active bodies
+              each entry: body, desired delta, resolved=desired, resolvedFlag=false, supportIdx=-1
+
+2. DetectRiding():
+   for each non-kinematic body A:
+     for each solid body B:
+       if A's bottom edge is within 5 px of B's top edge
+          AND horizontal overlap > 85% of combined half-widths:
+           A.supportIdx = B's index  (A is riding B)
+
+3. Immediate resolution for kinematic / frozen bodies:
+   StaticBody: resolvedFlag=true, resolved={0,0}
+   Frozen body: resolvedFlag=true, resolved={0,0}
+
+4. Iterative topological loop (repeat until no progress):
+   for each body i that is NOT yet resolved:
+     if its supportIdx j is still unresolved → skip (wait for j first)
+     effective_delta = i.desired + (j.resolved.x if j is non-kinematic)  (stacking carry)
+     i.resolved = ResolveBody(i, effective_delta, infos)
+     i.resolvedFlag = true
+
+   ResolveBody():
+     Horizontal pass: sweep body rightward/leftward by resolved.x;
+       for each solid body (using resolved position if already resolved,
+       pre-move position otherwise):
+         if AABB overlap → push self out horizontally; record collidedH + normalH
+     Vertical pass (with horizontal already applied):
+       same logic in Y; record collidedV + normalV
+
+5. Safety pass: resolve any remaining orphaned bodies without carry
+
+6. Apply: body->ApplyResolvedDelta(resolved) for every body
+   PlayerCat:  position += resolved
+   PushableBox: position += resolved; reposition m_CountText label
+   StaticBody: no-op
+```
+
+The topological ordering ensures that a character standing on a moving platform
+(or on another character's head) inherits the support's horizontal displacement
+before their own collision is resolved — producing correct platform-following
+and stacking behaviour without extra special-case code.
+
+### 4.3 Callbacks — `StepCollisionCallbacks()`
+
+```
+for each body that recorded a horizontal contact during resolution:
+    body->OnCollision({other=collidedH, normal=normalH})
+
+for each body that recorded a vertical contact:
+    body->OnCollision({other=collidedV, normal=normalV})
+
+PlayerCat::OnCollision:
+    normal.y > +0.5  → m_Grounded = true, m_VelocityY = 0
+    normal.y < -0.5  → ceiling hit: clamp m_VelocityY to 0 if rising
+    |normal.x| > 0.5 && moveDir != 0 && blocked in move direction
+                     → m_IsPushing = true
+
+PushableBox::OnCollision:
+    normal.y > +0.5  → m_VelocityY = 0  (landed on floor)
+    normal.y < -0.5  → m_VelocityY = 0  (hit ceiling)
+```
+
+### 4.4 PostUpdate
+
+```
+for each active non-frozen body:
+    body->PostUpdate()
+
+PlayerCat::PostUpdate():
+    → UpdateAnimState()
+        priority (high to low):
+          airborne rising        → JUMP_RISE
+          airborne falling       → JUMP_FALL
+          just landed            → LAND (hold until clip ends)
+          m_IsPushing            → PUSH
+          moveDir != 0           → RUN
+          (default)              → STAND
+```
+
+### 4.5 Chain-Pushing Query — `CountCharactersPushing(target, dir)`
+
+This is called by `PushableBox::PhysicsUpdate()` during Pass B of Phase 1.
+The algorithm walks the adjacency graph recursively:
+
+```
+CountCharactersPushingImpl(target, dir, visited):
+    add target to visited
+    for each active body sp adjacent to target on the correct side:
+        if sp is CHARACTER:
+            if sp->GetMoveDir() == dir → ++count       (active pusher)
+            always recurse into sp                      (passive chain transmission)
+        if sp is PUSHABLE_BOX:
+            recurse into sp                             (box transmits passively)
+    return count
+```
+
+The unconditional recursion for `CHARACTER` bodies (regardless of their own
+`moveDir`) is essential for scenario 3: a passive character standing between an
+active pusher and the box still transmits the upstream force. See `PHYSICS_DESIGN.md §4`
+for the full scenario verification table.
 
 ---
 
@@ -5977,6 +6756,9 @@ LocalPlayGameScene      writes CooperativePushPower
 
 OptionMenuScene         calls  m_Ctx.BGMPlayer->SetVolume(v * 6)   on adjust/OK/CANCEL
                                m_Ctx.Background->SetImage(path)    on bg color change
+
+LocalPlayGameScene      reads  m_Ctx.Floor (for boundary positioning)
+                               m_Ctx.Door  (swaps open/close image on enter/exit)
 ```
 
 ---
@@ -6016,7 +6798,8 @@ ENTER pressed
 
 ## 7. Character Animation State Machine
 
-`CharacterPhysicsSystem::UpdateAnimState` drives `PlayerCat` each frame. Priority order (high → low):
+`PlayerCat::UpdateAnimState()` runs inside `PostUpdate()` every frame.
+Priority order (high → low):
 
 ```
 Condition                              → Target State
@@ -6025,7 +6808,7 @@ Condition                              → Target State
 !grounded && velocityY <= 0            JUMP_FALL
 grounded && !prevGrounded              LAND  (justLanded)
 cur == LAND && !IfAnimationEnds()      LAND  (hold until clip ends)
-isPushing                              PUSH
+m_IsPushing                            PUSH
 moveDir != 0                           RUN
 (otherwise)                            STAND
 ```
@@ -6039,10 +6822,14 @@ STAND ────────────────────────�
   │                                   JUMP_FALL
   │  ←──────────── land (LAND ends) ─────┘
   ├── moveDir ≠ 0 → RUN → STAND (moveDir = 0)
-  └── isPushing → PUSH → STAND / RUN
+  └── m_IsPushing → PUSH → STAND / RUN
 ```
 
-**LAND guard in `PlayerCat::SetCatAnimState`:** while in LAND and the clip hasn't ended, any state request other than LAND is silently ignored — ensuring the landing animation always plays in full.
+`m_IsPushing` is reset to `false` at the top of every `PhysicsUpdate()` call
+and is re-set either via `OnCollision` (when the cat is blocked while moving)
+or via `PushableBox::NotifyAdjacentPushers()` (when the box is actually moving
+and notifies its contributing pushers). This ensures the PUSH animation
+activates only when a push is genuinely occurring.
 
 ---
 
@@ -6154,334 +6941,606 @@ UpdateCrowns()
            m_Crown[i]->SetVisible(m_LevelData[i].completed)
 ```
 
-`completed` is set to `true` by `SaveManager::UpdateBestTime()` when a level is first cleared and persisted. The next `LevelSelectScene::OnEnter()` reloads and displays it correctly.
+`completed` is set to `true` by `SaveManager::UpdateBestTime()` when a level is
+first cleared and persisted. The next `LevelSelectScene::OnEnter()` reloads and
+displays it correctly.
 </file>
 
 <file path="PHYSICS_DESIGN.md">
 # Physics System Design
 
-## Architecture Overview
+> This document describes the **fully refactored** physics system. The former
+> `CharacterPhysicsSystem::Update` / `PhysicsAgent` / `PhysicsState` approach
+> has been retired; all runtime physics now flows through `PhysicsWorld` and
+> the individual `IPhysicsBody` implementations.
+
+---
+
+## 1. Architecture Overview
 
 ```
-IPhysicsBody  (pure interface, IPhysicsBody.hpp)
+IPhysicsBody  (pure interface — IPhysicsBody.hpp)
 │
 ├── PlayerCat            → BodyType::CHARACTER          ✅ fully implemented
-├── PushableBox          → BodyType::PUSHABLE_BOX       ⬜ skeleton, TODO
-├── PatrolEnemy          → BodyType::PATROL_ENEMY       ⬜ skeleton, TODO
-├── MovingPlatform       → BodyType::MOVING_PLATFORM    ⬜ skeleton, TODO
-├── ConditionalPlatform  → BodyType::CONDITIONAL_PLATFORM ⬜ skeleton, TODO
-└── Bullet               → BodyType::BULLET             ⬜ skeleton, TODO
+├── PushableBox          → BodyType::PUSHABLE_BOX       ✅ fully implemented
+├── StaticBody           → BodyType::STATIC_BOUNDARY    ✅ fully implemented
+├── PatrolEnemy          → BodyType::PATROL_ENEMY       ⬜ not yet implemented
+├── MovingPlatform       → BodyType::MOVING_PLATFORM    ⬜ not yet implemented
+├── ConditionalPlatform  → BodyType::CONDITIONAL_PLATFORM ⬜ not yet implemented
+├── Rope endpoint        → BodyType::ROPE_ENDPOINT      ⬜ not yet implemented
+└── Bullet               → BodyType::BULLET             ⬜ not yet implemented
 
-PhysicsWorld  (coordinator, PhysicsWorld.hpp / .cpp)
+IPushable  (secondary interface — IPushable.hpp)
+└── PushableBox          (also implements IPhysicsBody)
+
+PhysicsWorld  (pipeline coordinator — PhysicsWorld.hpp / .cpp)
 ├── Register / Unregister / Clear
-├── Update()                  call once per frame from Scene::Update
+├── AddStaticBoundary(center, halfSize)  → creates & owns a StaticBody
+├── Update()                             → runs the full per-frame pipeline
+├── CountCharactersPushing(target, dir)  → chain-push query
 ├── GetBodiesOfType(type)
-├── GetRopesOf(body)
-└── AddRope / RemoveRope      rope constraints (StepRopes not yet implemented)
+├── FreezeAll / UnfreezeAll
+└── AddRope / RemoveRope / GetRopesOf    → structural wiring (step not yet implemented)
 
-CharacterPhysicsSystem  (pure-static algorithm, CharacterPhysicsSystem.hpp / .cpp)
-└── static Update(agents, floor)   handles CHARACTER movement, gravity, stacking, pushing
-                                   PhysicsWorld handles cross-type events (partial)
+CharacterPhysicsSystem  (constants header only — CharacterPhysicsSystem.hpp)
+└── compile-time float constants shared by PlayerCat and documentation
+    (all runtime logic has been moved to PlayerCat::PhysicsUpdate and PhysicsWorld)
 ```
 
 ---
 
-## Body Types and Interface Implementation
+## 2. The Two-Phase Per-Frame Pipeline
 
-### 1. PlayerCat (CHARACTER) — Fully Implemented
+`PhysicsWorld::Update()` executes the following stages in order each frame:
 
-`PlayerCat` implements all `IPhysicsBody` pure-virtual methods:
+```
+PhysicsWorld::Update()
+│
+├── [Purge]  PurgeExpired()         every 60 frames — remove stale weak_ptrs
+│
+├── [Phase 1]  StepPhysicsUpdate()
+│   ├── Pass A — all non-PUSHABLE_BOX active non-frozen bodies call PhysicsUpdate()
+│   │            PlayerCat: applies gravity, reads moveDir, sets m_DesiredDelta
+│   └── Pass B — all PUSHABLE_BOX active non-frozen bodies call PhysicsUpdate()
+│                PushableBox: applies gravity, queries CountCharactersPushing(),
+│                sets m_DesiredDelta (characters must run first so their
+│                moveDir is already committed when boxes query)
+│
+├── [Resolve]  StepResolveAndApply()
+│   ├── Snapshot all active bodies into vector<BodyInfo>
+│   ├── DetectRiding() — record which body each dynamic body sits on top of
+│   ├── Mark kinematic / frozen bodies as immediately resolved (desired = {0,0}
+│   │   for StaticBody; no collision resolution needed)
+│   ├── Iterative topological resolution loop:
+│   │   for each unresolved body whose support IS already resolved:
+│   │     effective = desired + support's horizontal resolved delta (carry)
+│   │     resolved  = ResolveBody(i, effective, infos)
+│   │         ResolveBody performs horizontal pass then vertical pass,
+│   │         pushing self out of any solid overlap and recording contact normals
+│   │   repeat until no progress (handles stacking chains of arbitrary depth)
+│   ├── Safety pass — resolve any remaining orphaned bodies without carry
+│   └── ApplyResolvedDelta() on every body
+│
+├── [Callbacks]  StepCollisionCallbacks()
+│   └── for each body with recorded contacts: call OnCollision(CollisionInfo)
+│       PlayerCat::OnCollision: sets m_Grounded, clears velocityY, sets m_IsPushing
+│       PushableBox::OnCollision: clears velocityY on floor/ceiling contact
+│
+└── [PostUpdate]  calls PostUpdate() on every active non-frozen body
+                  PlayerCat::PostUpdate: runs UpdateAnimState()
+```
+
+**Why two passes in Phase 1?** `PushableBox::PhysicsUpdate()` calls
+`CountCharactersPushing()`, which reads `GetMoveDir()` on CHARACTER bodies.
+Characters must commit their `m_MoveDir` (pass A) before boxes query it (pass B);
+otherwise, a box might read stale move directions from the previous frame.
+
+---
+
+## 3. Body Types and Interface Contracts
+
+### 3.1 PlayerCat (CHARACTER) — Fully Implemented
+
+`PlayerCat` derives from both `AnimatedCharacter` and `IPhysicsBody`.
 
 ```cpp
 class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
-    // GetBodyType()  → CHARACTER
-    // GetPosition()  → m_Transform.translation
-    // SetPosition()  → m_Transform.translation = pos
-    // GetHalfSize()  → abs(GetScaledSize()) * 0.5f
-    // GetVelocity()  → m_Velocity
-    // SetVelocity()  → m_Velocity = vel
-    // IsSolid()      → true
-    // IsKinematic()  → false
-    // UseGravity()   → true
-    // OnCollision()  → empty (extend for damage, etc.)
-    // PhysicsUpdate() → not overridden; CHARACTER movement handled by CharacterPhysicsSystem
+    // GetBodyType()        → CHARACTER
+    // GetPosition()        → m_Transform.translation
+    // SetPosition(pos)     → m_Transform.translation = pos
+    // GetHalfSize()        → {kHalfWidth=18, kHalfHeight=23}  (fixed, avoids jitter)
+    // IsSolid()            → true
+    // IsKinematic()        → false
+    // GetMoveDir()         → m_MoveDir (-1 / 0 / +1), set by scene or own input
+    // GetDesiredDelta()    → m_DesiredDelta = {moveDir * kGroundMoveSpeed, velocityY}
+    // ApplyResolvedDelta() → SetPosition(pos + delta)
+    // OnCollision()        → sets m_Grounded, clamps velocityY, sets m_IsPushing
+    // PhysicsUpdate()      → gravity, optional direct-input read, desired delta
+    // PostUpdate()         → UpdateAnimState()
+    // NotifyPush()         → m_IsPushing = true  (called by PushableBox)
 };
 ```
 
-> **Current status:** `LocalPlayGameScene` uses `CharacterPhysicsSystem::Update` directly for player physics. `PhysicsWorld::Update()` is not called from `LocalPlayGameScene` — it is reserved for future cross-type interactions (boxes, enemies, platforms).
-
-Registration example (for future level scenes):
-```cpp
-m_World.Register(agent.actor);   // PlayerCat already implements IPhysicsBody
-```
+**Input sourcing:** if a cat has real key bindings and `m_InputEnabled == true`,
+`PhysicsUpdate()` reads `Util::Input` directly. For cats spawned in
+`LocalPlayGameScene` with `UNKNOWN` keys, the scene calls `SetMoveDir()` and
+`Jump()` externally before `m_World.Update()`.
 
 ---
 
-### 2. PushableBox — Skeleton (TODO)
+### 3.2 PushableBox (PUSHABLE_BOX) — Fully Implemented
+
+`PushableBox` derives from `Character`, `IPhysicsBody`, and `IPushable`.
 
 ```cpp
-// include/PushableBox.hpp
-class PushableBox : public Character, public IPhysicsBody {
-public:
-    PushableBox(const std::string& imagePath, int requiredPushers = 2);
-
-    BodyType  GetBodyType()  const override { return BodyType::PUSHABLE_BOX; }
-    glm::vec2 GetPosition()  const override { return Character::GetPosition(); }
-    void      SetPosition(const glm::vec2& p) override { Character::SetPosition(p); }
-    glm::vec2 GetHalfSize()  const override { return glm::abs(GetScaledSize()) * 0.5f; }
-    glm::vec2 GetVelocity()  const override { return m_Velocity; }
-    void      SetVelocity(const glm::vec2& v) override { m_Velocity = v; }
-    bool IsSolid()     const override { return true;  }
-    bool IsKinematic() const override { return false; }
-    bool UseGravity()  const override { return true;  }
-
-    void SetWorld(PhysicsWorld* world) { m_World = world; }
-
-    void PhysicsUpdate() override {
-        // TODO:
-        // int r = m_World->CountCharactersPushing(this, +1);
-        // int l = m_World->CountCharactersPushing(this, -1);
-        // if (r >= m_RequiredPushers)      m_Velocity.x =  kPushSpeed;
-        // else if (l >= m_RequiredPushers) m_Velocity.x = -kPushSpeed;
-        // else                             m_Velocity.x =  0;
-        // SetPosition(GetPosition() + m_Velocity);
-    }
-
-private:
-    PhysicsWorld* m_World           = nullptr;
-    int           m_RequiredPushers = 2;
-    glm::vec2     m_Velocity        = {0, 0};
-    static constexpr float kPushSpeed = 2.0f;
+class PushableBox : public Character, public IPhysicsBody, public IPushable {
+    // GetBodyType()         → PUSHABLE_BOX
+    // IsSolid()             → true
+    // IsKinematic()         → false
+    // GetRequiredPushers()  → m_RequiredPushers (set at construction)
+    // PhysicsUpdate()       → gravity + CountCharactersPushing query → desired delta
+    // ApplyResolvedDelta()  → move box + reposition m_CountText label
+    // OnCollision()         → floor/ceiling velocityY clamp
 };
 ```
 
+`m_CountText` is an overlaid `GameText` showing how many more pushers are still
+needed (`std::max(0, requiredPushers - |net|)`). Both the box and its text object
+must be added to the renderer and registered with the world separately.
+
+`SetWorld(PhysicsWorld*)` must be called before the box is registered, so
+`PhysicsUpdate()` can reach `CountCharactersPushing()`.
+
 ---
 
-### 3. PatrolEnemy — Skeleton (TODO)
+### 3.3 StaticBody (STATIC_BOUNDARY) — Fully Implemented
+
+`StaticBody` is the correct type for **all immovable solid geometry** — floor,
+ceiling, left/right boundary walls, and any in-level wall that should never move.
 
 ```cpp
-// include/PatrolEnemy.hpp
-class PatrolEnemy : public AnimatedCharacter, public IPhysicsBody {
-public:
-    enum class PatrolMode { HORIZONTAL, WAYPOINTS, PIPE };
-
-    PatrolEnemy(const CatAnimPaths& animPaths, PatrolMode mode);
-
-    BodyType GetBodyType()  const override { return BodyType::PATROL_ENEMY; }
-    bool IsSolid()     const override { return true;  }
-    bool IsKinematic() const override { return true;  }
-    bool UseGravity()  const override { return false; }
-
-    void SetHorizontalRange(float leftX, float rightX);
-    void SetWaypoints(const std::vector<glm::vec2>& pts);
-
-    void PhysicsUpdate() override {
-        // TODO: update position by m_PatrolMode
-    }
-
-    void OnCollision(const CollisionInfo& info) override {
-        // if (info.other->GetBodyType() == BodyType::CHARACTER) { /* damage */ }
-    }
-
-private:
-    PatrolMode             m_PatrolMode;
-    glm::vec2              m_Velocity    = {0, 0};
-    std::vector<glm::vec2> m_Waypoints;
-    int                    m_WaypointIdx = 0;
-    bool                   m_Reversed    = false;
+class StaticBody final : public IPhysicsBody {
+    // GetBodyType()        → STATIC_BOUNDARY (or any BodyType passed at construction)
+    // IsSolid()            → true   — blocks all dynamic bodies
+    // IsKinematic()        → true   — never moved by the resolver
+    // GetDesiredDelta()    → {0, 0} — stationary by definition
+    // ApplyResolvedDelta() → no-op
+    // SetPosition()        → no-op
 };
 ```
 
+`PhysicsWorld::AddStaticBoundary(center, halfSize)` creates, owns, and
+immediately registers a `StaticBody`. The returned raw pointer is only for
+identification; ownership stays with `PhysicsWorld::m_OwnedStatics`.
+
+**Wall design rule:** all visual wall sprites (e.g. `background_lwall.png`,
+`background_rwall.png`) are purely decorative. Their physics counterpart must be
+a `StaticBody` registered via `AddStaticBoundary()`. The AABB should match the
+visible surface of the wall, not the entire sprite bounding box.
+
 ---
 
-### 4. MovingPlatform — Skeleton (TODO)
+### 3.4 Future Body Types (Not Yet Implemented)
+
+The `BodyType` enum reserves values for `PATROL_ENEMY`, `MOVING_PLATFORM`,
+`CONDITIONAL_PLATFORM`, `ROPE_ENDPOINT`, and `BULLET`. These are not required
+for the current scope; their implementation can be deferred until the respective
+level scenes are built. The rope constraint struct (`RopeConstraint`) and
+`AddRope`/`RemoveRope` API already exist in `PhysicsWorld` for future use.
+
+---
+
+## 4. Chain Pushing Algorithm
+
+### 4.1 API
 
 ```cpp
-// include/MovingPlatform.hpp
-class MovingPlatform : public Character, public IPhysicsBody {
-public:
-    enum class MoveAxis { VERTICAL, HORIZONTAL };
-
-    MovingPlatform(const std::string& imagePath,
-                   glm::vec2 startPos, glm::vec2 endPos,
-                   float speed, MoveAxis axis = MoveAxis::VERTICAL);
-
-    BodyType GetBodyType()  const override { return BodyType::MOVING_PLATFORM; }
-    bool IsSolid()     const override { return true;  }
-    bool IsKinematic() const override { return true;  }
-    bool UseGravity()  const override { return false; }
-
-    void SetWorld(PhysicsWorld* world) { m_World = world; }
-
-    void PhysicsUpdate() override {
-        // TODO: move between m_Start / m_End + carry riders
-    }
-
-private:
-    PhysicsWorld* m_World    = nullptr;
-    glm::vec2     m_Start, m_End;
-    glm::vec2     m_Velocity = {0, 0};
-    MoveAxis      m_Axis;
-};
+// PhysicsWorld public method
+int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
+//   dir: +1 = querying right-side pushers, -1 = querying left-side pushers
+//   Returns the net number of CHARACTER bodies directly or transitively
+//   contributing force toward 'target' from the 'dir' origin side.
 ```
 
----
-
-### 5. ConditionalPlatform — Skeleton (TODO)
-
-Extends `MovingPlatform`; only activates when enough riders are on top.
+`PushableBox::PhysicsUpdate()` calls this twice:
 
 ```cpp
-// include/ConditionalPlatform.hpp
-class ConditionalPlatform : public MovingPlatform {
-public:
-    ConditionalPlatform(const std::string& imagePath,
-                        glm::vec2 startPos, glm::vec2 endPos,
-                        float speed, int requiredRiders = 2);
-
-    BodyType GetBodyType() const override { return BodyType::CONDITIONAL_PLATFORM; }
-
-    void PhysicsUpdate() override {
-        // TODO:
-        // if (m_World->CountBodiesOnTop(this) >= m_RequiredRiders)
-        //     MovingPlatform::PhysicsUpdate();
-    }
-
-private:
-    int   m_RequiredRiders = 2;
-    float m_ReturnSpeed    = 2.0f;
-};
+int netRight = m_World->CountCharactersPushing(this, +1);
+int netLeft  = m_World->CountCharactersPushing(this, -1);
+const int net = netRight - netLeft;
+if (std::abs(net) >= m_RequiredPushers)
+    vx = (net > 0) ? kPushSpeed : -kPushSpeed;
 ```
 
----
+### 4.2 Recursive Traversal — `CountCharactersPushingImpl`
 
-### 6. Bullet — Skeleton (TODO)
+The algorithm walks the adjacency graph recursively, using a `visited` set to
+prevent infinite loops.
 
-```cpp
-// include/Bullet.hpp
-class Bullet : public Character, public IPhysicsBody {
-public:
-    enum class HitEffect { DISAPPEAR, BOUNCE, TRIGGER_STATE };
+**Proximity tests** (both must pass for a body to be considered adjacent):
 
-    Bullet(const std::string& imagePath,
-           glm::vec2 startPos, glm::vec2 direction, float speed);
-
-    BodyType GetBodyType()  const override { return BodyType::BULLET; }
-    bool IsSolid()     const override { return false; }
-    bool IsKinematic() const override { return true;  }
-    bool UseGravity()  const override { return false; }
-
-    void SetWorld(PhysicsWorld* world) { m_World = world; }
-
-    void PhysicsUpdate() override {
-        // TODO: move + QueryOverlapping for collision detection
-    }
-
-    void OnCollision(const CollisionInfo& info) override {
-        if (info.other->GetBodyType() == BodyType::CHARACTER)
-            SetActive(false);
-    }
-
-private:
-    PhysicsWorld*                           m_World = nullptr;
-    glm::vec2                               m_Velocity;
-    std::unordered_map<BodyType, HitEffect> m_HitEffects;
-};
+```
+vertical band  : |cPos.y - tPos.y| < (tHalf.y + cHalf.y) * 0.9f
+horizontal gap : |dxToTarget|      ≤ tHalf.x + cHalf.x + 4.0f (touch tolerance)
+direction side : dir=+1 → cPos.x < tPos.x   (pusher is to the left)
+                 dir=-1 → cPos.x > tPos.x   (pusher is to the right)
 ```
 
----
+**Per-neighbor logic:**
 
-### 7. Rope Constraint
+```
+CHARACTER body adjacent to target:
+    if moveDir == dir → ++count           (actively pushing: counts directly)
+    always recurse(sp, dir, visited)      (passive characters still transmit)
 
-Ropes are **constraints**, not `IPhysicsBody` instances. Managed by `PhysicsWorld` as `RopeConstraint` structs.
-
-```cpp
-// Add rope between two bodies
-m_World.AddRope(playerA.actor.get(), playerB.actor.get(),
-                /*maxLen=*/200.0f, /*friction=*/0.5f);
-
-m_World.RemoveRope(playerA.actor.get(), playerB.actor.get());
+PUSHABLE_BOX body adjacent to target:
+    recurse(sp, dir, visited)             (box transmits passively, never counts itself)
 ```
 
-`StepRopes()` is not yet implemented (see status table below).
+The key insight is that a CHARACTER with `moveDir == 0` does **not** add 1 to
+the count but still allows force from active pushers behind it to propagate
+forward. This correctly handles all six chain scenarios below.
+
+### 4.3 Verified Scenarios
+
+All positions below are left-to-right. "→" means moveDir = +1. Box bodies are
+capital letters in brackets.
 
 ---
 
-## PhysicsWorld Implementation Status
+**Scenario 1 — A pushes B, B pushes C. C is pushed by 2.**
 
-| Feature | Status |
-|---------|--------|
-| `Register` / `Unregister` / `Clear` | ✅ |
-| `AddRope` / `RemoveRope` / `GetRopesOf` | ✅ (structure only) |
-| `GetBodiesOfType` | ✅ |
-| `PurgeExpired` (clean stale weak_ptrs, every 60 frames) | ✅ |
-| `StepPhysicsUpdate` (calls `PhysicsUpdate()` on each active body) | ✅ |
-| `StepRopes` (rope force resolution) | ❌ TODO |
-| `StepCollisions` (AABB broadcast via `OnCollision`) | ❌ TODO |
-| `CountCharactersPushing` | ❌ TODO (skeleton commented in source) |
-| `CountBodiesOnTop` | ❌ TODO (skeleton commented in source) |
-| `QueryOverlapping` | ❌ TODO (skeleton commented in source) |
+```
+A(→) adjacent to B(→) adjacent to [C]   requiredPushers = 2
+```
+
+`CountCharactersPushing([C], +1)`:
+1. B found adjacent to C; B→: count++ (1). Recurse into B.
+2. A found adjacent to B; A→: count++ (1). Recurse into A.
+3. Nothing behind A.
+4. **Total = 2 ≥ 2** → [C] moves right. ✅
 
 ---
 
-## Future Level Scene Usage Pattern
+**Scenario 2 — A pushes [C], [C] is adjacent to [D]. Both move with 1 pusher.**
+
+```
+A(→) adjacent to [C] adjacent to [D]   requiredPushers = 1 each
+```
+
+`CountCharactersPushing([C], +1)` = 1 (A found, A→).
+`CountCharactersPushing([D], +1)`:
+1. [C] found adjacent to D; PUSHABLE_BOX → recurse into [C].
+2. A found adjacent to [C]; A→: count++ (1).
+3. **Total = 1 ≥ 1** → [D] moves right. ✅
+
+---
+
+**Scenario 3 — A pushes passive B (no key), B is adjacent to [C]. C is pushed by 1.**
+
+```
+A(→) adjacent to B(0) adjacent to [C]   requiredPushers = 1
+```
+
+`CountCharactersPushing([C], +1)`:
+1. B found adjacent to C; B has moveDir=0 → **do not count B**, but still recurse.
+2. A found adjacent to B; A→: count++ (1).
+3. **Total = 1 ≥ 1** → [C] moves right. ✅
+
+> **This was the pre-fix failure point.** The old code used `continue` when
+> `moveDir != dir`, silently skipping both the count and the recursion. The
+> fix changes to an `if (moveDir == dir) ++count;` with an unconditional
+> `count += recurse(sp, …)` below it.
+
+---
+
+**Scenario 4 — A pushes [C] from the left, B pushes [C] from the right. Forces cancel.**
+
+```
+A(→) | [C] | B(←)   requiredPushers = 1
+```
+
+`CountCharactersPushing([C], +1)` = 1 (A on left, A→).
+`CountCharactersPushing([C], -1)` = 1 (B on right, B←).
+`net = 1 − 1 = 0` → `|net| < 1` → [C] does not move. ✅
+
+---
+
+**Scenario 5 — A pushes [C] while both are airborne.**
+
+```
+A(→) airborne adjacent to [C] airborne   requiredPushers = 1
+```
+
+The vertical-band check allows objects at the same Y level (no ground
+contact required). `CountCharactersPushing([C], +1)` = 1.
+`ResolveBody` handles the horizontal separation exactly as on the ground.
+[C] acquires a horizontal desired delta and is resolved normally. ✅
+
+---
+
+**Scenario 6 — A pushes [C], but [C] is blocked by a wall or IsKinematic object.**
+
+```
+A(→) adjacent to [C] | wall(StaticBody)   requiredPushers = 1
+```
+
+`CountCharactersPushing([C], +1)` = 1 ≥ 1 → [C]'s desired delta.x = kPushSpeed.
+During `ResolveBody`, the wall is already marked `resolvedFlag = true` with
+delta = {0,0}. The horizontal pass detects overlap and clamps [C]'s resolved.x
+to zero. [C] does not move. The same result applies for any `IsKinematic()` body. ✅
+
+---
+
+## 5. Complete Workflow Example
+
+This example traces a single frame where **PlayerCat A pushes PushableBox [C]**
+(requiredPushers = 1) and both are on the floor.
+
+### Frame start state
+
+| Body | Position | VelocityY | MoveDir | DesiredDelta |
+|------|----------|-----------|---------|--------------|
+| A (PlayerCat) | (100, −294) | 0 | 0 | (0, 0) |
+| [C] (PushableBox) | (155, −294) | 0 | — | (0, 0) |
+| Floor (StaticBody) | (0, −357) | — | — | (0, 0) |
+
+Player presses right key → scene sets `A->SetMoveDir(+1)` before `m_World.Update()`.
+
+### Step 1 — Input (scene, before Update)
+
+```
+A->SetMoveDir(+1)   // scene reads key, informs cat
+```
+
+### Step 2 — Phase 1: StepPhysicsUpdate
+
+**Pass A — PlayerCat:**
+```
+A::PhysicsUpdate():
+    m_VelocityY -= kGravity (0.75)  →  velocityY = -0.75  (was 0, now slightly downward)
+    m_IsPushing = false
+    m_Grounded is reset to false (will be restored by OnCollision)
+    vx = moveDir * kGroundMoveSpeed = +1 * 5.0 = +5.0
+    m_DesiredDelta = {+5.0, -0.75}
+```
+
+**Pass B — PushableBox:**
+```
+[C]::PhysicsUpdate():
+    m_VelocityY -= kGravity (0.5)   →  velocityY = -0.5
+    netRight = CountCharactersPushing([C], +1)
+        → A is adjacent (dxToTarget = 100-155 = -55; minDistX = 18+32 = 50;
+           -55 within 50+4=54 → adjacent; dir=+1, dxToTarget<0 → left side ✓)
+        → A->GetMoveDir() == +1 → count++ = 1; recurse into A → nothing behind A
+        → returns 1
+    netLeft  = CountCharactersPushing([C], -1) = 0
+    net = 1 - 0 = 1
+    deficit = max(0, 1 - 1) = 0    → m_CountText shows "0"
+    |net| = 1 ≥ requiredPushers (1) → vx = +kPushSpeed = +2.0
+    m_DesiredDelta = {+2.0, -0.5}
+    NotifyAdjacentPushers(+1):
+        A is on push side → A->NotifyPush() → A->m_IsPushing = true
+```
+
+### Step 3 — Resolve: StepResolveAndApply
+
+Snapshot infos: [Floor (kinematic), A (desired={+5,-0.75}), C (desired={+2,-0.5})]
+
+Floor is marked `resolvedFlag = true` immediately (kinematic).
+
+**Topological pass — resolve A:**
+- Floor is already resolved.
+- A's supportIdx = Floor (A is standing on floor).
+- effective = {+5,-0.75} + {floor.resolved.x=0} = {+5,-0.75}
+- ResolveBody(A):
+  - Horizontal: A moves to x=105. Check against [C] at x=155 (not yet resolved,
+    pre-move). Overlap = (18+32) - |105-155| = 50-50 = 0 → no overlap.
+  - Check against Floor: no horizontal overlap.
+  - Vertical: A moves to y=-294.75. Check against Floor top edge (-357+40=-317).
+    A bottom = -294.75-23 = -317.75; floor top = -317; overlap = -317-(-317.75) = 0.75 > 0
+    → push A up: resolved.y = (-317 + 23) - (-294) = -317+23+294 = 0 → wait,
+    resolved.y = (otherPos.y + (selfHalf.y + otherHalf.y) * sign) - selfPos.y
+               = (-357 + (23+40)*1) - (-294) = -357+63+294 = 0
+  - A.resolved = {+5, 0}   (horizontal fine, vertical blocked by floor → grounded)
+  - A.collidedV = Floor, normalV = {0,+1}
+
+**Topological pass — resolve [C]:**
+- [C]'s supportIdx = Floor.
+- effective = {+2,-0.5} + {0} = {+2,-0.5}
+- ResolveBody([C]):
+  - Horizontal: [C] moves to x=157. No wall adjacent. A is now at resolved
+    position x=105 (resolvedFlag=true → otherPos = 100+5 = 105).
+    Overlap = (32+18) - |157-105| = 50-52 = -2 → no overlap.
+  - Vertical: same floor clamping → resolved.y = 0.
+  - [C].resolved = {+2, 0}
+
+**Apply deltas:**
+```
+A  →  position = (100+5, -294+0) = (105, -294)
+[C] → position = (155+2, -294+0) = (157, -294)
+```
+
+### Step 4 — Callbacks: StepCollisionCallbacks
+
+```
+A.collidedV = Floor, normalV = {0,+1}
+    → A::OnCollision: normal.y > 0.5 → m_Grounded = true, m_VelocityY = 0
+[C].collidedV = Floor, normalV = {0,+1}
+    → [C]::OnCollision: normal.y > 0.5 → m_VelocityY = 0
+```
+
+### Step 5 — PostUpdate
+
+```
+A::PostUpdate() → UpdateAnimState()
+    m_IsPushing = true (set by NotifyAdjacentPushers above)
+    → CatAnimState::PUSH
+```
+
+**Frame end state:**
+
+| Body | Position | VelocityY | AnimState |
+|------|----------|-----------|-----------|
+| A | (105, −294) | 0 | PUSH |
+| [C] | (157, −294) | 0 | — |
+
+The box moved right 2 px; A moved right 5 px while staying flush against [C].
+On the next frame, AABB separation keeps them adjacent at the `minDistX` boundary.
+
+---
+
+## 6. Walls — Design and Registration
+
+All solid, immovable walls in any scene must be registered as `StaticBody` objects
+via `PhysicsWorld::AddStaticBoundary()`. This includes:
+
+- **Boundary walls** — left and right screen edges (already implemented in
+  `TitleScene`, `MenuScene`, and `LocalPlayGameScene` via `SetupStaticBoundaries()`).
+- **In-level platform edges and side walls** — any wall sprite whose physics
+  surface should never move.
 
 ```cpp
-class LevelOneScene : public Scene {
-    PhysicsWorld              m_World;
-    std::vector<PhysicsAgent> m_Agents;
-    std::vector<std::shared_ptr<PushableBox>>    m_Boxes;
-    std::vector<std::shared_ptr<MovingPlatform>> m_Platforms;
-    std::vector<std::shared_ptr<PatrolEnemy>>    m_Enemies;
-    float m_ElapsedSeconds = 0.0f;
+// Pattern used in SetupStaticBoundaries() for left and right walls:
+constexpr float kWallHalfW = 50.f;
+constexpr float kWallHalfH = 400.f;
 
-    void OnEnter() override {
-        m_ElapsedSeconds = 0.0f;
-        for (auto& a : m_Agents)    m_World.Register(a.actor);
-        for (auto& b : m_Boxes)     { b->SetWorld(&m_World); m_World.Register(b); }
-        for (auto& p : m_Platforms) { p->SetWorld(&m_World); m_World.Register(p); }
-        for (auto& e : m_Enemies)   m_World.Register(e);
+// Left wall: center is 50 px to the left of the play area edge
+m_World.AddStaticBoundary({-(640.f + kWallHalfW), 0.f}, {kWallHalfW, kWallHalfH});
+
+// Right wall: symmetric
+m_World.AddStaticBoundary({ (640.f + kWallHalfW), 0.f}, {kWallHalfW, kWallHalfH});
+```
+
+The visual sprites `background_lwall.png` / `background_rwall.png` are purely
+decorative `Character` objects. Their physics counterpart is the invisible
+`StaticBody` AABB above. The `StaticBody` has `IsSolid() = true` and
+`IsKinematic() = true`, so all dynamic bodies (players, boxes) are resolved
+against it and can never pass through.
+
+**Chain-pushing interaction with walls (Scenario 6):** when a `PushableBox`
+has a `StaticBody` wall on the opposing side, the box correctly refuses to move.
+`CountCharactersPushing()` may still return a positive number (the pushers are
+present), but `ResolveBody` clamps the box's horizontal delta to zero because
+the wall's resolved position leaves no room. The box stays put. ✅
+
+---
+
+## 7. Scene Registration Pattern
+
+```cpp
+// ── OnEnter ─────────────────────────────────────────────────────────────────
+void LevelOneScene::OnEnter() {
+    m_World.Clear();
+
+    // 1. Spawn player cats and register them.
+    for (auto& pb : m_Players) {
+        m_World.Register(pb.cat);
+        m_Ctx.Root.AddChild(pb.cat);
     }
 
-    void OnExit() override {
-        m_World.Clear();
-        m_Agents.clear();
-    }
-
-    Scene* Update() override {
-        m_ElapsedSeconds += deltaTime;
-
-        // Step 1: read input → set agent.state.moveDir / ApplyJump
-        // Step 2: CHARACTER fine physics (pushing, stacking)
-        CharacterPhysicsSystem::Update(m_Agents, m_Ctx.Floor);
-        // Step 3: other object self-drive + cross-type collisions
-        m_World.Update();
-
-        if (/* all players at goal */) {
-            SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, m_ElapsedSeconds);
-            return m_LevelSelectScene;
+    // 2. Spawn boxes: SetWorld first, then register.
+    for (auto& box : m_Boxes) {
+        box->SetWorld(&m_World);             // box needs world for CountCharactersPushing
+        m_World.Register(box);
+        m_Ctx.Root.AddChild(box);
+        if (box->GetTextObject()) {
+            m_Ctx.Root.AddChild(box->GetTextObject());
         }
-        return nullptr;
     }
-};
+
+    // 3. Register immovable geometry last.
+    SetupStaticBoundaries();                  // calls AddStaticBoundary internally
+}
+
+// ── Update ───────────────────────────────────────────────────────────────────
+Scene* LevelOneScene::Update() {
+    // Step 1: read input → set MoveDir / call Jump() on cats.
+    for (auto& pb : m_Players) {
+        // ... (key reading)
+        pb.cat->SetMoveDir(moveDir);
+        if (pb.cat->IsGrounded() && wantJump) pb.cat->Jump();
+    }
+
+    // Step 2: run unified physics pipeline.
+    m_World.Update();
+
+    // Step 3: read-only game logic (goal checks, timer, etc.)
+    m_ElapsedSeconds += deltaTime;
+    if (/* all players at goal */) {
+        SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, m_ElapsedSeconds);
+        return m_LevelExitScene;  // confirmation scene before returning to menu
+    }
+    return nullptr;
+}
+
+// ── OnExit ───────────────────────────────────────────────────────────────────
+void LevelOneScene::OnExit() {
+    for (auto& pb : m_Players) m_Ctx.Root.RemoveChild(pb.cat);
+    for (auto& box : m_Boxes) {
+        m_Ctx.Root.RemoveChild(box);
+        if (box->GetTextObject()) m_Ctx.Root.RemoveChild(box->GetTextObject());
+    }
+    m_World.Clear();
+}
 ```
 
-> `LevelSelectScene` is a pure UI scene: 2D grid navigation, mouse hover, save-data read. It holds no `PhysicsWorld` or `CharacterPhysicsSystem`.
+**`LevelOneScene`** is the scene for the actual gameplay level.
+**`LevelExitScene`** is the confirmation dialog shown before exiting any level
+(analogous to `ExitConfirmScene` for the main menu). Neither is implemented yet;
+both are empty stubs.
 
 ---
 
-## CharacterPhysicsSystem Constants
+## 8. CharacterPhysicsSystem Constants
+
+`CharacterPhysicsSystem.hpp` is now a **constants-only header**. All runtime
+logic has moved to `PlayerCat::PhysicsUpdate()` and `PhysicsWorld`. The
+constants are duplicated as `static constexpr` members of `PlayerCat` for
+self-containment; the header exists only for backward-reference convenience.
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `kGroundMoveSpeed` | 5.0f | ground movement speed (px/frame) |
-| `kRunOnPlayerSpeed` | 6.2f | speed when standing on another character |
-| `kJumpForce` | 11.0f | initial jump velocityY |
-| `kGravity` | 0.75f | velocityY -= kGravity each frame |
-| `kScreenHalfW` | 640.0f | half of 1280×720 screen width |
-| `kScreenHalfH` | 360.0f | half of 1280×720 screen height |
-| `HalfWidth()` | 18.0f | collision box half-width (fixed, avoids jitter on animation switch) |
-| `HalfHeight()` | 23.0f | collision box half-height |
+| `kGroundMoveSpeed` | 5.0f | horizontal speed (px/frame) on ground |
+| `kRunOnPlayerSpeed` | 6.2f | horizontal speed when standing on another character |
+| `kJumpForce` | 11.0f | initial vertical velocity on jump |
+| `kGravity` | 0.75f (PlayerCat) / 0.5f (PushableBox) | velocityY decrement per frame |
+| `kScreenHalfW` | 640.0f | half of 1280×720 |
+| `kScreenHalfH` | 360.0f | half of 1280×720 |
+| `kHalfWidth` (PlayerCat) | 18.0f | collision box half-width (fixed to prevent jitter) |
+| `kHalfHeight` (PlayerCat) | 23.0f | collision box half-height |
+| `kPushSpeed` (PushableBox) | 2.0f | box horizontal speed when pushed |
+
+---
+
+## 9. Implementation Status
+
+| Feature | Status |
+|---------|--------|
+| `IPhysicsBody` interface | ✅ |
+| `IPushable` interface | ✅ |
+| `StaticBody` | ✅ |
+| `PlayerCat` (CHARACTER) — full physics | ✅ |
+| `PushableBox` (PUSHABLE_BOX) — full physics | ✅ |
+| `PhysicsWorld::Register / Unregister / Clear` | ✅ |
+| `PhysicsWorld::AddStaticBoundary` | ✅ |
+| `PhysicsWorld::Update` — two-phase pipeline | ✅ |
+| `PhysicsWorld::StepPhysicsUpdate` (two-pass ordering) | ✅ |
+| `PhysicsWorld::StepResolveAndApply` (topological) | ✅ |
+| `PhysicsWorld::StepCollisionCallbacks` | ✅ |
+| `PhysicsWorld::DetectRiding` (stacking carry) | ✅ |
+| `PhysicsWorld::CountCharactersPushing` — all 6 chain scenarios | ✅ |
+| `PhysicsWorld::FreezeAll / UnfreezeAll` | ✅ |
+| `PhysicsWorld::GetBodiesOfType` | ✅ |
+| `PhysicsWorld::PurgeExpired` | ✅ |
+| `AddRope / RemoveRope / GetRopesOf` (structure) | ✅ |
+| `StepRopes` (rope force resolution) | ❌ TODO |
+| `PatrolEnemy` | ❌ TODO |
+| `MovingPlatform` | ❌ TODO |
+| `ConditionalPlatform` | ❌ TODO |
+| `Bullet` | ❌ TODO |
+| `LevelOneScene` (actual gameplay) | ❌ not yet implemented |
+| `LevelExitScene` (level-exit confirmation) | ❌ not yet implemented |
 </file>
 
 <file path="Save/save_data.json">

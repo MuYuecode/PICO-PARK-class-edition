@@ -37,8 +37,8 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         include/PlayerCat.hpp
         src/PlayerCat.cpp
         src/GameText.cpp
-        include/UI_Triangle_Button.hpp
-        src/UI_Triangle_Button.cpp
+        include/UITriangleButton.hpp
+        src/UITriangleButton.cpp
         include/Scene.hpp
         include/GameContext.hpp
         include/Titlescene.hpp
@@ -67,6 +67,15 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         src/Savemanager.cpp
         include/LevelSelectScene.hpp
         src/LevelSelectScene.cpp
+        include/LevelOneScene.hpp
+        src/LevelOneScene.cpp
+        include/PushableBox.hpp
+        include/LevelExitScene.hpp
+        src/LevelExitScene.cpp
+        src/PushableBox.cpp
+        include/IPushable.hpp
+        include/StaticBody.hpp
+        src/StaticBody.cpp
 )
 
 if(MSVC)

@@ -2,14 +2,14 @@
 
 > Static OOP structure → `CLASS_RELATIONSHIPS.md`.
 > Scene transition diagram → `ARCHITECTURE.md §11`.
-> Physics object skeletons → `PHYSICS_DESIGN.md`.
+> Physics object interface and chain-push algorithm → `PHYSICS_DESIGN.md`.
 > This document covers **runtime** data flow, call sequences, and coordination.
 
 ## Contents
 1. [Main Loop Data Flow](#1-main-loop-data-flow)
 2. [Scene Lifecycle Protocol](#2-scene-lifecycle-protocol)
 3. [Input → Physics → Render Pipeline](#3-input--physics--render-pipeline)
-4. [CharacterPhysicsSystem Call Order](#4-characterphysicssystem-call-order)
+4. [PhysicsWorld Internal Pipeline](#4-physicsworld-internal-pipeline)
 5. [GameContext as Cross-scene Bus](#5-gamecontext-as-cross-scene-bus)
 6. [Settings Confirmation Pattern](#6-settings-confirmation-pattern)
 7. [Character Animation State Machine](#7-character-animation-state-machine)
@@ -65,57 +65,185 @@ Violations:
 
 ## 3. Input → Physics → Render Pipeline
 
-Full per-frame flow in `LocalPlayGameScene::Update()`:
+The complete per-frame flow in a physics-enabled scene (shown for
+`LocalPlayGameScene::Update()`):
 
 ```
-Step 1  Read input
-        Util::Input::IsKeyPressed(key.left/right)  → agent.state.moveDir
-        Util::Input::IsKeyDown(key.jump) + state.grounded
-            → CharacterPhysicsSystem::ApplyJump(state)
-               sets velocityY = kJumpForce, grounded = false
+Step 1  Read input → set move directions on each cat
+        IsKeyPressed(key.left / key.right) → cat->SetMoveDir(dir)
+        IsKeyDown(key.jump) && cat->IsGrounded() → cat->Jump()
+            Jump() sets: m_VelocityY = kJumpForce, m_Grounded = false
 
-Step 2  Door collision check (UP key)
-        IsKeyDown(key.up) && actor within door AABB
-            → pb.entered = true, actor->SetVisible(false)
-            → ++m_EnteredCount, UpdateDoorCountText()
-            → if all entered → return m_LevelSelectScene
+Step 2  Door-entry check (positional logic; runs before physics)
+        If cat within door AABB && IsKeyDown(key.up):
+            pb.entered = true, cat->SetActive(false), ++m_EnteredCount
+            if all entered → return m_LevelSelectScene
 
-Step 3  Snapshot agents into vector<PhysicsAgent> (copy, not reference)
+Step 3  Unified physics pipeline
+        m_World.Update()
+        → Phase 1 : all cats + boxes self-drive (PhysicsUpdate)
+        → Resolve  : collision resolution (AABB separation, stacking carry)
+        → Apply    : ApplyResolvedDelta → positions updated
+        → Callbacks: OnCollision → grounded flags, velocityY clamps, m_IsPushing
+        → PostUpdate: animation state machine
 
-Step 4  CharacterPhysicsSystem::Update(agents, floor)
-
-Step 5  Write updated state back to m_Players[i].agent.state
-
-Step 6  UpdateCooperativePower()
-        → compute largest same-direction touching group
-        → write to m_Ctx.CooperativePushPower
-
-Step 7  Root.Update() (called by App, not Scene)
+Step 4  Game statistics (pure read, no displacement)
+        UpdateCooperativePower() → writes m_Ctx.CooperativePushPower
 ```
 
-**Why copy in Step 3?**  
-`CharacterPhysicsSystem` needs all characters' *old* positions as the consistent baseline for this frame's collision resolution. Without a snapshot, when character i=1 moves, character i=2 would see the *new* position of i=1, causing asymmetric collision results.
+**Ordering rule:** `SetMoveDir()` and `Jump()` must be called **before**
+`m_World.Update()` because `PhysicsWorld::StepPhysicsUpdate()` reads
+`GetMoveDir()` and integrates velocity during `PhysicsUpdate()`. Any input
+applied after `m_World.Update()` would silently take effect one frame late.
+
+**Why no agent snapshot?** The old architecture used a per-frame `vector<PhysicsAgent>` copy to give `CharacterPhysicsSystem` a consistent baseline. The new architecture achieves the same guarantee via the two-pass ordering inside `StepPhysicsUpdate()` (characters commit desired deltas before boxes query them) and the topological resolution order in `StepResolveAndApply()` (supports resolved before riders). No external snapshot is required.
 
 ---
 
-## 4. CharacterPhysicsSystem Call Order
+## 4. PhysicsWorld Internal Pipeline
 
-Per agent `i` in `Update()`:
+`PhysicsWorld::Update()` internally orchestrates four sub-steps. This section
+documents what happens inside each one.
+
+### 4.1 Phase 1 — `StepPhysicsUpdate()`
 
 ```
-1. record prevGrounded
-2. Carry: if grounded && supportIndex >= 0
-          → add agents[sup].lastDeltaX to own X (rider inherits platform motion)
-3. Head-block: if beingStoodOn && velocityY > 0 → velocityY = 0
-4. Horizontal move + collision: ResolveHorizontal(i, rawX, agents)
-5. Face direction flip (scale.x sign)
-6. Vertical physics: ResolveVertical(i, agents, floor)
-7. Update lastDeltaX
-8. Animation state: UpdateAnimState(i, agents, isPushing)
+Pass A (non-PUSHABLE_BOX bodies):
+    for each active, non-frozen body except PUSHABLE_BOX:
+        body->PhysicsUpdate()
 
-After loop:
-9. Recompute beingStoodOn for all agents
+    PlayerCat::PhysicsUpdate():
+        m_Grounded = false          // will be restored by OnCollision
+        m_IsPushing = false         // will be restored by NotifyAdjacentPushers
+        m_VelocityY -= kGravity
+        read own keys (if m_InputEnabled && key bindings are not UNKNOWN)
+        m_DesiredDelta = {moveDir * kGroundMoveSpeed, m_VelocityY}
+        flip m_Transform.scale.x to face movement direction
+
+Pass B (PUSHABLE_BOX bodies):
+    for each active, non-frozen PUSHABLE_BOX:
+        box->PhysicsUpdate()
+
+    PushableBox::PhysicsUpdate():
+        m_VelocityY -= kGravity
+        netRight = m_World->CountCharactersPushing(this, +1)
+        netLeft  = m_World->CountCharactersPushing(this, -1)
+        net = netRight - netLeft
+        update m_CountText (deficit = max(0, required - |net|))
+        vx = kPushSpeed * sign(net)  if |net| >= requiredPushers, else 0
+        m_DesiredDelta = {vx, m_VelocityY}
+        if moving: NotifyAdjacentPushers(activeDir)
+            → calls ch->NotifyPush() on adjacent characters on the push side
 ```
+
+**Why does Pass B come second?** `CountCharactersPushing()` reads `GetMoveDir()`
+on CHARACTER bodies. If boxes ran first, they would see stale `moveDir` values
+from the previous frame. The two-pass ordering guarantees all `moveDir` values
+are current-frame before any box queries them.
+
+### 4.2 Resolve — `StepResolveAndApply()`
+
+```
+1. Snapshot:  build vector<BodyInfo> from all active bodies
+              each entry: body, desired delta, resolved=desired, resolvedFlag=false, supportIdx=-1
+
+2. DetectRiding():
+   for each non-kinematic body A:
+     for each solid body B:
+       if A's bottom edge is within 5 px of B's top edge
+          AND horizontal overlap > 85% of combined half-widths:
+           A.supportIdx = B's index  (A is riding B)
+
+3. Immediate resolution for kinematic / frozen bodies:
+   StaticBody: resolvedFlag=true, resolved={0,0}
+   Frozen body: resolvedFlag=true, resolved={0,0}
+
+4. Iterative topological loop (repeat until no progress):
+   for each body i that is NOT yet resolved:
+     if its supportIdx j is still unresolved → skip (wait for j first)
+     effective_delta = i.desired + (j.resolved.x if j is non-kinematic)  (stacking carry)
+     i.resolved = ResolveBody(i, effective_delta, infos)
+     i.resolvedFlag = true
+
+   ResolveBody():
+     Horizontal pass: sweep body rightward/leftward by resolved.x;
+       for each solid body (using resolved position if already resolved,
+       pre-move position otherwise):
+         if AABB overlap → push self out horizontally; record collidedH + normalH
+     Vertical pass (with horizontal already applied):
+       same logic in Y; record collidedV + normalV
+
+5. Safety pass: resolve any remaining orphaned bodies without carry
+
+6. Apply: body->ApplyResolvedDelta(resolved) for every body
+   PlayerCat:  position += resolved
+   PushableBox: position += resolved; reposition m_CountText label
+   StaticBody: no-op
+```
+
+The topological ordering ensures that a character standing on a moving platform
+(or on another character's head) inherits the support's horizontal displacement
+before their own collision is resolved — producing correct platform-following
+and stacking behaviour without extra special-case code.
+
+### 4.3 Callbacks — `StepCollisionCallbacks()`
+
+```
+for each body that recorded a horizontal contact during resolution:
+    body->OnCollision({other=collidedH, normal=normalH})
+
+for each body that recorded a vertical contact:
+    body->OnCollision({other=collidedV, normal=normalV})
+
+PlayerCat::OnCollision:
+    normal.y > +0.5  → m_Grounded = true, m_VelocityY = 0
+    normal.y < -0.5  → ceiling hit: clamp m_VelocityY to 0 if rising
+    |normal.x| > 0.5 && moveDir != 0 && blocked in move direction
+                     → m_IsPushing = true
+
+PushableBox::OnCollision:
+    normal.y > +0.5  → m_VelocityY = 0  (landed on floor)
+    normal.y < -0.5  → m_VelocityY = 0  (hit ceiling)
+```
+
+### 4.4 PostUpdate
+
+```
+for each active non-frozen body:
+    body->PostUpdate()
+
+PlayerCat::PostUpdate():
+    → UpdateAnimState()
+        priority (high to low):
+          airborne rising        → JUMP_RISE
+          airborne falling       → JUMP_FALL
+          just landed            → LAND (hold until clip ends)
+          m_IsPushing            → PUSH
+          moveDir != 0           → RUN
+          (default)              → STAND
+```
+
+### 4.5 Chain-Pushing Query — `CountCharactersPushing(target, dir)`
+
+This is called by `PushableBox::PhysicsUpdate()` during Pass B of Phase 1.
+The algorithm walks the adjacency graph recursively:
+
+```
+CountCharactersPushingImpl(target, dir, visited):
+    add target to visited
+    for each active body sp adjacent to target on the correct side:
+        if sp is CHARACTER:
+            if sp->GetMoveDir() == dir → ++count       (active pusher)
+            always recurse into sp                      (passive chain transmission)
+        if sp is PUSHABLE_BOX:
+            recurse into sp                             (box transmits passively)
+    return count
+```
+
+The unconditional recursion for `CHARACTER` bodies (regardless of their own
+`moveDir`) is essential for scenario 3: a passive character standing between an
+active pusher and the box still transmits the upstream force. See `PHYSICS_DESIGN.md §4`
+for the full scenario verification table.
 
 ---
 
@@ -133,6 +261,9 @@ LocalPlayGameScene      writes CooperativePushPower
 
 OptionMenuScene         calls  m_Ctx.BGMPlayer->SetVolume(v * 6)   on adjust/OK/CANCEL
                                m_Ctx.Background->SetImage(path)    on bg color change
+
+LocalPlayGameScene      reads  m_Ctx.Floor (for boundary positioning)
+                               m_Ctx.Door  (swaps open/close image on enter/exit)
 ```
 
 ---
@@ -172,7 +303,8 @@ ENTER pressed
 
 ## 7. Character Animation State Machine
 
-`CharacterPhysicsSystem::UpdateAnimState` drives `PlayerCat` each frame. Priority order (high → low):
+`PlayerCat::UpdateAnimState()` runs inside `PostUpdate()` every frame.
+Priority order (high → low):
 
 ```
 Condition                              → Target State
@@ -181,7 +313,7 @@ Condition                              → Target State
 !grounded && velocityY <= 0            JUMP_FALL
 grounded && !prevGrounded              LAND  (justLanded)
 cur == LAND && !IfAnimationEnds()      LAND  (hold until clip ends)
-isPushing                              PUSH
+m_IsPushing                            PUSH
 moveDir != 0                           RUN
 (otherwise)                            STAND
 ```
@@ -195,10 +327,14 @@ STAND ────────────────────────�
   │                                   JUMP_FALL
   │  ←──────────── land (LAND ends) ─────┘
   ├── moveDir ≠ 0 → RUN → STAND (moveDir = 0)
-  └── isPushing → PUSH → STAND / RUN
+  └── m_IsPushing → PUSH → STAND / RUN
 ```
 
-**LAND guard in `PlayerCat::SetCatAnimState`:** while in LAND and the clip hasn't ended, any state request other than LAND is silently ignored — ensuring the landing animation always plays in full.
+`m_IsPushing` is reset to `false` at the top of every `PhysicsUpdate()` call
+and is re-set either via `OnCollision` (when the cat is blocked while moving)
+or via `PushableBox::NotifyAdjacentPushers()` (when the box is actually moving
+and notifies its contributing pushers). This ensures the PUSH animation
+activates only when a push is genuinely occurring.
 
 ---
 
@@ -310,4 +446,6 @@ UpdateCrowns()
            m_Crown[i]->SetVisible(m_LevelData[i].completed)
 ```
 
-`completed` is set to `true` by `SaveManager::UpdateBestTime()` when a level is first cleared and persisted. The next `LevelSelectScene::OnEnter()` reloads and displays it correctly.
+`completed` is set to `true` by `SaveManager::UpdateBestTime()` when a level is
+first cleared and persisted. The next `LevelSelectScene::OnEnter()` reloads and
+displays it correctly.

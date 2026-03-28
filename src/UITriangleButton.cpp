@@ -2,21 +2,21 @@
 // Created by cody2 on 2026/3/14.
 //
 
-#include "UI_Triangle_Button.hpp"
+#include "UITriangleButton.hpp"
 #include "Util/Time.hpp"
 
-UI_Triangle_Button::UI_Triangle_Button(std::string normalImagePath, std::string pressedImagePath)
+UITriangleButton::UITriangleButton(std::string normalImagePath, std::string pressedImagePath)
     : Character(normalImagePath),
       m_NormalImagePath(std::move(normalImagePath)),
       m_PressedImagePath(std::move(pressedImagePath)) {
 }
 
-void UI_Triangle_Button::Press(float durationMs) {
+void UITriangleButton::Press(float durationMs) {
     SetImage(m_PressedImagePath);
     m_PressTimer = durationMs;
 }
 
-void UI_Triangle_Button::UpdateButton() {
+void UITriangleButton::UpdateButton() {
     if (m_PressTimer > 0.0f) {
         m_PressTimer -= Util::Time::GetDeltaTimeMs();
 
@@ -27,7 +27,7 @@ void UI_Triangle_Button::UpdateButton() {
     }
 }
 
-void UI_Triangle_Button::ResetState() {
+void UITriangleButton::ResetState() {
     m_PressTimer = 0.0f;
     SetImage(m_NormalImagePath);
 }

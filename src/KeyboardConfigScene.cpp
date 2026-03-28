@@ -101,7 +101,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_PlayerLabel->SetZIndex(35);
     m_PlayerLabel->SetPosition({AlignLeft(*m_PlayerLabel, COL_LABEL_X), ROW_Y_PLAYER});
 
-    m_PlayerLeftBtn = std::make_shared<UI_Triangle_Button>(
+    m_PlayerLeftBtn = std::make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
     m_PlayerLeftBtn->SetZIndex(35);
@@ -111,7 +111,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
     m_PlayerValue->SetZIndex(35);
     m_PlayerValue->SetPosition({COL_VALUE_X, ROW_Y_PLAYER});
 
-    m_PlayerRightBtn = std::make_shared<UI_Triangle_Button>(
+    m_PlayerRightBtn = std::make_shared<UITriangleButton>(
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
         GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
     m_PlayerRightBtn->SetZIndex(35);
@@ -192,6 +192,7 @@ void KeyboardConfigScene::OnEnter() {
     m_Ctx.Root.AddChild(m_DefaultText);
 
     m_ExitGameButton->SetPosition({399.2f, 285.1f});
+    m_ExitGameButton->SetVisible(true);
 
     m_PlayerLeftBtn->ResetState();
     m_PlayerRightBtn->ResetState();
