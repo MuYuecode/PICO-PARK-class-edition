@@ -8,10 +8,6 @@
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 
-const Util::Color LevelSelectScene::kBlack  = Util::Color::FromRGB(  0,   0,   0, 255);
-const Util::Color LevelSelectScene::kOrange = Util::Color::FromRGB(255, 140,   0, 255);
-const Util::Color LevelSelectScene::kGray   = Util::Color::FromRGB(150, 150, 150, 255);
-
 LevelSelectScene::LevelSelectScene(GameContext& ctx,
                                    LocalPlayGameScene* localPlayGameScene)
     : Scene(ctx)
@@ -21,7 +17,7 @@ LevelSelectScene::LevelSelectScene(GameContext& ctx,
         GA_RESOURCE_DIR "/Image/Background/level_select_frame.png");
     m_SelectorFrame->SetZIndex(32);
 
-    m_TitleText = std::make_shared<GameText>("LEVEL 1", 78, kOrange);
+    m_TitleText = std::make_shared<GameText>("LEVEL 1", 78);
     m_TitleText->SetZIndex(35);
     m_TitleText->SetPosition({0.0f, 270.0f});
 
@@ -34,12 +30,12 @@ LevelSelectScene::LevelSelectScene(GameContext& ctx,
 
         m_Crown[i] = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Crown.png");
         m_Crown[i]->SetZIndex(36);
-        m_Crown[i]->SetPosition({cp.x - 36.0f, cp.y + 32.0f});
+        m_Crown[i]->SetPosition({cp.x - 60.0f, cp.y + 60.0f});
         m_Crown[i]->SetVisible(false);
     }
 
     m_BestTimeText = std::make_shared<GameText>(
-        "2 PLAYERS BEST TIME: --:--.--", 48, kOrange);
+        "2 PLAYERS BEST TIME: --:--.--", 48);
     m_BestTimeText->SetZIndex(35);
     m_BestTimeText->SetPosition({0.0f, -278.0f});
 }
@@ -72,9 +68,9 @@ void LevelSelectScene::OnEnter() {
     }
 
     m_Ctx.Header->SetVisible(false);
-    m_Ctx.Header->SetVisible(false);
     if (m_Ctx.Floor != nullptr) m_Ctx.Floor->SetVisible(false);
     if (m_Ctx.Door != nullptr)  m_Ctx.Door->SetVisible(false);
+    m_Ctx.TestBox->SetVisible(false);
     for (auto& cat : m_Ctx.StartupCats) {
         if (cat != nullptr) cat->SetVisible(false);
     }
@@ -163,13 +159,11 @@ Scene* LevelSelectScene::Update() {
     }
 
     if (confirmed) {
-    //     Scene* target = m_LevelScenes[m_SelectedIdx];
-    //     if (target != nullptr) {
-    //         LOG_INFO("LevelSelectScene: entering Level {}", m_SelectedIdx + 1);
-    //         return target;
-    //     }
-    //     // 關卡尚未實作：留在此場景(可在此加提示文字)
-    //     LOG_INFO("LevelSelectScene: Level {} not implemented yet", m_SelectedIdx + 1);
+        if (m_LevelScenes[m_SelectedIdx] != nullptr) {
+            LOG_INFO("LevelSelectScene: entering Level {}",m_SelectedIdx+1);
+            return m_LevelScenes[m_SelectedIdx];
+        }
+        LOG_INFO("LevelSelectScene: Level {} not implemented yet", m_SelectedIdx+1);
     }
 
     return nullptr;

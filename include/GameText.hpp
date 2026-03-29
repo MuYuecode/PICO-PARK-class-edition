@@ -12,10 +12,8 @@
 
 class GameText : public Util::GameObject {
 public:
-    GameText(const std::string& text, int size, const Util::Color& color)
-        : GameObject(std::make_unique<Util::Text>(GA_RESOURCE_DIR"/Font/TerminusTTFWindows-Bold-4.49.3.ttf", size, text, color), 100) {
-        m_Visible = true;
-    }
+    GameText(const std::string& text, int size) ;
+    GameText(const std::string& text, int size, const Util::Color& color) ;
 
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
     [[nodiscard]] glm::vec2 GetPosition() const { return m_Transform.translation; }

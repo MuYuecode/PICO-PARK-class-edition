@@ -76,6 +76,7 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
         include/IPushable.hpp
         include/StaticBody.hpp
         src/StaticBody.cpp
+        include/PlayerKeyConfig.hpp
 )
 
 if(MSVC)

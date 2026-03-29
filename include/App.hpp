@@ -13,6 +13,7 @@ class KeyboardConfigScene;
 class LocalPlayScene;
 class LocalPlayGameScene;
 class LevelSelectScene;
+class LevelOneScene;
 
 class App {
 public:
@@ -40,7 +41,7 @@ private:
     std::unique_ptr<Scene> m_LocalPlayScene;
     std::unique_ptr<Scene> m_LocalPlayGameScene;
     std::unique_ptr<Scene> m_LevelSelectScene;
-
+    std::array<std::unique_ptr<Scene>, 10> m_LevelXScenes; // 10 is num of level
 
     Scene* m_CurrentScene = nullptr;
 };

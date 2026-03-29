@@ -1,6 +1,7 @@
 #include "LocalPlayGameScene.hpp"
 #include "LocalPlayScene.hpp"
 #include "LevelSelectScene.hpp"
+#include "KeyboardConfigScene.hpp"
 #include "CatAssets.hpp"
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
@@ -11,11 +12,9 @@ using ip = Util::Input;
 using k  = Util::Keycode;
 
 LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
-                                       LocalPlayScene*      localPlayScene,
-                                       KeyboardConfigScene* kbConfigScene)
+                                       LocalPlayScene* localPlayScene)
     : Scene(ctx)
-    , m_LocalPlayScene(localPlayScene)
-    , m_KbConfigScene(kbConfigScene) {}
+    , m_LocalPlayScene(localPlayScene) {}
 
 void LocalPlayGameScene::SetupStaticBoundaries() {
     constexpr float kWallHalfW  = 50.f;
@@ -23,7 +22,7 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
     constexpr float kFloorHalfH = 40.f;
     constexpr float kCeilHalfH  = 40.f;
 
-    float floorSurfaceY  = -360.f;
+    float floorSurfaceY   = -360.f;
     float ceilingSurfaceY = 360.f;
 
     if (m_Ctx.Floor != nullptr) {
@@ -31,40 +30,32 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
                       + m_Ctx.Floor->GetScaledSize().y * 0.5f;
     }
 
-    // Floor: top edge at floorSurfaceY.
     m_World.AddStaticBoundary(
         {0.f, floorSurfaceY - kFloorHalfH},
         {640.f + kWallHalfW, kFloorHalfH});
 
-    // Ceiling: bottom edge at ceilingSurfaceY.
     m_World.AddStaticBoundary(
         {0.f, ceilingSurfaceY + kCeilHalfH},
         {640.f + kWallHalfW, kCeilHalfH});
 
-    // Left boundary wall.
     m_World.AddStaticBoundary(
         {-(640.f + kWallHalfW), 0.f},
         {kWallHalfW, kWallHalfH});
 
-    // Right boundary wall.
     m_World.AddStaticBoundary(
-        { (640.f + kWallHalfW), 0.f},
+        {(640.f + kWallHalfW), 0.f},
         {kWallHalfW, kWallHalfH});
 }
 
 void LocalPlayGameScene::OnEnter() {
-    int playerCount = 2;
-    if (m_LocalPlayScene != nullptr) {
-        playerCount = m_LocalPlayScene->GetPlayerCount();
-    }
-    playerCount = std::clamp(playerCount,
-                             LocalPlayScene::MIN_PLAYERS,
-                             LocalPlayScene::MAX_PLAYERS);
+    int playerCount = std::clamp(
+        m_Ctx.SelectedPlayerCount,
+        LocalPlayScene::MIN_PLAYERS,
+        LocalPlayScene::MAX_PLAYERS);
 
     m_Ctx.SelectedPlayerCount  = playerCount;
     m_Ctx.CooperativePushPower = 1;
 
-    // Hide the decorative startup cats while gameplay cats are active.
     for (auto& cat : m_Ctx.StartupCats) {
         if (cat != nullptr) {
             cat->SetVisible(false);
@@ -75,7 +66,12 @@ void LocalPlayGameScene::OnEnter() {
     m_World.Clear();
     SpawnPlayers(playerCount);
     SetupStaticBoundaries();
-
+    {
+        const float floorY     = m_Ctx.Floor->GetPosition().y;
+        const float floorHalfH = m_Ctx.Floor->GetScaledSize().y / 2.0f;
+        const float doorHalfH  = m_Ctx.Door->GetScaledSize().y / 2.0f;
+        m_Ctx.Door->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
+    }
     m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
 
     m_EnteredCount = 0;
@@ -120,9 +116,6 @@ Scene* LocalPlayGameScene::Update() {
         return m_LocalPlayScene;
     }
 
-    // --- Step 2: input phase ---
-    // SetMoveDir / Jump are called on each cat BEFORE m_World.Update().
-    // This is the correct input step of the two-phase contract.
     for (auto& pb : m_Players) {
         if (pb.entered || pb.cat == nullptr) continue;
 
@@ -143,7 +136,6 @@ Scene* LocalPlayGameScene::Update() {
         }
     }
 
-    // --- Step 3: door-entry check (before physics so positions are still correct) ---
     const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
     const glm::vec2 doorSize = m_Ctx.Door->GetScaledSize();
     const float halfW = doorSize.x / 2.f + 10.f;
@@ -156,14 +148,14 @@ Scene* LocalPlayGameScene::Update() {
         const bool      inRange = (std::abs(pos.x - doorPos.x) <= halfW &&
                                    std::abs(pos.y - doorPos.y) <= halfH);
         const bool pressedUp    = (pb.key.up != k::UNKNOWN) &&
-                                   ip::IsKeyDown(pb.key.up);
+                                  ip::IsKeyDown(pb.key.up);
 
         if (inRange && pressedUp) {
             pb.entered = true;
             ++m_EnteredCount;
             pb.cat->SetVisible(false);
             pb.cat->SetInputEnabled(false);
-            pb.cat->SetActive(false);           // remove from physics
+            pb.cat->SetActive(false);
             pb.cat->SetPosition({640.f, -360.f});
             UpdateDoorCountText();
 
@@ -174,10 +166,7 @@ Scene* LocalPlayGameScene::Update() {
         }
     }
 
-    // --- Step 4: unified two-phase physics ---
     m_World.Update();
-
-    // --- Step 5: game statistics (pure read, no physics displacement) ---
     UpdateCooperativePower();
 
     return nullptr;
@@ -198,16 +187,11 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 
         PlayerBinding pb;
         pb.cat = cat;
+        pb.key = m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)];
 
-        if (m_KbConfigScene != nullptr) {
-            pb.key = m_KbConfigScene->GetAppliedConfig(i);
-        }
-
-        // Fall back to defaults if the player has no configured keys.
         if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default1P;
-        }
-        else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
+        } else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default2P;
         }
 
@@ -217,7 +201,6 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 
     ApplyInitialFormation();
 
-    // Register every cat with the world after their initial positions are set.
     for (auto& pb : m_Players) {
         m_World.Register(pb.cat);
     }

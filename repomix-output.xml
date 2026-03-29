@@ -63,6 +63,7 @@ The content is organized as follows:
   OptionMenuScene.hpp
   PhysicsWorld.hpp
   PlayerCat.hpp
+  PlayerKeyConfig.hpp
   PushableBox.hpp
   SaveManager.hpp
   Scene.hpp
@@ -328,13 +329,18 @@ The content is organized as follows:
   Image/Character/yellow_cat/yellow_cat_stand_7.png
   Image/Character/yellow_cat/yellow_cat_stand_8.png
   Image/Level_Cover/02.png
+  Image/Level_Cover/Background_lwall.png
+  Image/Level_Cover/background_rwall.png
+  Image/Level_Cover/Ceiling.png
   Image/Level_Cover/Crown.png
   Image/Level_Cover/ExitFrame.png
   Image/Level_Cover/Key.png
   Image/Level_Cover/LevelExitScene.png
   Image/Level_Cover/LevelFour.png
   Image/Level_Cover/LevelOne.png
+  Image/Level_Cover/LevelOneScene/關卡敘述.txt
   Image/Level_Cover/LevelOneScene/Box.png
+  Image/Level_Cover/LevelOneScene/Floor.png
   Image/Level_Cover/LevelOneScene/Frame.png
   Image/Level_Cover/LevelOneScene/LevelOneScene.png
   Image/Level_Cover/LevelThree.png
@@ -402,6 +408,7 @@ class KeyboardConfigScene;
 class LocalPlayScene;
 class LocalPlayGameScene;
 class LevelSelectScene;
+class LevelOneScene;
 
 class App {
 public:
@@ -429,7 +436,7 @@ private:
     std::unique_ptr<Scene> m_LocalPlayScene;
     std::unique_ptr<Scene> m_LocalPlayGameScene;
     std::unique_ptr<Scene> m_LevelSelectScene;
-
+    std::array<std::unique_ptr<Scene>, 10> m_LevelXScenes; // 10 is num of level
 
     Scene* m_CurrentScene = nullptr;
 };
@@ -672,8 +679,11 @@ private:
 #include "Character.hpp"
 #include "PlayerCat.hpp"
 #include "PushableBox.hpp"
+#include "PlayerKeyConfig.hpp"
 #include <array>
 #include <vector>
+
+
 
 struct GameContext {
     Util::Renderer& Root;
@@ -692,6 +702,8 @@ struct GameContext {
 
     int  SelectedPlayerCount  = 2;
     int  CooperativePushPower = 1;
+
+    std::array<PlayerKeyConfig, 8> AppliedKeyConfigs{};
 
     static constexpr std::array<const char*, 8> kCatColorOrder = {
         "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"
@@ -724,10 +736,8 @@ struct GameContext {
 
 class GameText : public Util::GameObject {
 public:
-    GameText(const std::string& text, int size, const Util::Color& color)
-        : GameObject(std::make_unique<Util::Text>(GA_RESOURCE_DIR"/Font/TerminusTTFWindows-Bold-4.49.3.ttf", size, text, color), 100) {
-        m_Visible = true;
-    }
+    GameText(const std::string& text, int size) ;
+    GameText(const std::string& text, int size, const Util::Color& color) ;
 
     [[nodiscard]] bool GetVisibility() const { return m_Visible; }
     [[nodiscard]] glm::vec2 GetPosition() const { return m_Transform.translation; }
@@ -845,23 +855,10 @@ public:
 #include "Character.hpp"
 #include "GameText.hpp"
 #include "UITriangleButton.hpp"
+#include "PlayerKeyConfig.hpp"
 #include "Util/Keycode.hpp"
 
 class OptionMenuScene;
-
-struct PlayerKeyConfig {
-    Util::Keycode up         = Util::Keycode::UNKNOWN;
-    Util::Keycode down       = Util::Keycode::UNKNOWN;
-    Util::Keycode left       = Util::Keycode::UNKNOWN;
-    Util::Keycode right      = Util::Keycode::UNKNOWN;
-    Util::Keycode jump       = Util::Keycode::UNKNOWN;
-    Util::Keycode cancel     = Util::Keycode::UNKNOWN;
-    Util::Keycode shot       = Util::Keycode::UNKNOWN;
-    Util::Keycode menu       = Util::Keycode::UNKNOWN;  // only 1p
-    Util::Keycode subMenu    = Util::Keycode::UNKNOWN;  // only 1p
-
-    [[nodiscard]] std::vector<Util::Keycode> AllKeys() const;
-};
 
 class KeyboardConfigScene : public Scene {
 public:
@@ -967,6 +964,7 @@ private:
 
     void UpdateValueTexts()  const ;
     void UpdateChoiceFrame() const ;
+    void SyncAppliedToContext() const;
 
     [[nodiscard]] std::vector<Util::Keycode> GetConflicts() const;
     [[nodiscard]] bool HasConflicts() const { return !GetConflicts().empty(); }
@@ -985,40 +983,100 @@ private:
 </file>
 
 <file path="LevelOneScene.hpp">
+#ifndef LEVEL_ONE_SCENE_HPP
+#define LEVEL_ONE_SCENE_HPP
 
+#include <memory>
+#include <vector>
+
+#include "Scene.hpp"
+#include "PhysicsWorld.hpp"
+#include "Character.hpp"
+#include "PlayerCat.hpp"
+#include "PushableBox.hpp"
+#include "GameText.hpp"
+#include "PlayerKeyConfig.hpp"
+
+class LevelSelectScene;
+
+class LevelOneScene : public Scene {
+public:
+    LevelOneScene(GameContext& ctx,
+                  LevelSelectScene* levelSelectScene);
+    ~LevelOneScene() override = default;
+
+    void OnEnter() override;
+    void OnExit() override;
+    Scene* Update() override;
+
+    void SetLevelExitScene(Scene* s) { m_LevelExitScene = s; }
+
+private:
+    struct PlayerBinding {
+        std::shared_ptr<PlayerCat> cat;
+        PlayerKeyConfig            key;
+    };
+
+    void SetupStaticBoundaries();
+    void SpawnPlayers(int count);
+    void ApplyInitialFormation();
+
+    void HandlePlayerInput() const;
+    void UpdateTimerText() const;
+
+    void TryPickKey();
+    void UpdateKeyFollow() const;
+    void TryOpenDoorAndClear();
+
+    static bool AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
+                            const glm::vec2& bPos, const glm::vec2& bHalf);
+
+    static constexpr int   kLevelIndex = 0;
+    static constexpr float kRoomLeftX  = -624.0f;
+    static constexpr float kRoomRightX =  624.0f;
+    static constexpr float kRoomTopY   =  337.0f;
+    static constexpr float kRoomFloorY = -337.0f;
+
+    static constexpr glm::vec2 kKeyHalf  = {20.0f, 26.0f};
+    static constexpr glm::vec2 kDoorHalf = {31.0f, 34.0f};
+
+    PhysicsWorld m_World;
+
+    std::shared_ptr<Character>   m_FloorSprite;
+    std::shared_ptr<Character>   m_LeftWallSprite;
+    std::shared_ptr<Character>   m_RightWallSprite;
+    std::shared_ptr<Character>   m_CeilingSprite;
+    std::shared_ptr<Character>   m_KeySprite;
+    std::shared_ptr<PushableBox> m_BoxA;
+    std::shared_ptr<PushableBox> m_BoxB;
+
+    std::shared_ptr<GameText> m_TimerText;
+
+    std::vector<PlayerBinding> m_Players;
+
+    glm::vec2 m_KeyInitialPos = {-400.0f, -220.0f};
+    glm::vec2 m_DoorPos       = { 420.0f, kRoomFloorY + kDoorHalf.y };
+
+    int   m_KeyCarrierIdx = -1;
+    bool  m_DoorOpened    = false;
+    float m_ElapsedSec    = 0.0f;
+
+    Scene*            m_LevelExitScene   = nullptr;
+    LevelSelectScene* m_LevelSelectScene = nullptr;
+
+    // enter door
+    void UpdateDoorEntryAndClear();
+    std::vector<bool> m_PlayerEntered;
+    int  m_EnteredCount = 0;
+    bool m_ClearDone    = false;
+};
+
+#endif // LEVEL_ONE_SCENE_HPP
 </file>
 
 <file path="LevelSelectScene.hpp">
 //
 // Created by cody2 on 2026/3/24.
-//
-
-//
-// LevelSelectScene.hpp
-//
-// 關卡選擇場景
-//
-// 畫面結構(由上至下，座標以畫面中心為原點)：
-//
-//   LEVEL n(標題，置中，y ≈ +240)
-//
-//   關卡列表 2 × 5 網格(共 10 關)：
-//     上排(y ≈ +60)  ：Level 1 | Level 2 | Level 3 | Level 4 | Level 5
-//     下排(y ≈ -80)  ：Level 6 | Level 7 | Level 8 | Level 9 | Level 10
-//     橫向格距 128 px，最左格中心 x = -256
-//
-//   m PLAYERS BEST TIME: mm:ss.cs(置中，y ≈ -238)
-//
-// 操作方式：
-//   WASD / ↑↓←→       ：移動橘色選擇框
-//   IsMouseHovering    ：滑鼠懸停自動切換選中關卡
-//   ENTER / 滑鼠左鍵   ：進入選中關卡(對應 LevelOneScene…，尚未實作時回傳 nullptr)
-//   ESC                ：返回 LocalPlayGameScene(重新進入門前準備)
-//
-// 皇冠與最佳時間：
-//   completed = true 的關卡左上方顯示 "★"(橘色)
-//   最佳時間依 m_Ctx.SelectedPlayerCount(前一場景設定)分類顯示
-//   資料來源：GA_RESOURCE_DIR/Save/save_data.json(透過 SaveManager 存取)
 //
 
 #ifndef LEVEL_SELECT_SCENE_HPP
@@ -1044,10 +1102,10 @@ public:
     void   OnExit()  override;
     Scene* Update()  override;
 
-    // void SetLevelScene(int levelIdx, Scene* scene) {
-    //     if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)
-    //         m_LevelScenes[levelIdx] = scene;
-    // }
+    void SetLevelScene(int levelIdx, Scene* scene) {
+        if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)
+            m_LevelScenes[levelIdx] = scene;
+    }
 
     static constexpr int   LEVEL_COUNT = 10;
     static constexpr int   COLS        = 5;
@@ -1064,18 +1122,12 @@ public:
         "/Image/Level_Cover/LevelTwo.png",
         "/Image/Level_Cover/LevelThree.png",
         "/Image/Level_Cover/LevelFour.png",
-        // "/Image/Level_Cover/LevelFive.png",
-        // "/Image/Level_Cover/LevelSix.png",
-        // "/Image/Level_Cover/LevelSeven.png",
-        // "/Image/Level_Cover/LevelEight.png",
-        // "/Image/Level_Cover/LevelNine.png",
-        // "/Image/Level_Cover/LevelTen.png"
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png"
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png"  // ignore
     };
 
 private:
@@ -1092,11 +1144,7 @@ private:
     std::array<LevelSaveData, LEVEL_COUNT> m_LevelData;
 
     LocalPlayGameScene*             m_LocalPlayGameScene = nullptr;
-    // std::array<Scene*, LEVEL_COUNT> m_LevelScenes;
-
-    static const Util::Color kBlack;
-    static const Util::Color kOrange;
-    static const Util::Color kGray;
+    std::array<Scene*, LEVEL_COUNT> m_LevelScenes;
 
     void UpdateSelectorPos()  const;
     void UpdateTitleText()    const;
@@ -1113,7 +1161,6 @@ private:
 
 #include <vector>
 #include <memory>
-
 #include "Scene.hpp"
 #include "PlayerCat.hpp"
 #include "PhysicsWorld.hpp"
@@ -1125,8 +1172,7 @@ class LevelSelectScene;
 class LocalPlayGameScene : public Scene {
 public:
     LocalPlayGameScene(GameContext& ctx,
-                       LocalPlayScene*      localPlayScene,
-                       KeyboardConfigScene* kbConfigScene);
+                       LocalPlayScene*      localPlayScene);
     ~LocalPlayGameScene() override = default;
 
     void   OnEnter() override;
@@ -1143,20 +1189,10 @@ private:
         bool                       entered = false;
     };
 
-    // Registers floor, walls, and ceiling as StaticBodies in m_World.
     void SetupStaticBoundaries();
-
-    // Creates PlayerCat instances, assigns key configs, registers into m_World.
     void SpawnPlayers(int count);
-
-    // Places spawned cats in the initial side formation.
     void ApplyInitialFormation();
-
-    // Reads touch/direction state and writes m_Ctx.CooperativePushPower.
-    // Pure statistics; does not move any body.
     void UpdateCooperativePower() const;
-
-    // Updates the "N/total" label above the door.
     void UpdateDoorCountText() const;
 
     std::shared_ptr<GameText> m_DoorCountText;
@@ -1164,7 +1200,6 @@ private:
 
     LevelSelectScene*    m_LevelSelectScene = nullptr;
     LocalPlayScene*      m_LocalPlayScene   = nullptr;
-    KeyboardConfigScene* m_KbConfigScene    = nullptr;
 
     PhysicsWorld               m_World;
     std::vector<PlayerBinding> m_Players;
@@ -1690,6 +1725,34 @@ private:
 #endif // PLAYER_CAT_HPP
 </file>
 
+<file path="PlayerKeyConfig.hpp">
+//
+// Created by cody2 on 2026/3/29.
+//
+
+#ifndef PLAYER_KEY_CONFIG_HPP
+#define PLAYER_KEY_CONFIG_HPP
+
+#include <vector>
+#include "Util/Keycode.hpp"
+
+struct PlayerKeyConfig {
+    Util::Keycode up      = Util::Keycode::UNKNOWN;
+    Util::Keycode down    = Util::Keycode::UNKNOWN;
+    Util::Keycode left    = Util::Keycode::UNKNOWN;
+    Util::Keycode right   = Util::Keycode::UNKNOWN;
+    Util::Keycode jump    = Util::Keycode::UNKNOWN;
+    Util::Keycode cancel  = Util::Keycode::UNKNOWN;
+    Util::Keycode shot    = Util::Keycode::UNKNOWN;
+    Util::Keycode menu    = Util::Keycode::UNKNOWN;
+    Util::Keycode subMenu = Util::Keycode::UNKNOWN;
+
+    [[nodiscard]] std::vector<Util::Keycode> AllKeys() const;
+};
+
+#endif // PLAYER_KEY_CONFIG_HPP
+</file>
+
 <file path="PushableBox.hpp">
 //
 // Created by cody2 on 2026/3/26.
@@ -1722,8 +1785,7 @@ public:
 
     [[nodiscard]] BodyType  GetBodyType() const override { return BodyType::PUSHABLE_BOX; }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
-    void                    SetPosition(const glm::vec2& pos) override
-                                { Character::SetPosition(pos); }
+    void                    SetPosition(const glm::vec2& pos) override ;
     [[nodiscard]] glm::vec2 GetHalfSize() const override
                                 { return glm::abs(GetScaledSize()) * 0.5f; }
 
@@ -1742,11 +1804,11 @@ private:
     void NotifyAdjacentPushers(int activeDir) const;
 
     PhysicsWorld* m_World           = nullptr;
-    int           m_RequiredPushers = 2;
+    int           m_RequiredPushers = 1;
     float         m_VelocityY       = 0.f;
     glm::vec2     m_DesiredDelta    = {0.f, 0.f};
 
-    std::shared_ptr<GameText> m_CountText;
+    std::shared_ptr<GameText> m_CountText ;
 };
 
 #endif // PICOPART_PUSHABLEBOX_HPP
@@ -2007,12 +2069,13 @@ void App::End() {
 #include "LocalPlayScene.hpp"
 #include "LocalPlayGameScene.hpp"
 #include "LevelSelectScene.hpp"
+#include "LevelOneScene.hpp"
 
 #include "Util/Logger.hpp"
 #include <array>
 #include <cmath>
 
-using namespace std ;
+using namespace std;
 
 void App::Start() {
     LOG_TRACE("Start");
@@ -2039,24 +2102,23 @@ void App::Start() {
 
     m_Ctx->Door = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/door_close.png");
-    m_Ctx->Door->SetScale({0.148f, 0.161f});   // ← 新增這一行
+    m_Ctx->Door->SetScale({0.148f, 0.161f});
     m_Ctx->Door->SetZIndex(5.0f);
     {
         const float floorY     = m_Ctx->Floor->GetPosition().y;
         const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
-        const float doorHalfH  = m_Ctx->Door->GetScaledSize().y  / 2.0f;
+        const float doorHalfH  = m_Ctx->Door->GetScaledSize().y / 2.0f;
         m_Ctx->Door->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
     }
     m_Root.AddChild(m_Ctx->Door);
 
-    m_Ctx->TestBox = make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1); // 假設需要 1 人推動
-    m_Ctx->TestBox->SetZIndex(15.0f); // 讓它跟貓咪同一個圖層
+    m_Ctx->TestBox = make_shared<PushableBox>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1);
+    m_Ctx->TestBox->SetZIndex(15.0f);
     {
         const float floorY     = m_Ctx->Floor->GetPosition().y;
         const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
         const float boxHalfH   = m_Ctx->TestBox->GetScaledSize().y / 2.0f;
-
-        // 讓箱子完美貼齊地板
         m_Ctx->TestBox->SetPosition({400.0f, floorY + floorHalfH + boxHalfH});
     }
     m_Root.AddChild(m_Ctx->TestBox);
@@ -2064,7 +2126,6 @@ void App::Start() {
         m_Ctx->TestBox->GetTextObject()->SetZIndex(16.0f);
         m_Root.AddChild(m_Ctx->TestBox->GetTextObject());
     }
-    // ====
 
     m_Ctx->BGMPlayer = make_shared<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
@@ -2081,8 +2142,7 @@ void App::Start() {
             left  = Util::Keycode::A;
             right = Util::Keycode::D;
             jump  = Util::Keycode::W;
-        }
-        else if (i == 1) {
+        } else if (i == 1) {
             left  = Util::Keycode::LEFT;
             right = Util::Keycode::RIGHT;
             jump  = Util::Keycode::UP;
@@ -2097,7 +2157,6 @@ void App::Start() {
         m_Ctx->StartupCats.push_back(cat);
     }
 
-    // 計算初始位置
     const float floorY      = m_Ctx->Floor->GetPosition().y;
     const float floorHalfH  = m_Ctx->Floor->GetScaledSize().y / 2.0f;
 
@@ -2124,7 +2183,6 @@ void App::Start() {
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 
-    // 場景建立
     auto titleScene = make_unique<TitleScene>(*m_Ctx, nullptr);
 
     auto menuScene = make_unique<MenuScene>(
@@ -2153,17 +2211,20 @@ void App::Start() {
         menuScene->GetExitGameButton(),
         menuScene->GetLeftTriButton(),
         menuScene->GetRightTriButton(),
-        menuScene->GetBlueCatRunImg(),   // ← 新增
+        menuScene->GetBlueCatRunImg(),
         kbConfigScene.get());
 
     auto localPlayGameScene = make_unique<LocalPlayGameScene>(
         *m_Ctx,
-        localPlayScene.get(),
-        kbConfigScene.get());
+        localPlayScene.get());
 
     auto levelSelectScene = make_unique<LevelSelectScene>(
         *m_Ctx,
         localPlayGameScene.get());
+
+    auto levelOneScene = make_unique<LevelOneScene>(
+        *m_Ctx,
+        levelSelectScene.get());
 
     titleScene->SetMenuScene(menuScene.get());
     menuScene->SetExitConfirmScene(exitConfirmScene.get());
@@ -2172,6 +2233,8 @@ void App::Start() {
     optionMenuScene->SetKeyboardConfigScene(kbConfigScene.get());
     localPlayScene->SetGameScene(localPlayGameScene.get());
     localPlayGameScene->SetLevelSelectScene(levelSelectScene.get());
+
+    levelSelectScene->SetLevelScene(0, levelOneScene.get());
 
     m_TitleScene          = std::move(titleScene);
     m_MenuScene           = std::move(menuScene);
@@ -2182,8 +2245,13 @@ void App::Start() {
     m_LocalPlayGameScene  = std::move(localPlayGameScene);
     m_LevelSelectScene    = std::move(levelSelectScene);
 
-    TransitionTo(m_TitleScene.get());
+    for (auto& s : m_LevelXScenes) {
+        s.reset();
+    }
+    m_LevelXScenes[0] = std::move(levelOneScene);
 
+    TransitionTo(m_TitleScene.get()); // ture scene
+    // TransitionTo(m_LevelXScenes[0].get()) ; // test
     m_CurrentState = State::UPDATE;
 }
 </file>
@@ -2580,6 +2648,18 @@ void ExitConfirmScene::UpdateChoiceFramePosition() const {
 #include "GameText.hpp"
 #include "AppUtil.hpp"
 
+const Util::Color kOrange = Util::Color::FromRGB(255, 140,   0, 255);
+
+GameText::GameText(const std::string& text, int size)
+    : GameObject(std::make_unique<Util::Text>(GA_RESOURCE_DIR"/Font/TerminusTTFWindows-Bold-4.49.3.ttf", size, text, kOrange), 100) {
+    m_Visible = true;
+}
+
+GameText::GameText(const std::string& text, int size, const Util::Color& color)
+    : GameObject(std::make_unique<Util::Text>(GA_RESOURCE_DIR"/Font/TerminusTTFWindows-Bold-4.49.3.ttf", size, text, color), 100) {
+    m_Visible = true;
+}
+
 void GameText::SetColor(const Util::Color& color) const {
     if (auto t = std::dynamic_pointer_cast<Util::Text>(m_Drawable)) {
         t->SetColor(color);
@@ -2608,10 +2688,8 @@ bool GameText::IsLeftClicked() const {
 
 #include "SaveManager.hpp"
 #include "AppUtil.hpp"
-
 #include "KeyboardConfigScene.hpp"
 #include "OptionMenuScene.hpp"
-
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -2771,6 +2849,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
             }
         }
     }
+    SyncAppliedToContext();
 }
 
 void KeyboardConfigScene::OnEnter() {
@@ -2852,20 +2931,17 @@ Scene* KeyboardConfigScene::Update() {
     }
 
     if (Input::IsKeyDown(Keycode::ESCAPE) ||
-        m_ExitGameButton->IsLeftClicked()              ||
-        m_CancelText->IsLeftClicked())
-    {
+        m_ExitGameButton->IsLeftClicked() ||
+        m_CancelText->IsLeftClicked()) {
         return m_OptionScene;
     }
 
     if (Input::IsKeyDown(Keycode::W) ||
-        Input::IsKeyDown(Keycode::UP))
-    {
+        Input::IsKeyDown(Keycode::UP)) {
         DecrementRow();
     }
     else if (Input::IsKeyDown(Keycode::S) ||
-             Input::IsKeyDown(Keycode::DOWN))
-    {
+             Input::IsKeyDown(Keycode::DOWN)) {
         IncrementRow();
     }
 
@@ -2978,6 +3054,13 @@ void KeyboardConfigScene::CommitPending() {
         for (int i = 0; i < MAX_PLAYERS; ++i)
             saveData[i] = toData(m_Applied[i]);
         SaveManager::SaveKeyConfigs(saveData);
+    }
+    SyncAppliedToContext();
+}
+
+void KeyboardConfigScene::SyncAppliedToContext() const {
+    for (int i=0;i<MAX_PLAYERS;++i) {
+        m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)] = m_Applied[i];
     }
 }
 
@@ -3102,7 +3185,397 @@ int KeyboardConfigScene::GetConfiguredPlayerCount() const {
 </file>
 
 <file path="LevelOneScene.cpp">
+#include "LevelOneScene.hpp"
+#include <algorithm>
+#include <cmath>
+#include "CatAssets.hpp"
+#include "KeyboardConfigScene.hpp"
+#include "LevelSelectScene.hpp"
+#include "SaveManager.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+#include "Util/Logger.hpp"
+#include "Util/Time.hpp"
 
+using ip = Util::Input;
+using k  = Util::Keycode;
+
+LevelOneScene::LevelOneScene(GameContext& ctx,
+                             LevelSelectScene* levelSelectScene)
+    : Scene(ctx)
+    , m_LevelSelectScene(levelSelectScene)
+{
+    m_FloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Floor.png");
+    m_LeftWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_lwall.png");
+    m_RightWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_rwall.png");
+    m_CeilingSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Ceiling.png");
+
+    m_KeySprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Key.png");
+
+    m_BoxA = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", m_Ctx.SelectedPlayerCount-1);
+    m_BoxB = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", m_Ctx.SelectedPlayerCount);
+
+    m_TimerText = std::make_shared<GameText>("TIME 00:00.00", 42, Util::Color::FromRGB(255, 140, 0, 255));
+
+    m_FloorSprite->SetZIndex(4.0f);
+    m_LeftWallSprite->SetZIndex(4.1f);
+    m_RightWallSprite->SetZIndex(4.1f);
+    m_CeilingSprite->SetZIndex(4.0f);
+
+    m_BoxA->SetZIndex(15.0f);
+    m_BoxB->SetZIndex(15.0f);
+
+    m_KeySprite->SetZIndex(18.0f);
+
+    m_TimerText->SetZIndex(40.0f);
+    m_TimerText->SetPosition({450.0f, 320.0f});
+}
+
+bool LevelOneScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
+                                const glm::vec2& bPos, const glm::vec2& bHalf) {
+    return std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) &&
+           std::abs(aPos.y - bPos.y) < (aHalf.y + bHalf.y);
+}
+
+void LevelOneScene::SetupStaticBoundaries() {
+    constexpr float wallHalfW  = 32.0f;
+    constexpr float wallHalfH  = 360.0f;
+    constexpr float floorHalfH = 35.0f;
+    constexpr float ceilHalfH  = 35.0f;
+
+    // Derive the physical floor surface from the visual floor sprite.
+    // This keeps collider and art aligned.
+    float floorSurfaceY = kRoomFloorY;
+    if (m_FloorSprite) {
+        floorSurfaceY = m_FloorSprite->GetPosition().y
+                      + m_FloorSprite->GetScaledSize().y * 0.5f;
+    }
+
+    float ceilingSurfaceY = kRoomTopY;
+    if (m_CeilingSprite) {
+        ceilingSurfaceY = m_CeilingSprite->GetPosition().y
+                        - m_CeilingSprite->GetScaledSize().y * 0.5f;
+    }
+
+    // Floor collider: top edge = floorSurfaceY.
+    m_World.AddStaticBoundary({0.0f, floorSurfaceY - floorHalfH}, {600.0f, floorHalfH});
+
+    // Ceiling collider: bottom edge = ceilingSurfaceY.
+    m_World.AddStaticBoundary({0.0f, ceilingSurfaceY + ceilHalfH}, {600.0f, ceilHalfH});
+
+    // Side walls.
+    m_World.AddStaticBoundary({kRoomLeftX - wallHalfW,  0.0f}, {wallHalfW, wallHalfH});
+    m_World.AddStaticBoundary({kRoomRightX + wallHalfW, 0.0f}, {wallHalfW, wallHalfH});
+}
+
+
+void LevelOneScene::SpawnPlayers(int count) {
+    m_Players.clear();
+    m_Players.reserve(static_cast<size_t>(count));
+
+    for (int i = 0; i < count; ++i) {
+        const std::string color = GameContext::kCatColorOrder[static_cast<size_t>(i)];
+        auto cat = std::make_shared<PlayerCat>(
+            CatAssets::BuildFullAnimPaths(color),
+            k::UNKNOWN, k::UNKNOWN, k::UNKNOWN);
+
+        PlayerBinding pb;
+        pb.cat = cat;
+        pb.key = m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)];
+
+        if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
+            pb.key = KeyboardConfigScene::k_Default1P;
+        } else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
+            pb.key = KeyboardConfigScene::k_Default2P;
+        }
+
+        cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
+        m_Players.push_back(pb);
+        m_Ctx.Root.AddChild(cat);
+    }
+
+    ApplyInitialFormation();
+
+    for (auto& pb : m_Players) {
+        m_World.Register(pb.cat);
+    }
+}
+
+void LevelOneScene::ApplyInitialFormation() {
+    const float playerY = kRoomFloorY + PlayerCat::kHalfHeight;
+
+    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
+        auto& pb = m_Players[i];
+        if (pb.cat == nullptr) continue;
+
+        const float x = -40.0f + static_cast<float>(i) * 45.0f;
+        pb.cat->SetPosition({x, playerY});
+    }
+}
+
+void LevelOneScene::OnEnter() {
+    const int playerCount = std::clamp(m_Ctx.SelectedPlayerCount, 2, 8);
+    m_Ctx.SelectedPlayerCount = playerCount;
+
+    m_PlayerEntered.assign(static_cast<size_t>(playerCount), false);
+    m_EnteredCount = 0;
+    m_ClearDone = false;
+
+    m_World.Clear();
+    m_ElapsedSec = 0.0f;
+    m_KeyCarrierIdx = -1;
+    m_DoorOpened = false;
+
+    if (m_Ctx.Header) m_Ctx.Header->SetVisible(false);
+    if (m_Ctx.Floor)  m_Ctx.Floor->SetVisible(false);
+
+    if (m_Ctx.TestBox) {
+        m_Ctx.TestBox->SetVisible(false);
+        if (m_Ctx.TestBox->GetTextObject()) {
+            m_Ctx.TestBox->GetTextObject()->SetVisible(false);
+        }
+    }
+
+    if (m_Ctx.Door) {
+        m_Ctx.Door->SetVisible(true);
+        m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+        m_Ctx.Door->SetPosition(m_DoorPos);
+    }
+
+    for (auto& cat : m_Ctx.StartupCats) {
+        if (cat) cat->SetVisible(false);
+    }
+
+    // Place floor so its top edge is exactly kRoomFloorY.
+    float floorSurfaceY = kRoomFloorY;
+    if (m_FloorSprite) {
+        const float floorHalfH = m_FloorSprite->GetScaledSize().y * 0.5f;
+        m_FloorSprite->SetPosition({0.0f, kRoomFloorY - floorHalfH});
+        floorSurfaceY = m_FloorSprite->GetPosition().y + floorHalfH;
+    }
+
+    // Place ceiling so its bottom edge is kRoomTopY.
+    if (m_CeilingSprite) {
+        const float ceilHalfH = m_CeilingSprite->GetScaledSize().y * 0.5f;
+        m_CeilingSprite->SetPosition({0.0f, kRoomTopY + ceilHalfH});
+    }
+
+    m_LeftWallSprite->SetPosition({kRoomLeftX, 0.0f});
+    m_RightWallSprite->SetPosition({kRoomRightX, 0.0f});
+    m_KeySprite->SetPosition(m_KeyInitialPos);
+
+    // Spawn boxes using real physics half height, no hardcoded magic number.
+    const float boxAY = floorSurfaceY + m_BoxA->GetHalfSize().y;
+    const float boxBY = floorSurfaceY + m_BoxB->GetHalfSize().y;
+    m_BoxA->SetPosition({-120.0f, boxAY});
+    m_BoxB->SetPosition({ 120.0f, boxBY});
+    m_BoxA->SetWorld(&m_World);
+    m_BoxB->SetWorld(&m_World);
+
+    m_Ctx.Root.AddChild(m_FloorSprite);
+    m_Ctx.Root.AddChild(m_LeftWallSprite);
+    m_Ctx.Root.AddChild(m_RightWallSprite);
+    m_Ctx.Root.AddChild(m_CeilingSprite);
+    m_Ctx.Root.AddChild(m_KeySprite);
+
+    m_Ctx.Root.AddChild(m_BoxA);
+    m_Ctx.Root.AddChild(m_BoxB);
+
+    if (m_BoxA->GetTextObject()) {
+        m_BoxA->GetTextObject()->SetZIndex(16.0f);
+        m_Ctx.Root.AddChild(m_BoxA->GetTextObject());
+    }
+    if (m_BoxB->GetTextObject()) {
+        m_BoxB->GetTextObject()->SetZIndex(16.0f);
+        m_Ctx.Root.AddChild(m_BoxB->GetTextObject());
+    }
+
+    m_Ctx.Root.AddChild(m_TimerText);
+    UpdateTimerText();
+
+    SpawnPlayers(playerCount);
+
+    // Ensure player spawn also lands on the same physical floor surface.
+    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
+        auto& pb = m_Players[i];
+        if (pb.cat == nullptr) continue;
+        const float x = -40.0f + static_cast<float>(i) * 45.0f;
+        const float y = floorSurfaceY + PlayerCat::kHalfHeight;
+        pb.cat->SetPosition({x, y});
+    }
+
+    m_World.Register(m_BoxA);
+    m_World.Register(m_BoxB);
+    SetupStaticBoundaries();
+
+    LOG_INFO("LevelOneScene::OnEnter players={}", playerCount);
+}
+
+
+void LevelOneScene::OnExit() {
+    for (auto& pb : m_Players) {
+        if (pb.cat) m_Ctx.Root.RemoveChild(pb.cat);
+    }
+    m_Players.clear();
+
+    m_World.Clear();
+
+    m_Ctx.Root.RemoveChild(m_FloorSprite);
+    m_Ctx.Root.RemoveChild(m_LeftWallSprite);
+    m_Ctx.Root.RemoveChild(m_RightWallSprite);
+    m_Ctx.Root.RemoveChild(m_CeilingSprite);
+    m_Ctx.Root.RemoveChild(m_KeySprite);
+    m_Ctx.Root.RemoveChild(m_BoxA);
+    m_Ctx.Root.RemoveChild(m_BoxB);
+    m_Ctx.Root.RemoveChild(m_TimerText);
+
+    if (m_BoxA && m_BoxA->GetTextObject()) m_Ctx.Root.RemoveChild(m_BoxA->GetTextObject());
+    if (m_BoxB && m_BoxB->GetTextObject()) m_Ctx.Root.RemoveChild(m_BoxB->GetTextObject());
+
+    m_Ctx.Header->SetVisible(false);
+    m_Ctx.Floor->SetVisible(false);
+    m_Ctx.TestBox->SetVisible(false);
+    m_Ctx.TestBox->GetTextObject()->SetVisible(false);
+
+
+    if (m_Ctx.Door) {
+        m_Ctx.Door->SetVisible(false);
+        m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    }
+
+    for (auto& cat : m_Ctx.StartupCats) {
+        if (cat) cat->SetVisible(true);
+    }
+}
+
+void LevelOneScene::HandlePlayerInput() const {
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr) continue;
+
+        int moveDir = 0;
+        const bool goLeft  = (pb.key.left  != k::UNKNOWN) && ip::IsKeyPressed(pb.key.left);
+        const bool goRight = (pb.key.right != k::UNKNOWN) && ip::IsKeyPressed(pb.key.right);
+
+        if (goLeft && !goRight) moveDir = -1;
+        else if (goRight && !goLeft) moveDir = 1;
+
+        pb.cat->SetMoveDir(moveDir);
+
+        const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
+        if (pb.cat->IsGrounded() && wantJump) {
+            pb.cat->Jump();
+        }
+    }
+}
+
+void LevelOneScene::UpdateTimerText() const {
+    m_TimerText->SetText("TIME " + SaveManager::FormatTime(m_ElapsedSec));
+}
+
+void LevelOneScene::TryPickKey() {
+    if (m_KeyCarrierIdx >= 0) return;
+
+    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
+        if (m_Players[i].cat == nullptr) continue;
+        if (AabbOverlap(m_Players[i].cat->GetPosition(), m_Players[i].cat->GetHalfSize(),
+                        m_KeySprite->GetPosition(), kKeyHalf)) {
+            m_KeyCarrierIdx = i;
+            return;
+        }
+    }
+}
+
+void LevelOneScene::UpdateKeyFollow() const {
+    if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
+    const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
+    if (carrier == nullptr) return;
+
+    m_KeySprite->SetPosition(carrier->GetPosition() + glm::vec2{-28.0f, 28.0f});
+}
+
+void LevelOneScene::TryOpenDoorAndClear() {
+    if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
+    if (m_Ctx.Door == nullptr || m_DoorOpened) return;
+
+    const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
+    if (carrier == nullptr) return;
+
+    const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
+    const glm::vec2 doorHalf = glm::abs(m_Ctx.Door->GetScaledSize()) * 0.5f;
+
+    const bool carrierTouchDoor = AabbOverlap(
+        carrier->GetPosition(), carrier->GetHalfSize(),
+        doorPos, doorHalf
+    );
+
+    if (carrierTouchDoor) {
+        m_DoorOpened = true;
+        m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+        m_KeySprite->SetVisible(false);
+    }
+}
+
+void LevelOneScene::UpdateDoorEntryAndClear() {
+    if (!m_DoorOpened || m_Ctx.Door == nullptr) return;
+
+    const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
+    const glm::vec2 doorHalf = glm::abs(m_Ctx.Door->GetScaledSize()) * 0.5f;
+    const int totalPlayers   = static_cast<int>(m_Players.size());
+
+    for (int i = 0; i < totalPlayers; ++i) {
+        if (i >= static_cast<int>(m_PlayerEntered.size())) break;
+        if (m_PlayerEntered[static_cast<size_t>(i)]) continue;
+
+        auto& pb  = m_Players[i];
+        auto& cat = pb.cat;
+        if (cat == nullptr) continue;
+
+        const bool touchingDoor = AabbOverlap(
+            cat->GetPosition(), cat->GetHalfSize(),
+            doorPos, doorHalf
+        );
+
+        // Entering the door requires pressing UP.
+        const bool pressedUp = (pb.key.up != k::UNKNOWN) && ip::IsKeyDown(pb.key.up);
+
+        if (!(touchingDoor && pressedUp)) continue;
+
+        m_PlayerEntered[static_cast<size_t>(i)] = true;
+        ++m_EnteredCount;
+
+        cat->SetVisible(false);
+        cat->SetInputEnabled(false);
+        cat->SetActive(false);
+        cat->SetPosition({640.0f, -360.0f});
+    }
+
+    if (!m_ClearDone && m_EnteredCount == totalPlayers) {
+        SaveManager::UpdateBestTime(kLevelIndex, m_Ctx.SelectedPlayerCount, m_ElapsedSec);
+        m_ClearDone = true;
+    }
+}
+
+Scene* LevelOneScene::Update() {
+    if (ip::IsKeyDown(k::ESCAPE)) {
+        return m_LevelExitScene;
+    }
+
+    HandlePlayerInput();
+    m_World.Update();
+
+    m_ElapsedSec += Util::Time::GetDeltaTimeMs() / 1000.0f;
+    UpdateTimerText();
+
+    TryPickKey();
+    UpdateKeyFollow();
+    TryOpenDoorAndClear();
+    UpdateDoorEntryAndClear();
+    if (m_ClearDone) {
+        return m_LevelSelectScene;
+    }
+
+    return nullptr;
+}
 </file>
 
 <file path="LevelSelectScene.cpp">
@@ -3116,10 +3589,6 @@ int KeyboardConfigScene::GetConfiguredPlayerCount() const {
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 
-const Util::Color LevelSelectScene::kBlack  = Util::Color::FromRGB(  0,   0,   0, 255);
-const Util::Color LevelSelectScene::kOrange = Util::Color::FromRGB(255, 140,   0, 255);
-const Util::Color LevelSelectScene::kGray   = Util::Color::FromRGB(150, 150, 150, 255);
-
 LevelSelectScene::LevelSelectScene(GameContext& ctx,
                                    LocalPlayGameScene* localPlayGameScene)
     : Scene(ctx)
@@ -3129,7 +3598,7 @@ LevelSelectScene::LevelSelectScene(GameContext& ctx,
         GA_RESOURCE_DIR "/Image/Background/level_select_frame.png");
     m_SelectorFrame->SetZIndex(32);
 
-    m_TitleText = std::make_shared<GameText>("LEVEL 1", 78, kOrange);
+    m_TitleText = std::make_shared<GameText>("LEVEL 1", 78);
     m_TitleText->SetZIndex(35);
     m_TitleText->SetPosition({0.0f, 270.0f});
 
@@ -3142,12 +3611,12 @@ LevelSelectScene::LevelSelectScene(GameContext& ctx,
 
         m_Crown[i] = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Crown.png");
         m_Crown[i]->SetZIndex(36);
-        m_Crown[i]->SetPosition({cp.x - 36.0f, cp.y + 32.0f});
+        m_Crown[i]->SetPosition({cp.x - 60.0f, cp.y + 60.0f});
         m_Crown[i]->SetVisible(false);
     }
 
     m_BestTimeText = std::make_shared<GameText>(
-        "2 PLAYERS BEST TIME: --:--.--", 48, kOrange);
+        "2 PLAYERS BEST TIME: --:--.--", 48);
     m_BestTimeText->SetZIndex(35);
     m_BestTimeText->SetPosition({0.0f, -278.0f});
 }
@@ -3180,9 +3649,9 @@ void LevelSelectScene::OnEnter() {
     }
 
     m_Ctx.Header->SetVisible(false);
-    m_Ctx.Header->SetVisible(false);
     if (m_Ctx.Floor != nullptr) m_Ctx.Floor->SetVisible(false);
     if (m_Ctx.Door != nullptr)  m_Ctx.Door->SetVisible(false);
+    m_Ctx.TestBox->SetVisible(false);
     for (auto& cat : m_Ctx.StartupCats) {
         if (cat != nullptr) cat->SetVisible(false);
     }
@@ -3271,13 +3740,11 @@ Scene* LevelSelectScene::Update() {
     }
 
     if (confirmed) {
-    //     Scene* target = m_LevelScenes[m_SelectedIdx];
-    //     if (target != nullptr) {
-    //         LOG_INFO("LevelSelectScene: entering Level {}", m_SelectedIdx + 1);
-    //         return target;
-    //     }
-    //     // 關卡尚未實作：留在此場景(可在此加提示文字)
-    //     LOG_INFO("LevelSelectScene: Level {} not implemented yet", m_SelectedIdx + 1);
+        if (m_LevelScenes[m_SelectedIdx] != nullptr) {
+            LOG_INFO("LevelSelectScene: entering Level {}",m_SelectedIdx+1);
+            return m_LevelScenes[m_SelectedIdx];
+        }
+        LOG_INFO("LevelSelectScene: Level {} not implemented yet", m_SelectedIdx+1);
     }
 
     return nullptr;
@@ -3312,6 +3779,7 @@ void LevelSelectScene::UpdateCrowns() const {
 #include "LocalPlayGameScene.hpp"
 #include "LocalPlayScene.hpp"
 #include "LevelSelectScene.hpp"
+#include "KeyboardConfigScene.hpp"
 #include "CatAssets.hpp"
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
@@ -3322,11 +3790,9 @@ using ip = Util::Input;
 using k  = Util::Keycode;
 
 LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
-                                       LocalPlayScene*      localPlayScene,
-                                       KeyboardConfigScene* kbConfigScene)
+                                       LocalPlayScene* localPlayScene)
     : Scene(ctx)
-    , m_LocalPlayScene(localPlayScene)
-    , m_KbConfigScene(kbConfigScene) {}
+    , m_LocalPlayScene(localPlayScene) {}
 
 void LocalPlayGameScene::SetupStaticBoundaries() {
     constexpr float kWallHalfW  = 50.f;
@@ -3334,7 +3800,7 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
     constexpr float kFloorHalfH = 40.f;
     constexpr float kCeilHalfH  = 40.f;
 
-    float floorSurfaceY  = -360.f;
+    float floorSurfaceY   = -360.f;
     float ceilingSurfaceY = 360.f;
 
     if (m_Ctx.Floor != nullptr) {
@@ -3342,40 +3808,32 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
                       + m_Ctx.Floor->GetScaledSize().y * 0.5f;
     }
 
-    // Floor: top edge at floorSurfaceY.
     m_World.AddStaticBoundary(
         {0.f, floorSurfaceY - kFloorHalfH},
         {640.f + kWallHalfW, kFloorHalfH});
 
-    // Ceiling: bottom edge at ceilingSurfaceY.
     m_World.AddStaticBoundary(
         {0.f, ceilingSurfaceY + kCeilHalfH},
         {640.f + kWallHalfW, kCeilHalfH});
 
-    // Left boundary wall.
     m_World.AddStaticBoundary(
         {-(640.f + kWallHalfW), 0.f},
         {kWallHalfW, kWallHalfH});
 
-    // Right boundary wall.
     m_World.AddStaticBoundary(
-        { (640.f + kWallHalfW), 0.f},
+        {(640.f + kWallHalfW), 0.f},
         {kWallHalfW, kWallHalfH});
 }
 
 void LocalPlayGameScene::OnEnter() {
-    int playerCount = 2;
-    if (m_LocalPlayScene != nullptr) {
-        playerCount = m_LocalPlayScene->GetPlayerCount();
-    }
-    playerCount = std::clamp(playerCount,
-                             LocalPlayScene::MIN_PLAYERS,
-                             LocalPlayScene::MAX_PLAYERS);
+    int playerCount = std::clamp(
+        m_Ctx.SelectedPlayerCount,
+        LocalPlayScene::MIN_PLAYERS,
+        LocalPlayScene::MAX_PLAYERS);
 
     m_Ctx.SelectedPlayerCount  = playerCount;
     m_Ctx.CooperativePushPower = 1;
 
-    // Hide the decorative startup cats while gameplay cats are active.
     for (auto& cat : m_Ctx.StartupCats) {
         if (cat != nullptr) {
             cat->SetVisible(false);
@@ -3386,7 +3844,12 @@ void LocalPlayGameScene::OnEnter() {
     m_World.Clear();
     SpawnPlayers(playerCount);
     SetupStaticBoundaries();
-
+    {
+        const float floorY     = m_Ctx.Floor->GetPosition().y;
+        const float floorHalfH = m_Ctx.Floor->GetScaledSize().y / 2.0f;
+        const float doorHalfH  = m_Ctx.Door->GetScaledSize().y / 2.0f;
+        m_Ctx.Door->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
+    }
     m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
 
     m_EnteredCount = 0;
@@ -3431,9 +3894,6 @@ Scene* LocalPlayGameScene::Update() {
         return m_LocalPlayScene;
     }
 
-    // --- Step 2: input phase ---
-    // SetMoveDir / Jump are called on each cat BEFORE m_World.Update().
-    // This is the correct input step of the two-phase contract.
     for (auto& pb : m_Players) {
         if (pb.entered || pb.cat == nullptr) continue;
 
@@ -3454,7 +3914,6 @@ Scene* LocalPlayGameScene::Update() {
         }
     }
 
-    // --- Step 3: door-entry check (before physics so positions are still correct) ---
     const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
     const glm::vec2 doorSize = m_Ctx.Door->GetScaledSize();
     const float halfW = doorSize.x / 2.f + 10.f;
@@ -3467,14 +3926,14 @@ Scene* LocalPlayGameScene::Update() {
         const bool      inRange = (std::abs(pos.x - doorPos.x) <= halfW &&
                                    std::abs(pos.y - doorPos.y) <= halfH);
         const bool pressedUp    = (pb.key.up != k::UNKNOWN) &&
-                                   ip::IsKeyDown(pb.key.up);
+                                  ip::IsKeyDown(pb.key.up);
 
         if (inRange && pressedUp) {
             pb.entered = true;
             ++m_EnteredCount;
             pb.cat->SetVisible(false);
             pb.cat->SetInputEnabled(false);
-            pb.cat->SetActive(false);           // remove from physics
+            pb.cat->SetActive(false);
             pb.cat->SetPosition({640.f, -360.f});
             UpdateDoorCountText();
 
@@ -3485,10 +3944,7 @@ Scene* LocalPlayGameScene::Update() {
         }
     }
 
-    // --- Step 4: unified two-phase physics ---
     m_World.Update();
-
-    // --- Step 5: game statistics (pure read, no physics displacement) ---
     UpdateCooperativePower();
 
     return nullptr;
@@ -3509,16 +3965,11 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 
         PlayerBinding pb;
         pb.cat = cat;
+        pb.key = m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)];
 
-        if (m_KbConfigScene != nullptr) {
-            pb.key = m_KbConfigScene->GetAppliedConfig(i);
-        }
-
-        // Fall back to defaults if the player has no configured keys.
         if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default1P;
-        }
-        else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
+        } else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default2P;
         }
 
@@ -3528,7 +3979,6 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 
     ApplyInitialFormation();
 
-    // Register every cat with the world after their initial positions are set.
     for (auto& pb : m_Players) {
         m_World.Register(pb.cat);
     }
@@ -5053,6 +5503,7 @@ void PlayerCat::SetCatAnimState(CatAnimState newState) {
 
 #include "PushableBox.hpp"
 #include "PhysicsWorld.hpp"
+#include "Util/Logger.hpp"
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -5064,6 +5515,10 @@ PushableBox::PushableBox(const std::string& imagePath, int requiredPushers)
     const Util::Color orange = Util::Color::FromRGB(255, 140, 0, 255);
     m_CountText = std::make_shared<GameText>(
         std::to_string(requiredPushers), 30, orange);
+}
+
+void PushableBox::SetPosition(const glm::vec2& pos) {
+    m_Transform.translation = pos;
 }
 
 void PushableBox::PhysicsUpdate() {
@@ -5141,11 +5596,11 @@ void PushableBox::NotifyAdjacentPushers(int activeDir) const {
 
 void PushableBox::ApplyResolvedDelta(const glm::vec2& delta) {
     const glm::vec2 newPos = GetPosition() + delta;
-    SetPosition(newPos);
+
+    if (newPos != GetPosition()) SetPosition(newPos);
 
     if (m_CountText != nullptr) {
-        const float topY = newPos.y + GetHalfSize().y + 14.f;
-        m_CountText->SetPosition({newPos.x, topY});
+        m_CountText->SetPosition({newPos.x+10.f, newPos.y});
     }
 }
 
@@ -7543,58 +7998,148 @@ self-containment; the header exists only for backward-reference convenience.
 | `LevelExitScene` (level-exit confirmation) | ❌ not yet implemented |
 </file>
 
+<file path="Image/Level_Cover/LevelOneScene/關卡敘述.txt">
+1. LevelOneScene繼承Scene
+2. 從LevelSelectScene選擇LevelOne並按下enter或左鍵就會進入LevelOneScene
+3. 關卡物件敘述:地板,左/右邊牆壁,天花板,在前四者所包圍的空間內由左至右分別為鑰匙,箱子A,玩家(玩家數量P = m_LocalPlayScene->GetPlayerCount(),我認為這個設計有問題,記得幫我把PlayerCount整合到GameContext方便更多場景去讀取這個變數),箱子B,門,鑰匙如果被角色觸碰到就會跟隨在角色的左上方並且不會被其餘角色搶走,可以穿透任何物件(不需要考慮進物理系統),箱子A需要一人以上才能推動,箱子B需要P人才能推動,門一開始為關閉的,只有在攜帶鑰匙的角色觸碰到門的同時門才會開啟,右上角在還有一個橘色字體的計時器(TIME XX:XX.XX),這些物件路徑可以先用簡單的方式表示,不用正確的路徑
+4. 玩法敘述:玩家一開始需要將箱子A推到鑰匙的左方並且拿到鑰匙後再將箱子B推到門右方,最後通過鑰匙開啟門進入完成關卡,完成關卡後會回到LevelSelectScene,需要將LevelSelectScene中LevelOne更新成已經通關並更新完成關卡最小花費時間紀錄
+5. 按下Esc會進入尚未實作的LevelExitScene,目前還不需要實作,可以先用nullptr取代
+6. 箱子中央還需要顯示"剩下幾人能夠推動此箱子",比如上述的箱子A在無人推動的情況下就會顯示1,而箱子B在無人推動的情況下就顯示P,當有一人以上推動箱子A,箱子A就會顯示0,但如果只有一人推動箱子B,則箱子B顯示P-1
+7. 其餘我沒說到的物件(比如BGM)不需要操作,但需要告訴我哪些物件正在運作但沒被操作到
+</file>
+
 <file path="Save/save_data.json">
 {
   "levels": [
     {
-      "levelId": 1,
-      "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "bestTimes": {
+        "2": 7.820056915283203,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
+      "completed": true,
+      "levelId": 1
     },
     {
-      "levelId": 2,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 2
     },
     {
-      "levelId": 3,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 3
     },
     {
-      "levelId": 4,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 4
     },
     {
-      "levelId": 5,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 5
     },
     {
-      "levelId": 6,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 6
     },
     {
-      "levelId": 7,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 7
     },
     {
-      "levelId": 8,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 8
     },
     {
-      "levelId": 9,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 9
     },
     {
-      "levelId": 10,
+      "bestTimes": {
+        "2": -1.0,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "6": -1.0,
+        "7": -1.0,
+        "8": -1.0
+      },
       "completed": false,
-      "bestTimes": { "2": -1, "3": -1, "4": -1, "5": -1, "6": -1, "7": -1, "8": -1 }
+      "levelId": 10
     }
   ]
 }

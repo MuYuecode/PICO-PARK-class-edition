@@ -4,10 +4,8 @@
 
 #include "SaveManager.hpp"
 #include "AppUtil.hpp"
-
 #include "KeyboardConfigScene.hpp"
 #include "OptionMenuScene.hpp"
-
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -167,6 +165,7 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
             }
         }
     }
+    SyncAppliedToContext();
 }
 
 void KeyboardConfigScene::OnEnter() {
@@ -248,20 +247,17 @@ Scene* KeyboardConfigScene::Update() {
     }
 
     if (Input::IsKeyDown(Keycode::ESCAPE) ||
-        m_ExitGameButton->IsLeftClicked()              ||
-        m_CancelText->IsLeftClicked())
-    {
+        m_ExitGameButton->IsLeftClicked() ||
+        m_CancelText->IsLeftClicked()) {
         return m_OptionScene;
     }
 
     if (Input::IsKeyDown(Keycode::W) ||
-        Input::IsKeyDown(Keycode::UP))
-    {
+        Input::IsKeyDown(Keycode::UP)) {
         DecrementRow();
     }
     else if (Input::IsKeyDown(Keycode::S) ||
-             Input::IsKeyDown(Keycode::DOWN))
-    {
+             Input::IsKeyDown(Keycode::DOWN)) {
         IncrementRow();
     }
 
@@ -374,6 +370,13 @@ void KeyboardConfigScene::CommitPending() {
         for (int i = 0; i < MAX_PLAYERS; ++i)
             saveData[i] = toData(m_Applied[i]);
         SaveManager::SaveKeyConfigs(saveData);
+    }
+    SyncAppliedToContext();
+}
+
+void KeyboardConfigScene::SyncAppliedToContext() const {
+    for (int i=0;i<MAX_PLAYERS;++i) {
+        m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)] = m_Applied[i];
     }
 }
 

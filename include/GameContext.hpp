@@ -6,8 +6,11 @@
 #include "Character.hpp"
 #include "PlayerCat.hpp"
 #include "PushableBox.hpp"
+#include "PlayerKeyConfig.hpp"
 #include <array>
 #include <vector>
+
+
 
 struct GameContext {
     Util::Renderer& Root;
@@ -26,6 +29,8 @@ struct GameContext {
 
     int  SelectedPlayerCount  = 2;
     int  CooperativePushPower = 1;
+
+    std::array<PlayerKeyConfig, 8> AppliedKeyConfigs{};
 
     static constexpr std::array<const char*, 8> kCatColorOrder = {
         "blue", "red", "yellow", "green", "purple", "pink", "orange", "gray"

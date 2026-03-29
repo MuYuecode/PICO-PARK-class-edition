@@ -11,23 +11,10 @@
 #include "Character.hpp"
 #include "GameText.hpp"
 #include "UITriangleButton.hpp"
+#include "PlayerKeyConfig.hpp"
 #include "Util/Keycode.hpp"
 
 class OptionMenuScene;
-
-struct PlayerKeyConfig {
-    Util::Keycode up         = Util::Keycode::UNKNOWN;
-    Util::Keycode down       = Util::Keycode::UNKNOWN;
-    Util::Keycode left       = Util::Keycode::UNKNOWN;
-    Util::Keycode right      = Util::Keycode::UNKNOWN;
-    Util::Keycode jump       = Util::Keycode::UNKNOWN;
-    Util::Keycode cancel     = Util::Keycode::UNKNOWN;
-    Util::Keycode shot       = Util::Keycode::UNKNOWN;
-    Util::Keycode menu       = Util::Keycode::UNKNOWN;  // only 1p
-    Util::Keycode subMenu    = Util::Keycode::UNKNOWN;  // only 1p
-
-    [[nodiscard]] std::vector<Util::Keycode> AllKeys() const;
-};
 
 class KeyboardConfigScene : public Scene {
 public:
@@ -133,6 +120,7 @@ private:
 
     void UpdateValueTexts()  const ;
     void UpdateChoiceFrame() const ;
+    void SyncAppliedToContext() const;
 
     [[nodiscard]] std::vector<Util::Keycode> GetConflicts() const;
     [[nodiscard]] bool HasConflicts() const { return !GetConflicts().empty(); }

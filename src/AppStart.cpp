@@ -11,12 +11,13 @@
 #include "LocalPlayScene.hpp"
 #include "LocalPlayGameScene.hpp"
 #include "LevelSelectScene.hpp"
+#include "LevelOneScene.hpp"
 
 #include "Util/Logger.hpp"
 #include <array>
 #include <cmath>
 
-using namespace std ;
+using namespace std;
 
 void App::Start() {
     LOG_TRACE("Start");
@@ -43,24 +44,23 @@ void App::Start() {
 
     m_Ctx->Door = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/door_close.png");
-    m_Ctx->Door->SetScale({0.148f, 0.161f});   // ← 新增這一行
+    m_Ctx->Door->SetScale({0.148f, 0.161f});
     m_Ctx->Door->SetZIndex(5.0f);
     {
         const float floorY     = m_Ctx->Floor->GetPosition().y;
         const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
-        const float doorHalfH  = m_Ctx->Door->GetScaledSize().y  / 2.0f;
+        const float doorHalfH  = m_Ctx->Door->GetScaledSize().y / 2.0f;
         m_Ctx->Door->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
     }
     m_Root.AddChild(m_Ctx->Door);
 
-    m_Ctx->TestBox = make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1); // 假設需要 1 人推動
-    m_Ctx->TestBox->SetZIndex(15.0f); // 讓它跟貓咪同一個圖層
+    m_Ctx->TestBox = make_shared<PushableBox>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1);
+    m_Ctx->TestBox->SetZIndex(15.0f);
     {
         const float floorY     = m_Ctx->Floor->GetPosition().y;
         const float floorHalfH = m_Ctx->Floor->GetScaledSize().y / 2.0f;
         const float boxHalfH   = m_Ctx->TestBox->GetScaledSize().y / 2.0f;
-
-        // 讓箱子完美貼齊地板
         m_Ctx->TestBox->SetPosition({400.0f, floorY + floorHalfH + boxHalfH});
     }
     m_Root.AddChild(m_Ctx->TestBox);
@@ -68,7 +68,6 @@ void App::Start() {
         m_Ctx->TestBox->GetTextObject()->SetZIndex(16.0f);
         m_Root.AddChild(m_Ctx->TestBox->GetTextObject());
     }
-    // ====
 
     m_Ctx->BGMPlayer = make_shared<BGMPlayer>();
     m_Ctx->BGMPlayer->Play();
@@ -85,8 +84,7 @@ void App::Start() {
             left  = Util::Keycode::A;
             right = Util::Keycode::D;
             jump  = Util::Keycode::W;
-        }
-        else if (i == 1) {
+        } else if (i == 1) {
             left  = Util::Keycode::LEFT;
             right = Util::Keycode::RIGHT;
             jump  = Util::Keycode::UP;
@@ -101,7 +99,6 @@ void App::Start() {
         m_Ctx->StartupCats.push_back(cat);
     }
 
-    // 計算初始位置
     const float floorY      = m_Ctx->Floor->GetPosition().y;
     const float floorHalfH  = m_Ctx->Floor->GetScaledSize().y / 2.0f;
 
@@ -128,7 +125,6 @@ void App::Start() {
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 
-    // 場景建立
     auto titleScene = make_unique<TitleScene>(*m_Ctx, nullptr);
 
     auto menuScene = make_unique<MenuScene>(
@@ -157,17 +153,20 @@ void App::Start() {
         menuScene->GetExitGameButton(),
         menuScene->GetLeftTriButton(),
         menuScene->GetRightTriButton(),
-        menuScene->GetBlueCatRunImg(),   // ← 新增
+        menuScene->GetBlueCatRunImg(),
         kbConfigScene.get());
 
     auto localPlayGameScene = make_unique<LocalPlayGameScene>(
         *m_Ctx,
-        localPlayScene.get(),
-        kbConfigScene.get());
+        localPlayScene.get());
 
     auto levelSelectScene = make_unique<LevelSelectScene>(
         *m_Ctx,
         localPlayGameScene.get());
+
+    auto levelOneScene = make_unique<LevelOneScene>(
+        *m_Ctx,
+        levelSelectScene.get());
 
     titleScene->SetMenuScene(menuScene.get());
     menuScene->SetExitConfirmScene(exitConfirmScene.get());
@@ -176,6 +175,8 @@ void App::Start() {
     optionMenuScene->SetKeyboardConfigScene(kbConfigScene.get());
     localPlayScene->SetGameScene(localPlayGameScene.get());
     localPlayGameScene->SetLevelSelectScene(levelSelectScene.get());
+
+    levelSelectScene->SetLevelScene(0, levelOneScene.get());
 
     m_TitleScene          = std::move(titleScene);
     m_MenuScene           = std::move(menuScene);
@@ -186,7 +187,12 @@ void App::Start() {
     m_LocalPlayGameScene  = std::move(localPlayGameScene);
     m_LevelSelectScene    = std::move(levelSelectScene);
 
-    TransitionTo(m_TitleScene.get());
+    for (auto& s : m_LevelXScenes) {
+        s.reset();
+    }
+    m_LevelXScenes[0] = std::move(levelOneScene);
 
+    TransitionTo(m_TitleScene.get()); // ture scene
+    // TransitionTo(m_LevelXScenes[0].get()) ; // test
     m_CurrentState = State::UPDATE;
 }

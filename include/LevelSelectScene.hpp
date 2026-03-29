@@ -2,34 +2,6 @@
 // Created by cody2 on 2026/3/24.
 //
 
-//
-// LevelSelectScene.hpp
-//
-// 關卡選擇場景
-//
-// 畫面結構(由上至下，座標以畫面中心為原點)：
-//
-//   LEVEL n(標題，置中，y ≈ +240)
-//
-//   關卡列表 2 × 5 網格(共 10 關)：
-//     上排(y ≈ +60)  ：Level 1 | Level 2 | Level 3 | Level 4 | Level 5
-//     下排(y ≈ -80)  ：Level 6 | Level 7 | Level 8 | Level 9 | Level 10
-//     橫向格距 128 px，最左格中心 x = -256
-//
-//   m PLAYERS BEST TIME: mm:ss.cs(置中，y ≈ -238)
-//
-// 操作方式：
-//   WASD / ↑↓←→       ：移動橘色選擇框
-//   IsMouseHovering    ：滑鼠懸停自動切換選中關卡
-//   ENTER / 滑鼠左鍵   ：進入選中關卡(對應 LevelOneScene…，尚未實作時回傳 nullptr)
-//   ESC                ：返回 LocalPlayGameScene(重新進入門前準備)
-//
-// 皇冠與最佳時間：
-//   completed = true 的關卡左上方顯示 "★"(橘色)
-//   最佳時間依 m_Ctx.SelectedPlayerCount(前一場景設定)分類顯示
-//   資料來源：GA_RESOURCE_DIR/Save/save_data.json(透過 SaveManager 存取)
-//
-
 #ifndef LEVEL_SELECT_SCENE_HPP
 #define LEVEL_SELECT_SCENE_HPP
 
@@ -53,10 +25,10 @@ public:
     void   OnExit()  override;
     Scene* Update()  override;
 
-    // void SetLevelScene(int levelIdx, Scene* scene) {
-    //     if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)
-    //         m_LevelScenes[levelIdx] = scene;
-    // }
+    void SetLevelScene(int levelIdx, Scene* scene) {
+        if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)
+            m_LevelScenes[levelIdx] = scene;
+    }
 
     static constexpr int   LEVEL_COUNT = 10;
     static constexpr int   COLS        = 5;
@@ -73,18 +45,12 @@ public:
         "/Image/Level_Cover/LevelTwo.png",
         "/Image/Level_Cover/LevelThree.png",
         "/Image/Level_Cover/LevelFour.png",
-        // "/Image/Level_Cover/LevelFive.png",
-        // "/Image/Level_Cover/LevelSix.png",
-        // "/Image/Level_Cover/LevelSeven.png",
-        // "/Image/Level_Cover/LevelEight.png",
-        // "/Image/Level_Cover/LevelNine.png",
-        // "/Image/Level_Cover/LevelTen.png"
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png",
-        "/Image/Level_Cover/LevelOne.png"
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png", // ignore
+        "/Image/Level_Cover/LevelOne.png"  // ignore
     };
 
 private:
@@ -101,11 +67,7 @@ private:
     std::array<LevelSaveData, LEVEL_COUNT> m_LevelData;
 
     LocalPlayGameScene*             m_LocalPlayGameScene = nullptr;
-    // std::array<Scene*, LEVEL_COUNT> m_LevelScenes;
-
-    static const Util::Color kBlack;
-    static const Util::Color kOrange;
-    static const Util::Color kGray;
+    std::array<Scene*, LEVEL_COUNT> m_LevelScenes;
 
     void UpdateSelectorPos()  const;
     void UpdateTitleText()    const;

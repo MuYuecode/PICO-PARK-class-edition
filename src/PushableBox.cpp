@@ -4,6 +4,7 @@
 
 #include "PushableBox.hpp"
 #include "PhysicsWorld.hpp"
+#include "Util/Logger.hpp"
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -15,6 +16,10 @@ PushableBox::PushableBox(const std::string& imagePath, int requiredPushers)
     const Util::Color orange = Util::Color::FromRGB(255, 140, 0, 255);
     m_CountText = std::make_shared<GameText>(
         std::to_string(requiredPushers), 30, orange);
+}
+
+void PushableBox::SetPosition(const glm::vec2& pos) {
+    m_Transform.translation = pos;
 }
 
 void PushableBox::PhysicsUpdate() {
@@ -92,11 +97,11 @@ void PushableBox::NotifyAdjacentPushers(int activeDir) const {
 
 void PushableBox::ApplyResolvedDelta(const glm::vec2& delta) {
     const glm::vec2 newPos = GetPosition() + delta;
-    SetPosition(newPos);
+
+    if (newPos != GetPosition()) SetPosition(newPos);
 
     if (m_CountText != nullptr) {
-        const float topY = newPos.y + GetHalfSize().y + 14.f;
-        m_CountText->SetPosition({newPos.x, topY});
+        m_CountText->SetPosition({newPos.x+10.f, newPos.y});
     }
 }
 

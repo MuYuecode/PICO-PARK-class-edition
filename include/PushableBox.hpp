@@ -29,8 +29,7 @@ public:
 
     [[nodiscard]] BodyType  GetBodyType() const override { return BodyType::PUSHABLE_BOX; }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }
-    void                    SetPosition(const glm::vec2& pos) override
-                                { Character::SetPosition(pos); }
+    void                    SetPosition(const glm::vec2& pos) override ;
     [[nodiscard]] glm::vec2 GetHalfSize() const override
                                 { return glm::abs(GetScaledSize()) * 0.5f; }
 
@@ -49,11 +48,11 @@ private:
     void NotifyAdjacentPushers(int activeDir) const;
 
     PhysicsWorld* m_World           = nullptr;
-    int           m_RequiredPushers = 2;
+    int           m_RequiredPushers = 1;
     float         m_VelocityY       = 0.f;
     glm::vec2     m_DesiredDelta    = {0.f, 0.f};
 
-    std::shared_ptr<GameText> m_CountText;
+    std::shared_ptr<GameText> m_CountText ;
 };
 
 #endif // PICOPART_PUSHABLEBOX_HPP
