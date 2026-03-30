@@ -1,6 +1,6 @@
 # Class Relationships
 
-This document captures the current class graph and dependency direction.
+This file records the current dependency graph and key coupling points.
 
 ## Inheritance Map
 
@@ -34,7 +34,8 @@ Scene
 ├─ LocalPlayScene
 ├─ LocalPlayGameScene
 ├─ LevelSelectScene
-└─ LevelOneScene  (routed as SceneId::Level01)
+├─ LevelExitScene
+└─ LevelOneScene
 ```
 
 ## Service Contracts
@@ -46,26 +47,28 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-`Scene` stores service references as `m_Audio`, `m_Theme`, `m_Session`, and `m_Actors`.
+`Scene` stores only interface references (`m_Audio`, `m_Theme`, `m_Session`, `m_Actors`).
 
-## Ownership Model
+## Scene Control Contracts
 
-- `App` owns long-lived services and `SceneManager`.
-- `SceneManager` owns scenes (`unique_ptr<Scene>`).
-- `GlobalActors` stores shared render actors (`Background`, `Floor`, `Door`, `StartupCats`, optional `TestBox`).
-- Physics-enabled scenes own one local `PhysicsWorld` each.
-- `PhysicsWorld` stores registered bodies as weak references and owns static boundaries it creates.
+```text
+SceneOpType/SceneOp -> consumed by SceneManager
+SceneManager        -> owns scene registry and stack ids
+```
 
-## Dependency Direction
+- Scene output channels:
+  - `SceneId` for normal route changes
+  - `SceneOp` for overlay stack operations
 
-1. Interfaces (`I*`) define contracts.
-2. Concrete services implement contracts.
-3. `Scene` depends on interfaces only.
-4. Concrete scenes depend on `Scene` and feature classes.
-5. `App::Start()` performs concrete wiring.
+## Ownership and Lifetime
 
-## Current Practical Couplings
+- `App` owns services, `GlobalActors`, and `SceneManager`.
+- `SceneManager` owns all scenes (`std::unique_ptr`).
+- `GlobalActors` owns shared render actors (background/header/floor/door/startup cats/test box).
+- Physics scenes own local `PhysicsWorld`; `PhysicsWorld` keeps weak body refs and owns created `StaticBody` boundaries.
 
-- `LocalPlayScene` depends on `KeyboardConfigScene*` for configured-player checks.
-- Persistence uses static `SaveManager` calls.
-- `LevelExitScene` exists in file layout but has no implementation.
+## Practical Couplings
+
+- `LocalPlayScene` keeps a raw `KeyboardConfigScene*` to validate configured player count before entering gameplay.
+- `PushableBox` keeps a non-owning `PhysicsWorld*` for cooperative push queries.
+- Scene persistence is centralized through static `SaveManager` calls (`OptionMenuScene`, `KeyboardConfigScene`, `LevelSelectScene`, `LevelOneScene`).

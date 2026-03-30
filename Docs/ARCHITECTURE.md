@@ -1,46 +1,39 @@
 # Architecture Overview
 
-This project uses scene-driven flow with interface-based service injection.
+The project is a scene-driven game loop with interface-based service injection.
 
 ## Runtime Loop
 
-- `main.cpp` runs `App` until app state reaches `END`.
-- `App` state machine: `START -> UPDATE -> END`.
-- `App::Update()` order:
+- `main.cpp` runs `App` state machine: `START -> UPDATE -> END`.
+- `App::Update()` executes in fixed order:
   1. `IAudioService::UpdateBgm()`
   2. `SceneManager::UpdateCurrent()`
-  3. quit check via `ISessionState::ShouldQuit()`
+  3. check `ISessionState::ShouldQuit()`
   4. `Renderer::Update()`
 
 ## Composition Root
 
-`App::Start()` creates and wires long-lived objects:
+`App::Start()` creates long-lived objects and wiring:
 
-- `GlobalActors`
+- `GlobalActors` (shared render objects)
 - `SessionState`
-- `AudioService`
+- `AudioService` + `BGMPlayer`
 - `VisualThemeService`
 - `SceneManager`
 
-Scenes receive shared capabilities through `SceneServices`:
+Each `Scene` receives only interface references via `SceneServices`:
 
 - `IAudioService&`
 - `IVisualThemeService&`
 - `ISessionState&`
 - `IGlobalActors&`
 
-## Scene and Transition Model
+## Scene Model
 
-- All scenes derive from `Scene` and implement `OnEnter`, `Update`, `OnExit`.
-- `SceneManager` is the only transition owner (`Register`, `GoTo`, `UpdateCurrent`).
-- Transition rule: scene returns a `SceneId`; manager performs `OnExit` (old) then `OnEnter` (new).
-
-## Ownership Boundaries
-
-- `App` owns services, global actors, and `SceneManager`.
-- `SceneManager` owns scene instances.
-- Scenes own scene-local runtime state (UI nodes, local physics world, temporary gameplay data).
-- Shared render actors are accessed via `IGlobalActors` and are not re-owned by scenes.
+- `SceneManager` owns scene instances and the runtime scene stack.
+- Normal transitions use `SceneId` return values from `Scene::Update()`.
+- Overlay transitions use `SceneOp` (`PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`).
+- In `UpdateCurrent()`, pending `SceneOp` is processed before normal `SceneId` transition.
 
 ## Registered Scenes
 
@@ -54,14 +47,19 @@ Registered in `App::Start()`:
 - `LocalPlayScene`
 - `LocalPlayGameScene`
 - `LevelSelectScene`
-- `LevelOneScene` (registered with `SceneId::Level01`)
+- `LevelExitScene` (overlay)
+- `LevelOneScene` (`SceneId::Level01`)
 
-`LevelExitScene` files exist but are currently empty.
+## Ownership Boundaries
 
-## Extension Rules
+- `App` owns global lifetime objects.
+- `SceneManager` owns `unique_ptr<Scene>` registry and active stack ids.
+- Scenes own scene-local data (`PhysicsWorld`, temporary UI, per-level entities).
+- `IGlobalActors` exposes shared visual actors; scenes configure visibility/position/image but do not re-own them.
 
-1. Keep scene-specific behavior inside that scene.
-2. Put cross-scene runtime state in `ISessionState`.
-3. Use `IGlobalActors` only for shared long-lived render actors.
-4. Extend `IAudioService` / `IVisualThemeService` for global behavior.
-5. Register new scenes in `App::Start()` and route only by `SceneId`.
+## Engineering Rules
+
+1. Keep gameplay/UI logic inside scene-local classes.
+2. Keep cross-scene state in `ISessionState` or persisted via `SaveManager`.
+3. Keep scene code depending on interfaces (`I*`) rather than concrete services.
+4. Register every new scene in `App::Start()` and route by `SceneId`/`SceneOp` only.

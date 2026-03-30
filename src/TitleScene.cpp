@@ -53,6 +53,32 @@ void TitleScene::OnEnter() {
     if (m_Actors.Header() != nullptr) {
         m_Actors.Header()->SetVisible(true);
     }
+    if (m_Actors.Floor() != nullptr) {
+        m_Actors.Floor()->SetVisible(true);
+    }
+    if (m_Actors.Door() != nullptr) {
+        m_Actors.Door()->SetVisible(true);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+
+        if (m_Actors.Floor() != nullptr) {
+            const float floorY = m_Actors.Floor()->GetPosition().y;
+            const float floorHalfH = m_Actors.Floor()->GetScaledSize().y * 0.5f;
+            const float doorHalfH = m_Actors.Door()->GetScaledSize().y * 0.5f;
+            m_Actors.Door()->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
+        }
+    }
+    if (m_Actors.TestBox() != nullptr) {
+        m_Actors.TestBox()->SetVisible(true);
+        if (m_Actors.TestBox()->GetTextObject() != nullptr) {
+            m_Actors.TestBox()->GetTextObject()->SetVisible(true);
+        }
+    }
+    for (auto& cat : m_Actors.StartupCats()) {
+        if (cat != nullptr) {
+            cat->SetVisible(true);
+        }
+    }
+
     m_Actors.Root().AddChild(m_TitleSub);
     m_Actors.Root().AddChild(m_PressEnterText);
 

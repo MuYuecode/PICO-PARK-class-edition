@@ -20,6 +20,8 @@ public:
     void OnEnter() override;
     void OnExit() override;
     SceneId Update() override;
+    void PauseGameplay() override;
+    void ResumeGameplay() override;
 
 
 private:

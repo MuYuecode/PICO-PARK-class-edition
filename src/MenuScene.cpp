@@ -16,7 +16,7 @@ MenuScene::MenuScene(SceneServices services)
     m_MenuFrame->SetPosition({0.f, -105.f});
 
     m_ExitGameButton = std::make_shared<Character>(
-        GA_RESOURCE_DIR "/Image/Button/ExitGameButton.png");
+        GA_RESOURCE_DIR "/Image/Button/ExitButton.png");
     m_ExitGameButton->SetZIndex(30);
     m_ExitGameButton->SetPosition({331.f, -14.f});
 

@@ -11,6 +11,7 @@ enum class SceneId {
     LocalPlay,
     LocalPlayGame,
     LevelSelect,
+    LevelExit,
     Level01,
     Level02,
     Level03,

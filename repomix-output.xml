@@ -74,6 +74,7 @@ The content is organized as follows:
   Scene.hpp
   SceneId.hpp
   SceneManager.hpp
+  SceneOp.hpp
   SceneServices.hpp
   SessionState.hpp
   StaticBody.hpp
@@ -144,7 +145,7 @@ The content is organized as follows:
   Image/Background/Option_HLine.png
   Image/Background/Option_Menu_Frame.png
   Image/Background/white_background.png
-  Image/Button/ExitGameButton.png
+  Image/Button/ExitButton.png
   Image/Button/Left_Tri_Button_Full.png
   Image/Button/Left_Tri_Button.png
   Image/Button/Right_Tri_Button_Full.png
@@ -351,6 +352,7 @@ The content is organized as follows:
   Image/Level_Cover/ExitFrame.png
   Image/Level_Cover/Key.png
   Image/Level_Cover/LevelExitScene.png
+  Image/Level_Cover/LevelExitSceneBkgrd.png
   Image/Level_Cover/LevelFour.png
   Image/Level_Cover/LevelOne.png
   Image/Level_Cover/LevelOneScene/關卡敘述.txt
@@ -1096,7 +1098,49 @@ private:
 </file>
 
 <file path="LevelExitScene.hpp">
+#ifndef LEVEL_EXIT_SCENE_HPP
+#define LEVEL_EXIT_SCENE_HPP
 
+#include <array>
+#include <memory>
+
+#include "Character.hpp"
+#include "GameText.hpp"
+#include "Scene.hpp"
+
+class LevelExitScene : public Scene {
+public:
+    explicit LevelExitScene(SceneServices services);
+    ~LevelExitScene() override = default;
+
+    void OnEnter() override;
+    void OnExit() override;
+    SceneId Update() override;
+
+private:
+    static constexpr int ROW_COUNT = 4;
+    static constexpr float kTextX = 0.0f;
+    static constexpr std::array<float, ROW_COUNT> kRowY = {70.0f, -5.0f, -80.0f, -155.0f};
+
+    std::shared_ptr<Character> m_DimBg;
+    std::shared_ptr<Character> m_ExitFrame;
+    std::shared_ptr<Character> m_ExitButton;
+    std::shared_ptr<Character> m_BlueCatRunIcon;
+    std::shared_ptr<Character> m_ChoiceFrame;
+
+    std::shared_ptr<GameText> m_ReturnGameText;
+    std::shared_ptr<GameText> m_RetryText;
+    std::shared_ptr<GameText> m_LevelSelectText;
+    std::shared_ptr<GameText> m_TitleText;
+
+    int m_SelectedRow = 0;
+    bool m_WaitEscRelease = true;
+
+    void UpdateChoiceFrame() const;
+    void ConfirmSelection();
+};
+
+#endif // LEVEL_EXIT_SCENE_HPP
 </file>
 
 <file path="LevelOneScene.hpp">
@@ -1122,6 +1166,8 @@ public:
     void OnEnter() override;
     void OnExit() override;
     SceneId Update() override;
+    void PauseGameplay() override;
+    void ResumeGameplay() override;
 
 
 private:
@@ -1973,7 +2019,10 @@ public:
 #ifndef PICOPART_SCENE_HPP
 #define PICOPART_SCENE_HPP
 
+#include <optional>
+
 #include "SceneId.hpp"
+#include "SceneOp.hpp"
 #include "SceneServices.hpp"
 class Scene {
 public:
@@ -1994,11 +2043,27 @@ public:
     virtual void OnExit()  = 0;
     virtual SceneId Update() = 0;
 
+    virtual void PauseGameplay() {}
+    virtual void ResumeGameplay() {}
+
+    std::optional<SceneOp> ConsumeSceneOp() {
+        const auto op = m_PendingSceneOp;
+        m_PendingSceneOp.reset();
+        return op;
+    }
+
 protected:
     IAudioService& m_Audio;
     IVisualThemeService& m_Theme;
     ISessionState& m_Session;
     IGlobalActors& m_Actors;
+
+    void RequestSceneOp(const SceneOp op) {
+        m_PendingSceneOp = op;
+    }
+
+private:
+    std::optional<SceneOp> m_PendingSceneOp;
 };
 
 #endif //PICOPART_SCENE_HPP
@@ -2018,6 +2083,7 @@ enum class SceneId {
     LocalPlay,
     LocalPlayGame,
     LevelSelect,
+    LevelExit,
     Level01,
     Level02,
     Level03,
@@ -2039,6 +2105,7 @@ enum class SceneId {
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include "Scene.hpp"
 #include "SceneId.hpp"
@@ -2057,16 +2124,44 @@ public:
     void GoTo(SceneId id);
     SceneId UpdateCurrent();
 
-    [[nodiscard]] SceneId GetCurrentId() const { return m_CurrentId; }
-    [[nodiscard]] Scene* GetCurrentScene() const { return m_Current; }
+    [[nodiscard]] SceneId GetCurrentId() const;
+    [[nodiscard]] Scene* GetCurrentScene() const;
 
 private:
+    [[nodiscard]] Scene* ResolveScene(SceneId id) const;
+
+    void PushOverlay(SceneId id);
+    void PopOverlay();
+    void RestartUnderlying();
+    void ClearToAndGoTo(SceneId id);
+
     std::unordered_map<SceneId, std::unique_ptr<Scene>, SceneIdHash> m_Scenes;
-    SceneId m_CurrentId = SceneId::None;
-    Scene* m_Current = nullptr;
+    std::vector<SceneId> m_StackIds;
 };
 
 #endif // SCENE_MANAGER_HPP
+</file>
+
+<file path="SceneOp.hpp">
+#ifndef SCENE_OP_HPP
+#define SCENE_OP_HPP
+
+#include "SceneId.hpp"
+
+enum class SceneOpType {
+    None,
+    PushOverlay,
+    PopOverlay,
+    RestartUnderlying,
+    ClearToAndGoTo,
+};
+
+struct SceneOp {
+    SceneOpType type = SceneOpType::None;
+    SceneId     target = SceneId::None;
+};
+
+#endif // SCENE_OP_HPP
 </file>
 
 <file path="SceneServices.hpp">
@@ -2289,6 +2384,7 @@ void App::End() {
 #include "LocalPlayScene.hpp"
 #include "LocalPlayGameScene.hpp"
 #include "LevelSelectScene.hpp"
+#include "LevelExitScene.hpp"
 #include "LevelOneScene.hpp"
 #include "SceneId.hpp"
 
@@ -2433,6 +2529,8 @@ void App::Start() {
     auto levelSelectScene = make_unique<LevelSelectScene>(services);
     levelSelectScene->SetLevelSceneId(0, SceneId::Level01);
 
+    auto levelExitScene = make_unique<LevelExitScene>(services);
+
     auto levelOneScene = make_unique<LevelOneScene>(services);
 
     m_SceneManager->Register(SceneId::Title, std::move(titleScene));
@@ -2443,6 +2541,7 @@ void App::Start() {
     m_SceneManager->Register(SceneId::LocalPlay, std::move(localPlayScene));
     m_SceneManager->Register(SceneId::LocalPlayGame, std::move(localPlayGameScene));
     m_SceneManager->Register(SceneId::LevelSelect, std::move(levelSelectScene));
+    m_SceneManager->Register(SceneId::LevelExit, std::move(levelExitScene));
     m_SceneManager->Register(SceneId::Level01, std::move(levelOneScene));
 
     m_SceneManager->GoTo(SceneId::Title);
@@ -3397,7 +3496,184 @@ int KeyboardConfigScene::GetConfiguredPlayerCount() const {
 </file>
 
 <file path="LevelExitScene.cpp">
+#include "LevelExitScene.hpp"
 
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+
+namespace {
+constexpr float kChoiceFrameX = 0.0f;
+}
+
+LevelExitScene::LevelExitScene(SceneServices services)
+    : Scene(services) {
+    const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
+
+    m_DimBg = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelExitSceneBkgrd.png");
+    m_DimBg->SetZIndex(90.0f);
+    m_DimBg->SetPosition({0.0f, 0.0f});
+
+    m_ExitFrame = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/ExitFrame.png");
+    m_ExitFrame->SetZIndex(95.0f);
+    m_ExitFrame->SetPosition({0.0f, 0.0f});
+
+    m_ExitButton = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Button/ExitButton.png");
+    m_ExitButton->SetZIndex(95.0f);
+    m_ExitButton->SetPosition({226.0f, 200.0f});
+
+    m_BlueCatRunIcon = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Character/blue_cat/blue_cat_run_img.png");
+    m_BlueCatRunIcon->SetZIndex(95.0f);
+    m_BlueCatRunIcon->SetPosition({0.0f, 140.0f});
+    m_BlueCatRunIcon->SetScale({1.2f, 1.2f});
+
+    m_ChoiceFrame = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Background/Option_Choice_Frame.png");
+    m_ChoiceFrame->SetZIndex(96.0f);
+    m_ChoiceFrame->SetScale({1.2f, 1.3f});
+
+    m_ReturnGameText = std::make_shared<GameText>("RETURN GAME", 60, black);
+    m_RetryText = std::make_shared<GameText>("RETRY", 60, black);
+    m_LevelSelectText = std::make_shared<GameText>("LEVEL SELECT", 60, black);
+    m_TitleText = std::make_shared<GameText>("TITLE", 60, black);
+
+    m_ReturnGameText->SetZIndex(97.0f);
+    m_RetryText->SetZIndex(97.0f);
+    m_LevelSelectText->SetZIndex(97.0f);
+    m_TitleText->SetZIndex(97.0f);
+
+    m_ReturnGameText->SetPosition({kTextX, kRowY[0]});
+    m_RetryText->SetPosition({kTextX, kRowY[1]});
+    m_LevelSelectText->SetPosition({kTextX, kRowY[2]});
+    m_TitleText->SetPosition({kTextX, kRowY[3]});
+
+}
+
+void LevelExitScene::OnEnter() {
+    m_Actors.Root().AddChild(m_DimBg);
+    m_Actors.Root().AddChild(m_ExitFrame);
+    m_Actors.Root().AddChild(m_ExitButton);
+    m_Actors.Root().AddChild(m_BlueCatRunIcon);
+    m_Actors.Root().AddChild(m_ChoiceFrame);
+    m_Actors.Root().AddChild(m_ReturnGameText);
+    m_Actors.Root().AddChild(m_RetryText);
+    m_Actors.Root().AddChild(m_LevelSelectText);
+    m_Actors.Root().AddChild(m_TitleText);
+
+    m_SelectedRow = 0;
+    m_WaitEscRelease = true;
+    UpdateChoiceFrame();
+}
+
+void LevelExitScene::OnExit() {
+    m_Actors.Root().RemoveChild(m_DimBg);
+    m_Actors.Root().RemoveChild(m_ExitFrame);
+    m_Actors.Root().RemoveChild(m_ExitButton);
+    m_Actors.Root().RemoveChild(m_BlueCatRunIcon);
+    m_Actors.Root().RemoveChild(m_ChoiceFrame);
+    m_Actors.Root().RemoveChild(m_ReturnGameText);
+    m_Actors.Root().RemoveChild(m_RetryText);
+    m_Actors.Root().RemoveChild(m_LevelSelectText);
+    m_Actors.Root().RemoveChild(m_TitleText);
+}
+
+SceneId LevelExitScene::Update() {
+    using ip = Util::Input;
+    using k = Util::Keycode;
+
+    if (m_WaitEscRelease) {
+        if (!ip::IsKeyPressed(k::ESCAPE)) {
+            m_WaitEscRelease = false;
+        }
+    }
+
+    if (ip::IsKeyDown(k::W) || ip::IsKeyDown(k::UP)) {
+        m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
+        UpdateChoiceFrame();
+    }
+    else if (ip::IsKeyDown(k::S) || ip::IsKeyDown(k::DOWN)) {
+        m_SelectedRow = (m_SelectedRow + 1) % ROW_COUNT;
+        UpdateChoiceFrame();
+    }
+
+    if (m_ReturnGameText->IsMouseHovering() && m_SelectedRow != 0) {
+        m_SelectedRow = 0;
+        UpdateChoiceFrame();
+    }
+    else if (m_RetryText->IsMouseHovering() && m_SelectedRow != 1) {
+        m_SelectedRow = 1;
+        UpdateChoiceFrame();
+    }
+    else if (m_LevelSelectText->IsMouseHovering() && m_SelectedRow != 2) {
+        m_SelectedRow = 2;
+        UpdateChoiceFrame();
+    }
+    else if (m_TitleText->IsMouseHovering() && m_SelectedRow != 3) {
+        m_SelectedRow = 3;
+        UpdateChoiceFrame();
+    }
+
+    if (m_ExitButton->IsLeftClicked()) {
+        RequestSceneOp({SceneOpType::PopOverlay, SceneId::None});
+        return SceneId::None;
+    }
+
+    if (!m_WaitEscRelease && ip::IsKeyDown(k::ESCAPE)) {
+        RequestSceneOp({SceneOpType::PopOverlay, SceneId::None});
+        return SceneId::None;
+    }
+
+    bool confirmed = false;
+    if (!m_WaitEscRelease && ip::IsKeyDown(k::RETURN)) {
+        confirmed = true;
+    }
+
+    if (!confirmed) {
+        if (m_ReturnGameText->IsLeftClicked()) {
+            m_SelectedRow = 0;
+            confirmed = true;
+        }
+        else if (m_RetryText->IsLeftClicked()) {
+            m_SelectedRow = 1;
+            confirmed = true;
+        }
+        else if (m_LevelSelectText->IsLeftClicked()) {
+            m_SelectedRow = 2;
+            confirmed = true;
+        }
+        else if (m_TitleText->IsLeftClicked()) {
+            m_SelectedRow = 3;
+            confirmed = true;
+        }
+    }
+
+    if (confirmed) {
+        ConfirmSelection();
+    }
+
+    return SceneId::None;
+}
+
+void LevelExitScene::UpdateChoiceFrame() const {
+    m_ChoiceFrame->SetPosition({kChoiceFrameX, kRowY[static_cast<size_t>(m_SelectedRow)]});
+}
+
+void LevelExitScene::ConfirmSelection() {
+    switch (m_SelectedRow) {
+        case 0:
+            RequestSceneOp({SceneOpType::PopOverlay, SceneId::None});
+            break;
+        case 1:
+            RequestSceneOp({SceneOpType::RestartUnderlying, SceneId::None});
+            break;
+        case 2:
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
+            break;
+        case 3:
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Title});
+            break;
+        default:
+            break;
+    }
+}
 </file>
 
 <file path="LevelOneScene.cpp">
@@ -3667,6 +3943,14 @@ void LevelOneScene::OnExit() {
     }
 }
 
+void LevelOneScene::PauseGameplay() {
+    m_World.FreezeAll();
+}
+
+void LevelOneScene::ResumeGameplay() {
+    m_World.UnfreezeAll();
+}
+
 void LevelOneScene::HandlePlayerInput() const {
     for (const auto& pb : m_Players) {
         if (pb.cat == nullptr) continue;
@@ -3776,7 +4060,8 @@ void LevelOneScene::UpdateDoorEntryAndClear() {
 
 SceneId LevelOneScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
-        return SceneId::LevelSelect;
+        RequestSceneOp({SceneOpType::PushOverlay, SceneId::LevelExit});
+        return SceneId::None;
     }
 
     HandlePlayerInput();
@@ -4491,7 +4776,7 @@ MenuScene::MenuScene(SceneServices services)
     m_MenuFrame->SetPosition({0.f, -105.f});
 
     m_ExitGameButton = std::make_shared<Character>(
-        GA_RESOURCE_DIR "/Image/Button/ExitGameButton.png");
+        GA_RESOURCE_DIR "/Image/Button/ExitButton.png");
     m_ExitGameButton->SetZIndex(30);
     m_ExitGameButton->SetPosition({331.f, -14.f});
 
@@ -6062,7 +6347,6 @@ bool SaveManager::UpdateBestTime(int levelIdx, int playerCount, float elapsed) {
 #include "SceneManager.hpp"
 #include "Util/Logger.hpp"
 
-
 void SceneManager::Register(SceneId id, std::unique_ptr<Scene> scene) {
     if (scene == nullptr) {
         LOG_ERROR("SceneManager::Register got nullptr for SceneId {}", static_cast<int>(id));
@@ -6071,29 +6355,158 @@ void SceneManager::Register(SceneId id, std::unique_ptr<Scene> scene) {
     m_Scenes[id] = std::move(scene);
 }
 
-void SceneManager::GoTo(SceneId id) {
+Scene* SceneManager::ResolveScene(SceneId id) const {
     const auto it = m_Scenes.find(id);
     if (it == m_Scenes.end() || it->second == nullptr) {
+        return nullptr;
+    }
+    return it->second.get();
+}
+
+Scene* SceneManager::GetCurrentScene() const {
+    if (m_StackIds.empty()) {
+        return nullptr;
+    }
+    return ResolveScene(m_StackIds.back());
+}
+
+SceneId SceneManager::GetCurrentId() const {
+    if (m_StackIds.empty()) {
+        return SceneId::None;
+    }
+    return m_StackIds.back();
+}
+
+void SceneManager::GoTo(SceneId id) {
+    Scene* target = ResolveScene(id);
+    if (target == nullptr) {
         LOG_ERROR("SceneManager::GoTo failed, SceneId {} not registered", static_cast<int>(id));
         return;
     }
 
-    if (m_Current != nullptr) {
-        m_Current->OnExit();
+    Scene* current = GetCurrentScene();
+    if (current != nullptr) {
+        current->OnExit();
     }
 
-    m_CurrentId = id;
-    m_Current = it->second.get();
-    m_Current->OnEnter();
+    m_StackIds.clear();
+    m_StackIds.push_back(id);
+    target->OnEnter();
+}
+
+void SceneManager::PushOverlay(SceneId id) {
+    if (m_StackIds.size() != 1) {
+        LOG_ERROR("SceneManager::PushOverlay requires one base scene, stack size={}", static_cast<int>(m_StackIds.size()));
+        return;
+    }
+
+    Scene* base = ResolveScene(m_StackIds.front());
+    Scene* overlay = ResolveScene(id);
+    if (base == nullptr || overlay == nullptr) {
+        LOG_ERROR("SceneManager::PushOverlay failed, invalid base/overlay id={}", static_cast<int>(id));
+        return;
+    }
+
+    base->PauseGameplay();
+    m_StackIds.push_back(id);
+    overlay->OnEnter();
+}
+
+void SceneManager::PopOverlay() {
+    if (m_StackIds.size() != 2) {
+        LOG_ERROR("SceneManager::PopOverlay requires overlay stack size 2, got {}", static_cast<int>(m_StackIds.size()));
+        return;
+    }
+
+    Scene* overlay = ResolveScene(m_StackIds.back());
+    Scene* base = ResolveScene(m_StackIds.front());
+    if (overlay == nullptr || base == nullptr) {
+        LOG_ERROR("SceneManager::PopOverlay failed, base or overlay scene missing");
+        return;
+    }
+
+    overlay->OnExit();
+    m_StackIds.pop_back();
+    base->ResumeGameplay();
+}
+
+void SceneManager::RestartUnderlying() {
+    if (m_StackIds.size() != 2) {
+        LOG_ERROR("SceneManager::RestartUnderlying requires overlay stack size 2, got {}", static_cast<int>(m_StackIds.size()));
+        return;
+    }
+
+    Scene* overlay = ResolveScene(m_StackIds.back());
+    Scene* base = ResolveScene(m_StackIds.front());
+    if (overlay == nullptr || base == nullptr) {
+        LOG_ERROR("SceneManager::RestartUnderlying failed, base or overlay scene missing");
+        return;
+    }
+
+    overlay->OnExit();
+    m_StackIds.pop_back();
+
+    base->OnExit();
+    base->OnEnter();
+}
+
+void SceneManager::ClearToAndGoTo(SceneId id) {
+    Scene* target = ResolveScene(id);
+    if (target == nullptr) {
+        LOG_ERROR("SceneManager::ClearToAndGoTo failed, target SceneId {} not registered", static_cast<int>(id));
+        return;
+    }
+
+    if (m_StackIds.size() == 2) {
+        Scene* overlay = ResolveScene(m_StackIds.back());
+        if (overlay != nullptr) {
+            overlay->OnExit();
+        }
+        m_StackIds.pop_back();
+    }
+
+    if (m_StackIds.size() == 1) {
+        Scene* base = ResolveScene(m_StackIds.back());
+        if (base != nullptr) {
+            base->OnExit();
+        }
+        m_StackIds.pop_back();
+    }
+
+    m_StackIds.push_back(id);
+    target->OnEnter();
 }
 
 SceneId SceneManager::UpdateCurrent() {
-    if (m_Current == nullptr) {
+    Scene* current = GetCurrentScene();
+    if (current == nullptr) {
         return SceneId::None;
     }
 
-    const SceneId next = m_Current->Update();
-    if (next != SceneId::None && next != m_CurrentId) {
+    const SceneId next = current->Update();
+    const auto op = current->ConsumeSceneOp();
+
+    if (op.has_value()) {
+        switch (op->type) {
+            case SceneOpType::PushOverlay:
+                PushOverlay(op->target);
+                break;
+            case SceneOpType::PopOverlay:
+                PopOverlay();
+                break;
+            case SceneOpType::RestartUnderlying:
+                RestartUnderlying();
+                break;
+            case SceneOpType::ClearToAndGoTo:
+                ClearToAndGoTo(op->target);
+                break;
+            case SceneOpType::None:
+                break;
+        }
+        return SceneId::None;
+    }
+
+    if (next != SceneId::None && next != GetCurrentId()) {
         GoTo(next);
     }
 
@@ -6170,6 +6583,32 @@ void TitleScene::OnEnter() {
     if (m_Actors.Header() != nullptr) {
         m_Actors.Header()->SetVisible(true);
     }
+    if (m_Actors.Floor() != nullptr) {
+        m_Actors.Floor()->SetVisible(true);
+    }
+    if (m_Actors.Door() != nullptr) {
+        m_Actors.Door()->SetVisible(true);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+
+        if (m_Actors.Floor() != nullptr) {
+            const float floorY = m_Actors.Floor()->GetPosition().y;
+            const float floorHalfH = m_Actors.Floor()->GetScaledSize().y * 0.5f;
+            const float doorHalfH = m_Actors.Door()->GetScaledSize().y * 0.5f;
+            m_Actors.Door()->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
+        }
+    }
+    if (m_Actors.TestBox() != nullptr) {
+        m_Actors.TestBox()->SetVisible(true);
+        if (m_Actors.TestBox()->GetTextObject() != nullptr) {
+            m_Actors.TestBox()->GetTextObject()->SetVisible(true);
+        }
+    }
+    for (auto& cat : m_Actors.StartupCats()) {
+        if (cat != nullptr) {
+            cat->SetVisible(true);
+        }
+    }
+
     m_Actors.Root().AddChild(m_TitleSub);
     m_Actors.Root().AddChild(m_PressEnterText);
 
@@ -6333,47 +6772,40 @@ void VisualThemeService::RestoreAppliedBackground() {
 <file path="ARCHITECTURE.md">
 # Architecture Overview
 
-This project uses scene-driven flow with interface-based service injection.
+The project is a scene-driven game loop with interface-based service injection.
 
 ## Runtime Loop
 
-- `main.cpp` runs `App` until app state reaches `END`.
-- `App` state machine: `START -> UPDATE -> END`.
-- `App::Update()` order:
+- `main.cpp` runs `App` state machine: `START -> UPDATE -> END`.
+- `App::Update()` executes in fixed order:
   1. `IAudioService::UpdateBgm()`
   2. `SceneManager::UpdateCurrent()`
-  3. quit check via `ISessionState::ShouldQuit()`
+  3. check `ISessionState::ShouldQuit()`
   4. `Renderer::Update()`
 
 ## Composition Root
 
-`App::Start()` creates and wires long-lived objects:
+`App::Start()` creates long-lived objects and wiring:
 
-- `GlobalActors`
+- `GlobalActors` (shared render objects)
 - `SessionState`
-- `AudioService`
+- `AudioService` + `BGMPlayer`
 - `VisualThemeService`
 - `SceneManager`
 
-Scenes receive shared capabilities through `SceneServices`:
+Each `Scene` receives only interface references via `SceneServices`:
 
 - `IAudioService&`
 - `IVisualThemeService&`
 - `ISessionState&`
 - `IGlobalActors&`
 
-## Scene and Transition Model
+## Scene Model
 
-- All scenes derive from `Scene` and implement `OnEnter`, `Update`, `OnExit`.
-- `SceneManager` is the only transition owner (`Register`, `GoTo`, `UpdateCurrent`).
-- Transition rule: scene returns a `SceneId`; manager performs `OnExit` (old) then `OnEnter` (new).
-
-## Ownership Boundaries
-
-- `App` owns services, global actors, and `SceneManager`.
-- `SceneManager` owns scene instances.
-- Scenes own scene-local runtime state (UI nodes, local physics world, temporary gameplay data).
-- Shared render actors are accessed via `IGlobalActors` and are not re-owned by scenes.
+- `SceneManager` owns scene instances and the runtime scene stack.
+- Normal transitions use `SceneId` return values from `Scene::Update()`.
+- Overlay transitions use `SceneOp` (`PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`).
+- In `UpdateCurrent()`, pending `SceneOp` is processed before normal `SceneId` transition.
 
 ## Registered Scenes
 
@@ -6387,23 +6819,28 @@ Registered in `App::Start()`:
 - `LocalPlayScene`
 - `LocalPlayGameScene`
 - `LevelSelectScene`
-- `LevelOneScene` (registered with `SceneId::Level01`)
+- `LevelExitScene` (overlay)
+- `LevelOneScene` (`SceneId::Level01`)
 
-`LevelExitScene` files exist but are currently empty.
+## Ownership Boundaries
 
-## Extension Rules
+- `App` owns global lifetime objects.
+- `SceneManager` owns `unique_ptr<Scene>` registry and active stack ids.
+- Scenes own scene-local data (`PhysicsWorld`, temporary UI, per-level entities).
+- `IGlobalActors` exposes shared visual actors; scenes configure visibility/position/image but do not re-own them.
 
-1. Keep scene-specific behavior inside that scene.
-2. Put cross-scene runtime state in `ISessionState`.
-3. Use `IGlobalActors` only for shared long-lived render actors.
-4. Extend `IAudioService` / `IVisualThemeService` for global behavior.
-5. Register new scenes in `App::Start()` and route only by `SceneId`.
+## Engineering Rules
+
+1. Keep gameplay/UI logic inside scene-local classes.
+2. Keep cross-scene state in `ISessionState` or persisted via `SaveManager`.
+3. Keep scene code depending on interfaces (`I*`) rather than concrete services.
+4. Register every new scene in `App::Start()` and route by `SceneId`/`SceneOp` only.
 </file>
 
 <file path="CLASS_RELATIONSHIPS.md">
 # Class Relationships
 
-This document captures the current class graph and dependency direction.
+This file records the current dependency graph and key coupling points.
 
 ## Inheritance Map
 
@@ -6437,7 +6874,8 @@ Scene
 ├─ LocalPlayScene
 ├─ LocalPlayGameScene
 ├─ LevelSelectScene
-└─ LevelOneScene  (routed as SceneId::Level01)
+├─ LevelExitScene
+└─ LevelOneScene
 ```
 
 ## Service Contracts
@@ -6449,147 +6887,139 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-`Scene` stores service references as `m_Audio`, `m_Theme`, `m_Session`, and `m_Actors`.
+`Scene` stores only interface references (`m_Audio`, `m_Theme`, `m_Session`, `m_Actors`).
 
-## Ownership Model
+## Scene Control Contracts
 
-- `App` owns long-lived services and `SceneManager`.
-- `SceneManager` owns scenes (`unique_ptr<Scene>`).
-- `GlobalActors` stores shared render actors (`Background`, `Floor`, `Door`, `StartupCats`, optional `TestBox`).
-- Physics-enabled scenes own one local `PhysicsWorld` each.
-- `PhysicsWorld` stores registered bodies as weak references and owns static boundaries it creates.
+```text
+SceneOpType/SceneOp -> consumed by SceneManager
+SceneManager        -> owns scene registry and stack ids
+```
 
-## Dependency Direction
+- Scene output channels:
+  - `SceneId` for normal route changes
+  - `SceneOp` for overlay stack operations
 
-1. Interfaces (`I*`) define contracts.
-2. Concrete services implement contracts.
-3. `Scene` depends on interfaces only.
-4. Concrete scenes depend on `Scene` and feature classes.
-5. `App::Start()` performs concrete wiring.
+## Ownership and Lifetime
 
-## Current Practical Couplings
+- `App` owns services, `GlobalActors`, and `SceneManager`.
+- `SceneManager` owns all scenes (`std::unique_ptr`).
+- `GlobalActors` owns shared render actors (background/header/floor/door/startup cats/test box).
+- Physics scenes own local `PhysicsWorld`; `PhysicsWorld` keeps weak body refs and owns created `StaticBody` boundaries.
 
-- `LocalPlayScene` depends on `KeyboardConfigScene*` for configured-player checks.
-- Persistence uses static `SaveManager` calls.
-- `LevelExitScene` exists in file layout but has no implementation.
+## Practical Couplings
+
+- `LocalPlayScene` keeps a raw `KeyboardConfigScene*` to validate configured player count before entering gameplay.
+- `PushableBox` keeps a non-owning `PhysicsWorld*` for cooperative push queries.
+- Scene persistence is centralized through static `SaveManager` calls (`OptionMenuScene`, `KeyboardConfigScene`, `LevelSelectScene`, `LevelOneScene`).
 </file>
 
 <file path="COMPONENT_INTERACTION.md">
 # Component Interaction and Runtime Flow
 
-This document describes how runtime systems collaborate each frame.
+This document describes verified runtime collaboration between core systems.
 
 ## Frame Pipeline
 
-Per frame in `App::Update()`:
+`App::Update()` runs:
 
 1. `IAudioService::UpdateBgm()`
 2. `SceneManager::UpdateCurrent()`
-3. if `ISessionState::ShouldQuit()` -> `App::State = END`
+3. if `ISessionState::ShouldQuit()` then `App::State = END`
 4. `Renderer::Update()`
 
-`SceneManager::UpdateCurrent()` calls current `Update()` and applies scene switch via `GoTo(next)` when needed.
+## SceneManager Update Contract
 
-## Scene Lifecycle Pattern
+`SceneManager::UpdateCurrent()` does:
 
-- `OnEnter()`: attach required nodes, reset scene-local state, register local physics bodies.
-- `Update()`: process input, run local logic, optionally return next `SceneId`.
-- `OnExit()`: detach scene-owned nodes and clear temporary state.
+1. call top scene `Update()` and capture returned `SceneId`
+2. consume pending `SceneOp` from that scene
+3. if `SceneOp` exists, execute it (priority over `SceneId`)
+4. otherwise process normal `SceneId` transition via `GoTo`
 
-Scenes usually reconfigure shared actors from `IGlobalActors` (show/hide/move/image), not recreate them.
+Overlay operations:
 
-## Shared-Service Interaction Rules
+- `PushOverlay`: pause base scene, push overlay, call overlay `OnEnter()`
+- `PopOverlay`: overlay `OnExit()`, pop, resume base scene
+- `RestartUnderlying`: overlay `OnExit()`, pop, then base `OnExit()` + `OnEnter()`
+- `ClearToAndGoTo`: clear stack and enter target scene
 
-- Audio: scenes call `IAudioService`; direct `BGMPlayer` usage is app-level.
-- Theme: scenes call `IVisualThemeService`.
-- Session: scenes use `ISessionState` for player count, key mappings, cooperative values, and quit request.
-- Global actors: scenes use `IGlobalActors` for root and shared actors (`Background`, `Header`, `Floor`, `Door`, `StartupCats`, optional `TestBox`).
+## Shared Services and Actors
 
-## Key Runtime Flows
+- `IAudioService`: BGM control from scenes (`OptionMenuScene` updates volume preview/commit).
+- `IVisualThemeService`: background preview and apply/restore flow.
+- `ISessionState`: selected player count, key configs, cooperative value, quit request.
+- `IGlobalActors`: shared render root and reusable actors (`Background`, `Header`, `Floor`, `Door`, startup cats, optional test box).
 
-- Exit: `ExitConfirmScene` calls `m_Session.RequestQuit()`, then `App` moves to `END`.
-- Option: `OptionMenuScene` edits pending values, previews through services, commits to `SaveManager`.
-- Keyboard config: `KeyboardConfigScene` captures/validates keys, persists to `SaveManager`, syncs to `ISessionState`.
-- Local play gate: `LocalPlayScene` checks configured players (via `KeyboardConfigScene*`) before entering gameplay.
-- Level select: `LevelSelectScene` loads best-time data and routes by configured `SceneId` map.
+## High-Impact Flows
 
-## LevelOneScene Interaction (Current)
+- `ExitConfirmScene`: YES triggers `m_Session.RequestQuit()`; app exits on next frame check.
+- `OptionMenuScene`: edits pending settings, previews via audio/theme services, saves with `SaveManager` on OK.
+- `KeyboardConfigScene`: edits per-player bindings, validates conflicts, saves via `SaveManager`, syncs into `ISessionState`.
+- `LocalPlayScene`: blocks entry when selected players exceed configured keyboard profiles.
+- `LevelSelectScene`: reads level save data, shows best times/crowns, routes to mapped level `SceneId`.
 
-`LevelOneScene` per-frame sequence:
+## Level Gameplay + Overlay Flow
 
-1. read player input and set move intent
-2. call `m_World.Update()` once
-3. update timer text
-4. key pickup check (`TryPickKey`)
-5. key follow update (`UpdateKeyFollow`)
-6. door-open check when key carrier touches door (`TryOpenDoorAndClear`)
-7. per-player door entry check (requires each player's own `up` key)
-8. when all players entered, write best time and return `SceneId::LevelSelect`
-
-Box thresholds are set on enter from selected players:
-
-- `BoxA = playerCount - 1`
-- `BoxB = playerCount`
-
-## Physics Scene Interaction
-
-`TitleScene`, `MenuScene`, `LocalPlayGameScene`, and `LevelOneScene` follow a shared physics pattern:
-
-1. write intent (`SetMoveDir`, `Jump`)
-2. call `PhysicsWorld::Update()` exactly once
-3. run scene-specific post-physics logic
-
-`PhysicsWorld` handles update ordering, resolve/apply, collision callbacks, and `PostUpdate()` dispatch.
+- `LevelOneScene` update order: input -> `PhysicsWorld::Update()` -> timer -> key/door logic -> clear check.
+- `ESC` in `LevelOneScene` emits `SceneOpType::PushOverlay` to `SceneId::LevelExit`.
+- `LevelOneScene::PauseGameplay()` freezes world; `ResumeGameplay()` unfreezes it.
+- `LevelExitScene` maps actions to scene ops:
+  - RETURN GAME / ESC / exit button -> `PopOverlay`
+  - RETRY -> `RestartUnderlying`
+  - LEVEL SELECT -> `ClearToAndGoTo(LevelSelect)`
+  - TITLE -> `ClearToAndGoTo(Title)`
 </file>
 
 <file path="HPP_PURPOSE.md">
 # include/*.hpp 用途一覽
 
-- `AnimatedCharacter.hpp`：提供可播放動畫貼圖的基礎角色類別。
-- `App.hpp`：定義遊戲主程式 `App` 的生命週期與核心成員。
-- `AppUtil.hpp`：提供按鍵字串轉換、滑鼠點擊判定與文字對齊等工具函式。
-- `AudioService.hpp`：實作 `IAudioService`，封裝 BGM 的播放與音量控制。
-- `BGMPlayer.hpp`：管理背景音樂清單、播放切換與音量設定。
-- `CatAssets.hpp`：集中產生貓咪各動畫資源路徑。
-- `Character.hpp`：提供靜態圖片角色的基礎渲染與互動功能。
-- `CharacterPhysicsSystem.hpp`：集中存放角色物理常數定義。
-- `ExitConfirmScene.hpp`：定義離開確認場景的介面與狀態。
-- `GameText.hpp`：提供可渲染文字物件與文字互動判定。
-- `GlobalActors.hpp`：實作 `IGlobalActors`，集中管理全域共享角色與渲染根節點。
-- `IAudioService.hpp`：定義音訊服務的抽象介面。
-- `IGlobalActors.hpp`：定義全域共享角色存取的抽象介面。
-- `IPhysicsBody.hpp`：定義物理世界中可參與碰撞更新物件的抽象介面。
-- `IPushable.hpp`：定義可被推動物件的最小能力介面。
-- `ISessionState.hpp`：定義跨場景會話狀態的抽象介面。
-- `IVisualThemeService.hpp`：定義視覺主題（背景）控制的抽象介面。
-- `KeyboardConfigScene.hpp`：定義鍵位設定場景與其輸入綁定流程。
-- `LevelExitScene.hpp`：預留關卡退出場景的標頭（目前為空）。
-- `LevelOneScene.hpp`：定義第一關遊玩場景與解謎邏輯入口。
-- `LevelSelectScene.hpp`：定義關卡選擇場景與最佳時間顯示。
-- `LocalPlayGameScene.hpp`：定義本地多人遊玩主場景與入門流程。
+- `AnimatedCharacter.hpp`：定義可切換與播放動畫的角色基底。
+- `App.hpp`：定義 `App` 主迴圈狀態與核心資源成員。
+- `AppUtil.hpp`：提供 UI 對齊、輸入判定與字串轉換等工具函式。
+- `AudioService.hpp`：`IAudioService` 的實作，封裝 BGM 播放控制。
+- `BGMPlayer.hpp`：管理背景音樂清單、播放狀態與音量。
+- `CatAssets.hpp`：集中產生各色貓咪動畫資源路徑。
+- `Character.hpp`：定義靜態圖片物件與滑鼠互動能力。
+- `CharacterPhysicsSystem.hpp`：集中定義角色運動用物理常數。
+- `ExitConfirmScene.hpp`：定義離開確認場景的 UI 與選項狀態。
+- `GameText.hpp`：定義文字物件與文字互動判定。
+- `GlobalActors.hpp`：`IGlobalActors` 的實作，集中管理共享場景物件。
+- `IAudioService.hpp`：音訊服務抽象介面。
+- `IGlobalActors.hpp`：全域共享角色與渲染根節點抽象介面。
+- `IPhysicsBody.hpp`：物理世界可更新/碰撞物件的抽象介面與 `BodyType`。
+- `IPushable.hpp`：可推動物件需求人數的抽象介面。
+- `ISessionState.hpp`：跨場景會話狀態抽象介面。
+- `IVisualThemeService.hpp`：視覺主題（背景）服務抽象介面。
+- `KeyboardConfigScene.hpp`：定義鍵位設定場景與輸入綁定流程。
+- `LevelExitScene.hpp`：定義關卡中斷 overlay 場景（返回/重試/離開）。
+- `LevelOneScene.hpp`：定義第一關遊戲流程、互動物件與過關邏輯。
+- `LevelSelectScene.hpp`：定義關卡選擇、最佳時間與皇冠顯示。
+- `LocalPlayGameScene.hpp`：定義本地多人遊戲場景與入門關流程。
 - `LocalPlayScene.hpp`：定義本地多人玩家數選擇場景。
-- `MenuScene.hpp`：定義主選單場景與選項切換。
-- `OptionMenuScene.hpp`：定義選項場景（背景、音量、顯示選項）。
-- `PhysicsWorld.hpp`：定義物理世界管線、註冊管理與碰撞解算。
-- `PlayerCat.hpp`：定義玩家貓角色的動畫狀態與物理行為。
-- `PlayerKeyConfig.hpp`：定義單一玩家的按鍵配置資料結構。
-- `PushableBox.hpp`：定義可推動箱子的物理、需求人數與提示文字。
-- `SaveManager.hpp`：定義設定與關卡紀錄的讀寫介面。
-- `Scene.hpp`：定義所有場景共用的抽象基底類別。
-- `SceneId.hpp`：定義場景識別列舉值。
-- `SceneManager.hpp`：定義場景註冊、切換與更新管理器。
-- `SceneServices.hpp`：定義場景注入用的服務聚合結構。
-- `SessionState.hpp`：實作 `ISessionState`，保存跨場景共享狀態。
-- `StaticBody.hpp`：定義靜態碰撞體（牆、地板、天花板）。
-- `TitleScene.hpp`：定義標題畫面場景。
-- `UITriangleButton.hpp`：定義可按壓狀態切換的三角形按鈕元件。
-- `VisualThemeService.hpp`：實作 `IVisualThemeService`，管理背景主題套用。
+- `MenuScene.hpp`：定義主選單場景與項目切換。
+- `OptionMenuScene.hpp`：定義選項場景（背景、音量、顯示）。
+- `PhysicsWorld.hpp`：定義物理世界註冊、更新與碰撞解算流程。
+- `PlayerCat.hpp`：定義玩家貓動畫狀態與角色物理行為。
+- `PlayerKeyConfig.hpp`：定義玩家按鍵配置資料結構。
+- `PushableBox.hpp`：定義可推箱子行為、需求推力與提示文字。
+- `SaveManager.hpp`：定義設定與關卡紀錄的讀寫 API。
+- `Scene.hpp`：定義所有場景共用生命週期與 `SceneOp` 通道。
+- `SceneId.hpp`：定義場景識別列舉。
+- `SceneManager.hpp`：定義場景註冊、切換、stack/overlay 管理。
+- `SceneOp.hpp`：定義場景操作命令（Push/Pop/Restart/ClearToAndGoTo）。
+- `SceneServices.hpp`：定義場景注入服務聚合結構。
+- `SessionState.hpp`：`ISessionState` 的實作，保存共享執行狀態。
+- `StaticBody.hpp`：定義靜態碰撞體（地板、牆、天花板）。
+- `TitleScene.hpp`：定義標題場景與進入遊戲流程。
+- `UITriangleButton.hpp`：定義可按壓狀態切換的三角按鈕元件。
+- `VisualThemeService.hpp`：`IVisualThemeService` 的實作，套用背景主題。
 </file>
 
 <file path="PHYSICS_DESIGN.md">
 # Physics System Design
 
-This document summarizes the current `PhysicsWorld` implementation and usage.
+This document summarizes the current `PhysicsWorld` behavior.
 
 ## Core Types
 
@@ -6605,79 +7035,73 @@ IPushable
 
 `PhysicsWorld` is scene-local and provides:
 
-- body registration (`Register`, `Unregister`, `Clear`)
-- static boundary creation (`AddStaticBoundary`)
-- optional rope metadata (`AddRope`, `RemoveRope`, `GetRopesOf`)
+- body lifecycle (`Register`, `Unregister`, `Clear`)
+- static colliders (`AddStaticBoundary`)
 - frame stepping (`Update`)
+- pause control (`FreezeAll`, `UnfreezeAll`)
 - cooperative push query (`CountCharactersPushing`)
+- rope metadata storage (`AddRope`, `RemoveRope`, `GetRopesOf`)
 
-## Body Contracts
+## Body Contract
 
-- `PhysicsUpdate()`: compute desired movement (`GetDesiredDelta`).
-- `ApplyResolvedDelta()`: apply resolved world displacement.
-- `OnCollision()`: receive collision normal callbacks after resolve.
-- `PostUpdate()`: final per-frame hook.
-- `IsActive` / `IsFrozen`: runtime participation switches.
+- `PhysicsUpdate()` computes intent (`GetDesiredDelta()`).
+- `ApplyResolvedDelta()` applies resolved movement.
+- `OnCollision()` receives contact normal callbacks.
+- `PostUpdate()` handles final per-frame state.
+- `IsActive` and `IsFrozen` gate participation.
 
 ## Per-Frame Pipeline
 
-`PhysicsWorld::Update()` runs:
+`PhysicsWorld::Update()` sequence:
 
-1. purge expired weak references periodically
+1. periodic purge of expired weak references
 2. `StepPhysicsUpdate()`
-   - pass 1: active, non-frozen non-box bodies
-   - pass 2: active, non-frozen `PUSHABLE_BOX` bodies
+   - pass A: active, non-frozen, non-box bodies
+   - pass B: active, non-frozen `PUSHABLE_BOX` bodies
 3. `StepResolveAndApply()`
    - snapshot active bodies
-   - detect support/riding relations
-   - resolve in dependency order
+   - detect riding/support links
+   - resolve deltas in support-safe order
    - apply resolved deltas
-   - dispatch collision callbacks
+   - dispatch `OnCollision()` callbacks
 4. run `PostUpdate()` on active, non-frozen bodies
 
-This ordering ensures pushable boxes read current-frame character intent.
+The two update passes ensure boxes read current-frame character push intent.
 
-## Collision and Riding Model
+## Resolve Model
 
-- Axis-separated resolve (horizontal, then vertical).
-- Separation uses minimal displacement against solid overlap.
-- Riding allows inheriting support-body horizontal movement.
-- Kinematic and frozen bodies are treated as pre-resolved for ordering.
+- AABB overlap test with axis-separated resolution (horizontal then vertical).
+- Riding propagation adds support-body horizontal delta to rider effective motion.
+- Kinematic and frozen bodies are marked resolved early in dependency ordering.
 
-## Cooperative Push Logic
+## Cooperative Push Model
 
 `CountCharactersPushing(target, dir)` recursively traverses adjacent chains:
 
-- counts active characters pushing toward `dir`
-- allows passive intermediaries to transmit force
-- allows boxes to relay force through chains
-- supports opposite-direction cancellation through per-direction counting in box logic
+- counts active `CHARACTER` bodies pushing in `dir`
+- allows passive intermediates to relay force
+- allows box-to-box relay
+- supports opposite-direction cancellation by separate left/right counts in `PushableBox`
 
-## Scene Integration Pattern
+## Scene Integration
 
-Typical usage in a physics scene:
+Physics users: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
 
-- `OnEnter()`: clear world, register dynamic bodies, add static boundaries
-- `Update()`: write input intent, call `m_World.Update()` once
-- `OnExit()`: clear world
+Typical pattern:
 
-Current users: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
+- `OnEnter()`: `Clear()`, register bodies, create static boundaries
+- `Update()`: write move/jump intent, call `m_World.Update()` once
+- `OnExit()`: `Clear()`
 
-## LevelOne Integration Notes
+Pause integration:
 
-`LevelOneScene` aligns collision bounds with rendered geometry:
-
-- floor collider top is derived from floor sprite top edge
-- ceiling collider bottom is derived from ceiling sprite bottom edge
-- box spawn Y uses `PushableBox::GetHalfSize().y` (no hardcoded box height)
-
-This keeps visual sprites and physical boundaries synchronized.
+- `LevelOneScene::PauseGameplay()` -> `FreezeAll()`
+- `LevelOneScene::ResumeGameplay()` -> `UnfreezeAll()`
 
 ## Known Limits
 
-- Rope constraints are stored but not solved yet.
-- Several `BodyType` values are placeholders for future entities.
-- Physics remains independent from `SceneServices`; scene-layer systems handle save/theme/audio/session concerns.
+- Rope constraints are data-only; no rope solver step is implemented.
+- Several `BodyType` values are reserved for future entities.
 </file>
 
 <file path="Image/Level_Cover/LevelOneScene/關卡敘述.txt">
@@ -6830,7 +7254,7 @@ This keeps visual sprites and physical boundaries synchronized.
 <file path="Save/settings.json">
 {
   "bgColorIndex": 1,
-  "bgmVolume": 10,
+  "bgmVolume": 0,
   "dispNumber": false,
   "keyConfigs": [
     {

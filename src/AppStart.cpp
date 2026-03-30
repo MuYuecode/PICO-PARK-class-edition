@@ -10,6 +10,7 @@
 #include "LocalPlayScene.hpp"
 #include "LocalPlayGameScene.hpp"
 #include "LevelSelectScene.hpp"
+#include "LevelExitScene.hpp"
 #include "LevelOneScene.hpp"
 #include "SceneId.hpp"
 
@@ -154,6 +155,8 @@ void App::Start() {
     auto levelSelectScene = make_unique<LevelSelectScene>(services);
     levelSelectScene->SetLevelSceneId(0, SceneId::Level01);
 
+    auto levelExitScene = make_unique<LevelExitScene>(services);
+
     auto levelOneScene = make_unique<LevelOneScene>(services);
 
     m_SceneManager->Register(SceneId::Title, std::move(titleScene));
@@ -164,6 +167,7 @@ void App::Start() {
     m_SceneManager->Register(SceneId::LocalPlay, std::move(localPlayScene));
     m_SceneManager->Register(SceneId::LocalPlayGame, std::move(localPlayGameScene));
     m_SceneManager->Register(SceneId::LevelSelect, std::move(levelSelectScene));
+    m_SceneManager->Register(SceneId::LevelExit, std::move(levelExitScene));
     m_SceneManager->Register(SceneId::Level01, std::move(levelOneScene));
 
     m_SceneManager->GoTo(SceneId::Title);

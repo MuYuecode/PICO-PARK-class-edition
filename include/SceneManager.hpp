@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include "Scene.hpp"
 #include "SceneId.hpp"
@@ -21,13 +22,19 @@ public:
     void GoTo(SceneId id);
     SceneId UpdateCurrent();
 
-    [[nodiscard]] SceneId GetCurrentId() const { return m_CurrentId; }
-    [[nodiscard]] Scene* GetCurrentScene() const { return m_Current; }
+    [[nodiscard]] SceneId GetCurrentId() const;
+    [[nodiscard]] Scene* GetCurrentScene() const;
 
 private:
+    [[nodiscard]] Scene* ResolveScene(SceneId id) const;
+
+    void PushOverlay(SceneId id);
+    void PopOverlay();
+    void RestartUnderlying();
+    void ClearToAndGoTo(SceneId id);
+
     std::unordered_map<SceneId, std::unique_ptr<Scene>, SceneIdHash> m_Scenes;
-    SceneId m_CurrentId = SceneId::None;
-    Scene* m_Current = nullptr;
+    std::vector<SceneId> m_StackIds;
 };
 
 #endif // SCENE_MANAGER_HPP

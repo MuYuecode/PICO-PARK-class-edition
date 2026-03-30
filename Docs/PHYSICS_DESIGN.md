@@ -1,6 +1,6 @@
 # Physics System Design
 
-This document summarizes the current `PhysicsWorld` implementation and usage.
+This document summarizes the current `PhysicsWorld` behavior.
 
 ## Core Types
 
@@ -16,76 +16,70 @@ IPushable
 
 `PhysicsWorld` is scene-local and provides:
 
-- body registration (`Register`, `Unregister`, `Clear`)
-- static boundary creation (`AddStaticBoundary`)
-- optional rope metadata (`AddRope`, `RemoveRope`, `GetRopesOf`)
+- body lifecycle (`Register`, `Unregister`, `Clear`)
+- static colliders (`AddStaticBoundary`)
 - frame stepping (`Update`)
+- pause control (`FreezeAll`, `UnfreezeAll`)
 - cooperative push query (`CountCharactersPushing`)
+- rope metadata storage (`AddRope`, `RemoveRope`, `GetRopesOf`)
 
-## Body Contracts
+## Body Contract
 
-- `PhysicsUpdate()`: compute desired movement (`GetDesiredDelta`).
-- `ApplyResolvedDelta()`: apply resolved world displacement.
-- `OnCollision()`: receive collision normal callbacks after resolve.
-- `PostUpdate()`: final per-frame hook.
-- `IsActive` / `IsFrozen`: runtime participation switches.
+- `PhysicsUpdate()` computes intent (`GetDesiredDelta()`).
+- `ApplyResolvedDelta()` applies resolved movement.
+- `OnCollision()` receives contact normal callbacks.
+- `PostUpdate()` handles final per-frame state.
+- `IsActive` and `IsFrozen` gate participation.
 
 ## Per-Frame Pipeline
 
-`PhysicsWorld::Update()` runs:
+`PhysicsWorld::Update()` sequence:
 
-1. purge expired weak references periodically
+1. periodic purge of expired weak references
 2. `StepPhysicsUpdate()`
-   - pass 1: active, non-frozen non-box bodies
-   - pass 2: active, non-frozen `PUSHABLE_BOX` bodies
+   - pass A: active, non-frozen, non-box bodies
+   - pass B: active, non-frozen `PUSHABLE_BOX` bodies
 3. `StepResolveAndApply()`
    - snapshot active bodies
-   - detect support/riding relations
-   - resolve in dependency order
+   - detect riding/support links
+   - resolve deltas in support-safe order
    - apply resolved deltas
-   - dispatch collision callbacks
+   - dispatch `OnCollision()` callbacks
 4. run `PostUpdate()` on active, non-frozen bodies
 
-This ordering ensures pushable boxes read current-frame character intent.
+The two update passes ensure boxes read current-frame character push intent.
 
-## Collision and Riding Model
+## Resolve Model
 
-- Axis-separated resolve (horizontal, then vertical).
-- Separation uses minimal displacement against solid overlap.
-- Riding allows inheriting support-body horizontal movement.
-- Kinematic and frozen bodies are treated as pre-resolved for ordering.
+- AABB overlap test with axis-separated resolution (horizontal then vertical).
+- Riding propagation adds support-body horizontal delta to rider effective motion.
+- Kinematic and frozen bodies are marked resolved early in dependency ordering.
 
-## Cooperative Push Logic
+## Cooperative Push Model
 
 `CountCharactersPushing(target, dir)` recursively traverses adjacent chains:
 
-- counts active characters pushing toward `dir`
-- allows passive intermediaries to transmit force
-- allows boxes to relay force through chains
-- supports opposite-direction cancellation through per-direction counting in box logic
+- counts active `CHARACTER` bodies pushing in `dir`
+- allows passive intermediates to relay force
+- allows box-to-box relay
+- supports opposite-direction cancellation by separate left/right counts in `PushableBox`
 
-## Scene Integration Pattern
+## Scene Integration
 
-Typical usage in a physics scene:
+Physics users: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
 
-- `OnEnter()`: clear world, register dynamic bodies, add static boundaries
-- `Update()`: write input intent, call `m_World.Update()` once
-- `OnExit()`: clear world
+Typical pattern:
 
-Current users: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
+- `OnEnter()`: `Clear()`, register bodies, create static boundaries
+- `Update()`: write move/jump intent, call `m_World.Update()` once
+- `OnExit()`: `Clear()`
 
-## LevelOne Integration Notes
+Pause integration:
 
-`LevelOneScene` aligns collision bounds with rendered geometry:
-
-- floor collider top is derived from floor sprite top edge
-- ceiling collider bottom is derived from ceiling sprite bottom edge
-- box spawn Y uses `PushableBox::GetHalfSize().y` (no hardcoded box height)
-
-This keeps visual sprites and physical boundaries synchronized.
+- `LevelOneScene::PauseGameplay()` -> `FreezeAll()`
+- `LevelOneScene::ResumeGameplay()` -> `UnfreezeAll()`
 
 ## Known Limits
 
-- Rope constraints are stored but not solved yet.
-- Several `BodyType` values are placeholders for future entities.
-- Physics remains independent from `SceneServices`; scene-layer systems handle save/theme/audio/session concerns.
+- Rope constraints are data-only; no rope solver step is implemented.
+- Several `BodyType` values are reserved for future entities.

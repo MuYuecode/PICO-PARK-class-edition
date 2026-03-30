@@ -5,7 +5,10 @@
 #ifndef PICOPART_SCENE_HPP
 #define PICOPART_SCENE_HPP
 
+#include <optional>
+
 #include "SceneId.hpp"
+#include "SceneOp.hpp"
 #include "SceneServices.hpp"
 class Scene {
 public:
@@ -26,11 +29,27 @@ public:
     virtual void OnExit()  = 0;
     virtual SceneId Update() = 0;
 
+    virtual void PauseGameplay() {}
+    virtual void ResumeGameplay() {}
+
+    std::optional<SceneOp> ConsumeSceneOp() {
+        const auto op = m_PendingSceneOp;
+        m_PendingSceneOp.reset();
+        return op;
+    }
+
 protected:
     IAudioService& m_Audio;
     IVisualThemeService& m_Theme;
     ISessionState& m_Session;
     IGlobalActors& m_Actors;
+
+    void RequestSceneOp(const SceneOp op) {
+        m_PendingSceneOp = op;
+    }
+
+private:
+    std::optional<SceneOp> m_PendingSceneOp;
 };
 
 #endif //PICOPART_SCENE_HPP

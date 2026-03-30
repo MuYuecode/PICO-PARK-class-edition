@@ -264,6 +264,14 @@ void LevelOneScene::OnExit() {
     }
 }
 
+void LevelOneScene::PauseGameplay() {
+    m_World.FreezeAll();
+}
+
+void LevelOneScene::ResumeGameplay() {
+    m_World.UnfreezeAll();
+}
+
 void LevelOneScene::HandlePlayerInput() const {
     for (const auto& pb : m_Players) {
         if (pb.cat == nullptr) continue;
@@ -373,7 +381,8 @@ void LevelOneScene::UpdateDoorEntryAndClear() {
 
 SceneId LevelOneScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
-        return SceneId::LevelSelect;
+        RequestSceneOp({SceneOpType::PushOverlay, SceneId::LevelExit});
+        return SceneId::None;
     }
 
     HandlePlayerInput();
