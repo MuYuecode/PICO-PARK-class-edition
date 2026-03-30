@@ -15,7 +15,7 @@ class KeyboardConfigScene;
 
 class LocalPlayScene : public Scene {
 public:
-    LocalPlayScene(GameContext& ctx,
+    LocalPlayScene(SceneServices services,
                    std::shared_ptr<Character>          menuFrame,
                    std::shared_ptr<Character>          exitGameButton,
                    std::shared_ptr<UITriangleButton> leftTriButton,

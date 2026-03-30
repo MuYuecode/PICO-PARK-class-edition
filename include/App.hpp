@@ -1,8 +1,14 @@
 #ifndef APP_HPP
 #define APP_HPP
 
+#include <memory>
+
+#include "AudioService.hpp"
+#include "BGMPlayer.hpp"
+#include "GlobalActors.hpp"
+#include "SessionState.hpp"
 #include "Util/Renderer.hpp"
-#include "GameContext.hpp"
+#include "VisualThemeService.hpp"
 #include "SceneManager.hpp"
 
 class App {
@@ -19,7 +25,11 @@ private:
     State          m_CurrentState = State::START;
     Util::Renderer m_Root;
 
-    std::unique_ptr<GameContext> m_Ctx;
+    std::shared_ptr<BGMPlayer> m_BgmPlayer;
+    std::unique_ptr<GlobalActors> m_GlobalActors;
+    std::unique_ptr<SessionState> m_SessionState;
+    std::unique_ptr<AudioService> m_AudioService;
+    std::unique_ptr<VisualThemeService> m_ThemeService;
     std::unique_ptr<SceneManager> m_SceneManager;
 };
 

@@ -16,7 +16,7 @@
 
 class KeyboardConfigScene : public Scene {
 public:
-    KeyboardConfigScene(GameContext& ctx,
+    KeyboardConfigScene(SceneServices services,
                         std::shared_ptr<Character> exitGameButton);
     ~KeyboardConfigScene() override = default;
 

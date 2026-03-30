@@ -9,7 +9,7 @@
 
 class TitleScene : public Scene {
 public:
-    explicit TitleScene(GameContext& ctx);
+    explicit TitleScene(SceneServices services);
     ~TitleScene() override = default;
 
     void   OnEnter() override;

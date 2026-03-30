@@ -10,8 +10,8 @@
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx)
-    : Scene(ctx) {}
+LocalPlayGameScene::LocalPlayGameScene(SceneServices services)
+    : Scene(services) {}
 
 void LocalPlayGameScene::SetupStaticBoundaries() {
     constexpr float kWallHalfW  = 50.f;
@@ -22,9 +22,9 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
     float floorSurfaceY   = -360.f;
     float ceilingSurfaceY = 360.f;
 
-    if (m_Ctx.Floor != nullptr) {
-        floorSurfaceY = m_Ctx.Floor->GetPosition().y
-                      + m_Ctx.Floor->GetScaledSize().y * 0.5f;
+    if (m_Actors.Floor() != nullptr) {
+        floorSurfaceY = m_Actors.Floor()->GetPosition().y
+                      + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
     m_World.AddStaticBoundary(
@@ -46,14 +46,14 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
 
 void LocalPlayGameScene::OnEnter() {
     int playerCount = std::clamp(
-        m_Ctx.SelectedPlayerCount,
+        m_Session.GetSelectedPlayerCount(),
         LocalPlayScene::MIN_PLAYERS,
         LocalPlayScene::MAX_PLAYERS);
 
-    m_Ctx.SelectedPlayerCount  = playerCount;
-    m_Ctx.CooperativePushPower = 1;
+    m_Session.SetSelectedPlayerCount(playerCount);
+    m_Session.SetCooperativePushPower(1);
 
-    for (auto& cat : m_Ctx.StartupCats) {
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) {
             cat->SetVisible(false);
             cat->SetInputEnabled(false);
@@ -64,16 +64,16 @@ void LocalPlayGameScene::OnEnter() {
     SpawnPlayers(playerCount);
     SetupStaticBoundaries();
     {
-        const float floorY     = m_Ctx.Floor->GetPosition().y;
-        const float floorHalfH = m_Ctx.Floor->GetScaledSize().y / 2.0f;
-        const float doorHalfH  = m_Ctx.Door->GetScaledSize().y / 2.0f;
-        m_Ctx.Door->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
+        const float floorY     = m_Actors.Floor()->GetPosition().y;
+        const float floorHalfH = m_Actors.Floor()->GetScaledSize().y / 2.0f;
+        const float doorHalfH  = m_Actors.Door()->GetScaledSize().y / 2.0f;
+        m_Actors.Door()->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
     }
-    m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+    m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
 
     m_EnteredCount = 0;
-    const glm::vec2 doorPos   = m_Ctx.Door->GetPosition();
-    const float     doorHalfH = m_Ctx.Door->GetScaledSize().y / 2.f;
+    const glm::vec2 doorPos   = m_Actors.Door()->GetPosition();
+    const float     doorHalfH = m_Actors.Door()->GetScaledSize().y / 2.f;
 
     m_DoorCountText = std::make_shared<GameText>(
         "0/" + std::to_string(playerCount),
@@ -81,27 +81,27 @@ void LocalPlayGameScene::OnEnter() {
         Util::Color::FromRGB(0, 0, 0, 255));
     m_DoorCountText->SetZIndex(30.f);
     m_DoorCountText->SetPosition({doorPos.x + 10.f, doorPos.y + doorHalfH + 25.f});
-    m_Ctx.Root.AddChild(m_DoorCountText);
+    m_Actors.Root().AddChild(m_DoorCountText);
 
     LOG_INFO("LocalPlayGameScene::OnEnter players={}", playerCount);
 }
 
 void LocalPlayGameScene::OnExit() {
     for (auto& pb : m_Players) {
-        if (pb.cat != nullptr) m_Ctx.Root.RemoveChild(pb.cat);
+        if (pb.cat != nullptr) m_Actors.Root().RemoveChild(pb.cat);
     }
 
     m_World.Clear();
     m_Players.clear();
 
-    m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
 
     if (m_DoorCountText != nullptr) {
-        m_Ctx.Root.RemoveChild(m_DoorCountText);
+        m_Actors.Root().RemoveChild(m_DoorCountText);
         m_DoorCountText = nullptr;
     }
 
-    for (auto& cat : m_Ctx.StartupCats) {
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) cat->SetVisible(true);
     }
 
@@ -133,8 +133,8 @@ SceneId LocalPlayGameScene::Update() {
         }
     }
 
-    const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
-    const glm::vec2 doorSize = m_Ctx.Door->GetScaledSize();
+    const glm::vec2 doorPos  = m_Actors.Door()->GetPosition();
+    const glm::vec2 doorSize = m_Actors.Door()->GetScaledSize();
     const float halfW = doorSize.x / 2.f + 10.f;
     const float halfH = doorSize.y / 2.f + 10.f;
 
@@ -156,7 +156,7 @@ SceneId LocalPlayGameScene::Update() {
             pb.cat->SetPosition({640.f, -360.f});
             UpdateDoorCountText();
 
-            if (m_EnteredCount == m_Ctx.SelectedPlayerCount) {
+            if (m_EnteredCount == m_Session.GetSelectedPlayerCount()) {
                 LOG_INFO("LocalPlayGameScene: all players entered -> LevelSelectScene");
                 return SceneId::LevelSelect;
             }
@@ -175,7 +175,7 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 
     for (int i = 0; i < count; ++i) {
         const std::string color =
-            GameContext::kCatColorOrder[static_cast<size_t>(i)];
+            m_Actors.CatColorOrder()[static_cast<size_t>(i)];
 
         auto cat = std::make_shared<PlayerCat>(
             CatAssets::BuildFullAnimPaths(color),
@@ -184,7 +184,7 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 
         PlayerBinding pb;
         pb.cat = cat;
-        pb.key = m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)];
+        pb.key = m_Session.GetAppliedKeyConfigs()[static_cast<size_t>(i)];
 
         if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default1P;
@@ -193,7 +193,7 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
         }
 
         m_Players.push_back(pb);
-        m_Ctx.Root.AddChild(cat);
+        m_Actors.Root().AddChild(cat);
     }
 
     ApplyInitialFormation();
@@ -204,10 +204,10 @@ void LocalPlayGameScene::SpawnPlayers(int count) {
 }
 
 void LocalPlayGameScene::ApplyInitialFormation() {
-    const float floorY     = (m_Ctx.Floor != nullptr)
-                                 ? m_Ctx.Floor->GetPosition().y : -340.f;
-    const float floorHalfH = (m_Ctx.Floor != nullptr)
-                                 ? m_Ctx.Floor->GetScaledSize().y / 2.f : 0.f;
+    const float floorY     = (m_Actors.Floor() != nullptr)
+                                 ? m_Actors.Floor()->GetPosition().y : -340.f;
+    const float floorHalfH = (m_Actors.Floor() != nullptr)
+                                 ? m_Actors.Floor()->GetScaledSize().y / 2.f : 0.f;
 
     const float halfW0  = m_Players.empty() || m_Players[0].cat == nullptr
                               ? 32.f
@@ -271,12 +271,12 @@ void LocalPlayGameScene::UpdateCooperativePower() const {
         bestGroup = std::max(bestGroup, group);
     }
 
-    m_Ctx.CooperativePushPower = bestGroup;
+    m_Session.SetCooperativePushPower(bestGroup);
 }
 
 void LocalPlayGameScene::UpdateDoorCountText() const {
     if (m_DoorCountText == nullptr) return;
     m_DoorCountText->SetText(
         std::to_string(m_EnteredCount) + "/" +
-        std::to_string(m_Ctx.SelectedPlayerCount));
+        std::to_string(m_Session.GetSelectedPlayerCount()));
 }

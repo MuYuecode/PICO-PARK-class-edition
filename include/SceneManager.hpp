@@ -15,7 +15,7 @@ struct SceneIdHash {
 
 class SceneManager {
 public:
-    explicit SceneManager(GameContext& ctx);
+    SceneManager() = default;
 
     void Register(SceneId id, std::unique_ptr<Scene> scene);
     void GoTo(SceneId id);
@@ -25,7 +25,6 @@ public:
     [[nodiscard]] Scene* GetCurrentScene() const { return m_Current; }
 
 private:
-    GameContext& m_Ctx;
     std::unordered_map<SceneId, std::unique_ptr<Scene>, SceneIdHash> m_Scenes;
     SceneId m_CurrentId = SceneId::None;
     Scene* m_Current = nullptr;

@@ -9,7 +9,7 @@
 
 class MenuScene : public Scene {
 public:
-    explicit MenuScene(GameContext& ctx);
+    explicit MenuScene(SceneServices services);
     ~MenuScene() override = default;
 
     void   OnEnter() override;

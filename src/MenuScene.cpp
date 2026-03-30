@@ -6,8 +6,8 @@
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-MenuScene::MenuScene(GameContext& ctx)
-    : Scene(ctx) {
+MenuScene::MenuScene(SceneServices services)
+    : Scene(services) {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
     m_MenuFrame = std::make_shared<Character>(
@@ -54,9 +54,9 @@ void MenuScene::SetupStaticBoundaries() {
     constexpr float kFloorHalfH = 40.f;
 
     float floorSurfaceY = -360.f;
-    if (m_Ctx.Floor != nullptr) {
-        floorSurfaceY = m_Ctx.Floor->GetPosition().y
-                      + m_Ctx.Floor->GetScaledSize().y * 0.5f;
+    if (m_Actors.Floor() != nullptr) {
+        floorSurfaceY = m_Actors.Floor()->GetPosition().y
+                      + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
     // Floor collider: top edge sits at floorSurfaceY.
@@ -78,14 +78,14 @@ void MenuScene::SetupStaticBoundaries() {
 void MenuScene::OnEnter() {
     LOG_INFO("MenuScene::OnEnter  index={}", m_SelectedIndex);
 
-    m_Ctx.Root.AddChild(m_MenuFrame);
-    m_Ctx.Root.AddChild(m_ExitGameButton);
-    m_Ctx.Root.AddChild(m_blue_cat_run_img);
-    m_Ctx.Root.AddChild(m_LeftTriButton);
-    m_Ctx.Root.AddChild(m_RightTriButton);
-    m_Ctx.Root.AddChild(m_ExitGameText);
-    m_Ctx.Root.AddChild(m_OptionText);
-    m_Ctx.Root.AddChild(m_LocalPlayText);
+    m_Actors.Root().AddChild(m_MenuFrame);
+    m_Actors.Root().AddChild(m_ExitGameButton);
+    m_Actors.Root().AddChild(m_blue_cat_run_img);
+    m_Actors.Root().AddChild(m_LeftTriButton);
+    m_Actors.Root().AddChild(m_RightTriButton);
+    m_Actors.Root().AddChild(m_ExitGameText);
+    m_Actors.Root().AddChild(m_OptionText);
+    m_Actors.Root().AddChild(m_LocalPlayText);
 
     m_LeftTriButton->ResetState();
     m_RightTriButton->ResetState();
@@ -97,7 +97,7 @@ void MenuScene::OnEnter() {
 
     m_World.Clear();
 
-    for (auto& cat : m_Ctx.StartupCats) {
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat == nullptr) continue;
         cat->SetInputEnabled(false);
         cat->SetMoveDir(0);
@@ -112,14 +112,14 @@ void MenuScene::OnEnter() {
 void MenuScene::OnExit() {
     LOG_INFO("MenuScene::OnExit");
 
-    m_Ctx.Root.RemoveChild(m_MenuFrame);
-    m_Ctx.Root.RemoveChild(m_ExitGameButton);
-    m_Ctx.Root.RemoveChild(m_blue_cat_run_img);
-    m_Ctx.Root.RemoveChild(m_LeftTriButton);
-    m_Ctx.Root.RemoveChild(m_RightTriButton);
-    m_Ctx.Root.RemoveChild(m_ExitGameText);
-    m_Ctx.Root.RemoveChild(m_OptionText);
-    m_Ctx.Root.RemoveChild(m_LocalPlayText);
+    m_Actors.Root().RemoveChild(m_MenuFrame);
+    m_Actors.Root().RemoveChild(m_ExitGameButton);
+    m_Actors.Root().RemoveChild(m_blue_cat_run_img);
+    m_Actors.Root().RemoveChild(m_LeftTriButton);
+    m_Actors.Root().RemoveChild(m_RightTriButton);
+    m_Actors.Root().RemoveChild(m_ExitGameText);
+    m_Actors.Root().RemoveChild(m_OptionText);
+    m_Actors.Root().RemoveChild(m_LocalPlayText);
 
     m_World.Clear();
 }

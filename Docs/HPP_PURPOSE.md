@@ -1,0 +1,42 @@
+# include/*.hpp 用途一覽
+
+- `AnimatedCharacter.hpp`：提供可播放動畫貼圖的基礎角色類別。
+- `App.hpp`：定義遊戲主程式 `App` 的生命週期與核心成員。
+- `AppUtil.hpp`：提供按鍵字串轉換、滑鼠點擊判定與文字對齊等工具函式。
+- `AudioService.hpp`：實作 `IAudioService`，封裝 BGM 的播放與音量控制。
+- `BGMPlayer.hpp`：管理背景音樂清單、播放切換與音量設定。
+- `CatAssets.hpp`：集中產生貓咪各動畫資源路徑。
+- `Character.hpp`：提供靜態圖片角色的基礎渲染與互動功能。
+- `CharacterPhysicsSystem.hpp`：集中存放角色物理常數定義。
+- `ExitConfirmScene.hpp`：定義離開確認場景的介面與狀態。
+- `GameText.hpp`：提供可渲染文字物件與文字互動判定。
+- `GlobalActors.hpp`：實作 `IGlobalActors`，集中管理全域共享角色與渲染根節點。
+- `IAudioService.hpp`：定義音訊服務的抽象介面。
+- `IGlobalActors.hpp`：定義全域共享角色存取的抽象介面。
+- `IPhysicsBody.hpp`：定義物理世界中可參與碰撞更新物件的抽象介面。
+- `IPushable.hpp`：定義可被推動物件的最小能力介面。
+- `ISessionState.hpp`：定義跨場景會話狀態的抽象介面。
+- `IVisualThemeService.hpp`：定義視覺主題（背景）控制的抽象介面。
+- `KeyboardConfigScene.hpp`：定義鍵位設定場景與其輸入綁定流程。
+- `LevelExitScene.hpp`：預留關卡退出場景的標頭（目前為空）。
+- `LevelOneScene.hpp`：定義第一關遊玩場景與解謎邏輯入口。
+- `LevelSelectScene.hpp`：定義關卡選擇場景與最佳時間顯示。
+- `LocalPlayGameScene.hpp`：定義本地多人遊玩主場景與入門流程。
+- `LocalPlayScene.hpp`：定義本地多人玩家數選擇場景。
+- `MenuScene.hpp`：定義主選單場景與選項切換。
+- `OptionMenuScene.hpp`：定義選項場景（背景、音量、顯示選項）。
+- `PhysicsWorld.hpp`：定義物理世界管線、註冊管理與碰撞解算。
+- `PlayerCat.hpp`：定義玩家貓角色的動畫狀態與物理行為。
+- `PlayerKeyConfig.hpp`：定義單一玩家的按鍵配置資料結構。
+- `PushableBox.hpp`：定義可推動箱子的物理、需求人數與提示文字。
+- `SaveManager.hpp`：定義設定與關卡紀錄的讀寫介面。
+- `Scene.hpp`：定義所有場景共用的抽象基底類別。
+- `SceneId.hpp`：定義場景識別列舉值。
+- `SceneManager.hpp`：定義場景註冊、切換與更新管理器。
+- `SceneServices.hpp`：定義場景注入用的服務聚合結構。
+- `SessionState.hpp`：實作 `ISessionState`，保存跨場景共享狀態。
+- `StaticBody.hpp`：定義靜態碰撞體（牆、地板、天花板）。
+- `TitleScene.hpp`：定義標題畫面場景。
+- `UITriangleButton.hpp`：定義可按壓狀態切換的三角形按鈕元件。
+- `VisualThemeService.hpp`：實作 `IVisualThemeService`，管理背景主題套用。
+

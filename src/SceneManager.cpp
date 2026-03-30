@@ -1,8 +1,6 @@
 #include "SceneManager.hpp"
 #include "Util/Logger.hpp"
 
-SceneManager::SceneManager(GameContext& ctx)
-    : m_Ctx(ctx) {}
 
 void SceneManager::Register(SceneId id, std::unique_ptr<Scene> scene) {
     if (scene == nullptr) {

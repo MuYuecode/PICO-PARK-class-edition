@@ -14,7 +14,7 @@
 
 class LevelOneScene : public Scene {
 public:
-    explicit LevelOneScene(GameContext& ctx);
+    explicit LevelOneScene(SceneServices services);
     ~LevelOneScene() override = default;
 
     void OnEnter() override;

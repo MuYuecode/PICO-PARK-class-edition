@@ -7,8 +7,8 @@
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 
-LevelSelectScene::LevelSelectScene(GameContext& ctx)
-    : Scene(ctx) {
+LevelSelectScene::LevelSelectScene(SceneServices services)
+    : Scene(services) {
     m_SelectorFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/level_select_frame.png");
     m_SelectorFrame->SetZIndex(32);
@@ -48,26 +48,28 @@ glm::vec2 LevelSelectScene::CellPos(int idx) {
 
 void LevelSelectScene::OnEnter() {
     LOG_INFO("LevelSelectScene::OnEnter  players={}  selectedIdx={}",
-             m_Ctx.SelectedPlayerCount, m_SelectedIdx);
+             m_Session.GetSelectedPlayerCount(), m_SelectedIdx);
 
     m_LevelData = {};
     SaveManager::LoadLevelData(m_LevelData);
 
     m_SelectedIdx = 0;
 
-    m_Ctx.Root.AddChild(m_SelectorFrame);
-    m_Ctx.Root.AddChild(m_TitleText);
-    m_Ctx.Root.AddChild(m_BestTimeText);
+    m_Actors.Root().AddChild(m_SelectorFrame);
+    m_Actors.Root().AddChild(m_TitleText);
+    m_Actors.Root().AddChild(m_BestTimeText);
     for (int i = 0; i < LEVEL_COUNT; ++i) {
-        m_Ctx.Root.AddChild(m_LevelCover[i]);
-        m_Ctx.Root.AddChild(m_Crown[i]);
+        m_Actors.Root().AddChild(m_LevelCover[i]);
+        m_Actors.Root().AddChild(m_Crown[i]);
     }
 
-    m_Ctx.Header->SetVisible(false);
-    if (m_Ctx.Floor != nullptr) m_Ctx.Floor->SetVisible(false);
-    if (m_Ctx.Door != nullptr)  m_Ctx.Door->SetVisible(false);
-    m_Ctx.TestBox->SetVisible(false);
-    for (auto& cat : m_Ctx.StartupCats) {
+    m_Actors.Header()->SetVisible(false);
+    if (m_Actors.Floor() != nullptr) m_Actors.Floor()->SetVisible(false);
+    if (m_Actors.Door() != nullptr)  m_Actors.Door()->SetVisible(false);
+    if (m_Actors.TestBox() != nullptr) {
+        m_Actors.TestBox()->SetVisible(false);
+    }
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) cat->SetVisible(false);
     }
 
@@ -80,18 +82,18 @@ void LevelSelectScene::OnEnter() {
 void LevelSelectScene::OnExit() {
     LOG_INFO("LevelSelectScene::OnExit");
 
-    m_Ctx.Root.RemoveChild(m_SelectorFrame);
-    m_Ctx.Root.RemoveChild(m_TitleText);
-    m_Ctx.Root.RemoveChild(m_BestTimeText);
+    m_Actors.Root().RemoveChild(m_SelectorFrame);
+    m_Actors.Root().RemoveChild(m_TitleText);
+    m_Actors.Root().RemoveChild(m_BestTimeText);
     for (int i = 0; i < LEVEL_COUNT; ++i) {
-        m_Ctx.Root.RemoveChild(m_LevelCover[i]);
-        m_Ctx.Root.RemoveChild(m_Crown[i]);
+        m_Actors.Root().RemoveChild(m_LevelCover[i]);
+        m_Actors.Root().RemoveChild(m_Crown[i]);
     }
 
-    m_Ctx.Header->SetVisible(true);
-    if (m_Ctx.Floor != nullptr) m_Ctx.Floor->SetVisible(true);
-    if (m_Ctx.Door != nullptr)  m_Ctx.Door->SetVisible(true);
-    for (auto& cat : m_Ctx.StartupCats) {
+    m_Actors.Header()->SetVisible(true);
+    if (m_Actors.Floor() != nullptr) m_Actors.Floor()->SetVisible(true);
+    if (m_Actors.Door() != nullptr)  m_Actors.Door()->SetVisible(true);
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) cat->SetVisible(true);
     }
 }
@@ -174,7 +176,7 @@ void LevelSelectScene::UpdateTitleText() const {
 }
 
 void LevelSelectScene::UpdateBestTimeText() const {
-    int   p    = m_Ctx.SelectedPlayerCount;
+    int   p    = m_Session.GetSelectedPlayerCount();
     float best = -1.0f;
     if (p >= 2 && p <= 8) {
         best = m_LevelData[m_SelectedIdx].bestTimes[p];
@@ -184,7 +186,7 @@ void LevelSelectScene::UpdateBestTimeText() const {
 }
 
 void LevelSelectScene::UpdateCrowns() const {
-    const int players = m_Ctx.SelectedPlayerCount;
+    const int players = m_Session.GetSelectedPlayerCount();
     const bool validPlayerCount = (players >= 2 && players <= 8);
 
     for (int i = 0; i < LEVEL_COUNT; ++i) {

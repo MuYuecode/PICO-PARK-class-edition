@@ -26,9 +26,9 @@ const vector<string> OptionMenuScene::s_BgColorPaths = {
     GA_RESOURCE_DIR "/Image/Background/dark_background.png",
 };
 
-OptionMenuScene::OptionMenuScene(GameContext& ctx,
+OptionMenuScene::OptionMenuScene(SceneServices services,
                                  shared_ptr<Character> exitGameButton)
-    : Scene(ctx)
+    : Scene(services)
     , m_ExitGameButton(std::move(exitGameButton))
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
@@ -149,39 +149,38 @@ OptionMenuScene::OptionMenuScene(GameContext& ctx,
         m_Applied.dispNumber   = saved.dispNumber;
     }
 
-    ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
-    if (ctx.BGMPlayer) {
-        ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
-    }
+    m_Applied.bgColorIndex = m_Theme.ClampBackgroundIndex(m_Applied.bgColorIndex);
+    m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
+    m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
 }
 
 void OptionMenuScene::OnEnter() {
     LOG_INFO("OptionMenuScene::OnEnter");
 
-    m_Ctx.Root.AddChild(m_ExitGameButton);
-    m_Ctx.Root.AddChild(m_OptionMenuFrame);
-    m_Ctx.Root.AddChild(m_ChoiceFrame);
-    m_Ctx.Root.AddChild(m_TitleText);
-    m_Ctx.Root.AddChild(m_KbConfigLabel);
-    m_Ctx.Root.AddChild(m_KbConfigOpen);
-    m_Ctx.Root.AddChild(m_BgColorLabel);
-    m_Ctx.Root.AddChild(m_BgColorLeftBtn);
-    m_Ctx.Root.AddChild(m_BgColorValue);
-    m_Ctx.Root.AddChild(m_BgColorRightBtn);
-    m_Ctx.Root.AddChild(m_BgmVolumeLabel);
-    m_Ctx.Root.AddChild(m_BgmVolumeLeftBtn);
-    m_Ctx.Root.AddChild(m_BgmVolumeValue);
-    m_Ctx.Root.AddChild(m_BgmVolumeRightBtn);
-    m_Ctx.Root.AddChild(m_SeVolumeLabel);
-    m_Ctx.Root.AddChild(m_SeVolumeLeftBtn);
-    m_Ctx.Root.AddChild(m_SeVolumeValue);
-    m_Ctx.Root.AddChild(m_SeVolumeRightBtn);
-    m_Ctx.Root.AddChild(m_DispNumberLabel);
-    m_Ctx.Root.AddChild(m_DispNumberLeftBtn);
-    m_Ctx.Root.AddChild(m_DispNumberValue);
-    m_Ctx.Root.AddChild(m_DispNumberRightBtn);
-    m_Ctx.Root.AddChild(m_OkText);
-    m_Ctx.Root.AddChild(m_CancelText);
+    m_Actors.Root().AddChild(m_ExitGameButton);
+    m_Actors.Root().AddChild(m_OptionMenuFrame);
+    m_Actors.Root().AddChild(m_ChoiceFrame);
+    m_Actors.Root().AddChild(m_TitleText);
+    m_Actors.Root().AddChild(m_KbConfigLabel);
+    m_Actors.Root().AddChild(m_KbConfigOpen);
+    m_Actors.Root().AddChild(m_BgColorLabel);
+    m_Actors.Root().AddChild(m_BgColorLeftBtn);
+    m_Actors.Root().AddChild(m_BgColorValue);
+    m_Actors.Root().AddChild(m_BgColorRightBtn);
+    m_Actors.Root().AddChild(m_BgmVolumeLabel);
+    m_Actors.Root().AddChild(m_BgmVolumeLeftBtn);
+    m_Actors.Root().AddChild(m_BgmVolumeValue);
+    m_Actors.Root().AddChild(m_BgmVolumeRightBtn);
+    m_Actors.Root().AddChild(m_SeVolumeLabel);
+    m_Actors.Root().AddChild(m_SeVolumeLeftBtn);
+    m_Actors.Root().AddChild(m_SeVolumeValue);
+    m_Actors.Root().AddChild(m_SeVolumeRightBtn);
+    m_Actors.Root().AddChild(m_DispNumberLabel);
+    m_Actors.Root().AddChild(m_DispNumberLeftBtn);
+    m_Actors.Root().AddChild(m_DispNumberValue);
+    m_Actors.Root().AddChild(m_DispNumberRightBtn);
+    m_Actors.Root().AddChild(m_OkText);
+    m_Actors.Root().AddChild(m_CancelText);
 
     m_OptionMenuFrame->SetPosition({0.0f, -5.0f});
     m_ExitGameButton->SetPosition({399.2f, 285.1f});
@@ -205,32 +204,32 @@ void OptionMenuScene::OnEnter() {
 void OptionMenuScene::OnExit() {
     LOG_INFO("OptionMenuScene::OnExit");
 
-    m_Ctx.Root.RemoveChild(m_OptionMenuFrame);
-    m_Ctx.Root.RemoveChild(m_TitleText);
-    m_Ctx.Root.RemoveChild(m_KbConfigLabel);
-    m_Ctx.Root.RemoveChild(m_KbConfigOpen);
-    m_Ctx.Root.RemoveChild(m_BgColorLabel);
-    m_Ctx.Root.RemoveChild(m_BgColorLeftBtn);
-    m_Ctx.Root.RemoveChild(m_BgColorValue);
-    m_Ctx.Root.RemoveChild(m_BgColorRightBtn);
-    m_Ctx.Root.RemoveChild(m_BgmVolumeLabel);
-    m_Ctx.Root.RemoveChild(m_BgmVolumeLeftBtn);
-    m_Ctx.Root.RemoveChild(m_BgmVolumeValue);
-    m_Ctx.Root.RemoveChild(m_BgmVolumeRightBtn);
-    m_Ctx.Root.RemoveChild(m_SeVolumeLabel);
-    m_Ctx.Root.RemoveChild(m_SeVolumeLeftBtn);
-    m_Ctx.Root.RemoveChild(m_SeVolumeValue);
-    m_Ctx.Root.RemoveChild(m_SeVolumeRightBtn);
-    m_Ctx.Root.RemoveChild(m_DispNumberLabel);
-    m_Ctx.Root.RemoveChild(m_DispNumberLeftBtn);
-    m_Ctx.Root.RemoveChild(m_DispNumberValue);
-    m_Ctx.Root.RemoveChild(m_DispNumberRightBtn);
-    m_Ctx.Root.RemoveChild(m_OkText);
-    m_Ctx.Root.RemoveChild(m_CancelText);
-    m_Ctx.Root.RemoveChild(m_ChoiceFrame);
+    m_Actors.Root().RemoveChild(m_OptionMenuFrame);
+    m_Actors.Root().RemoveChild(m_TitleText);
+    m_Actors.Root().RemoveChild(m_KbConfigLabel);
+    m_Actors.Root().RemoveChild(m_KbConfigOpen);
+    m_Actors.Root().RemoveChild(m_BgColorLabel);
+    m_Actors.Root().RemoveChild(m_BgColorLeftBtn);
+    m_Actors.Root().RemoveChild(m_BgColorValue);
+    m_Actors.Root().RemoveChild(m_BgColorRightBtn);
+    m_Actors.Root().RemoveChild(m_BgmVolumeLabel);
+    m_Actors.Root().RemoveChild(m_BgmVolumeLeftBtn);
+    m_Actors.Root().RemoveChild(m_BgmVolumeValue);
+    m_Actors.Root().RemoveChild(m_BgmVolumeRightBtn);
+    m_Actors.Root().RemoveChild(m_SeVolumeLabel);
+    m_Actors.Root().RemoveChild(m_SeVolumeLeftBtn);
+    m_Actors.Root().RemoveChild(m_SeVolumeValue);
+    m_Actors.Root().RemoveChild(m_SeVolumeRightBtn);
+    m_Actors.Root().RemoveChild(m_DispNumberLabel);
+    m_Actors.Root().RemoveChild(m_DispNumberLeftBtn);
+    m_Actors.Root().RemoveChild(m_DispNumberValue);
+    m_Actors.Root().RemoveChild(m_DispNumberRightBtn);
+    m_Actors.Root().RemoveChild(m_OkText);
+    m_Actors.Root().RemoveChild(m_CancelText);
+    m_Actors.Root().RemoveChild(m_ChoiceFrame);
 
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
-    m_Ctx.Root.RemoveChild(m_ExitGameButton);
+    m_Actors.Root().RemoveChild(m_ExitGameButton);
 }
 
 SceneId OptionMenuScene::Update() {
@@ -247,8 +246,8 @@ SceneId OptionMenuScene::Update() {
         m_ExitGameButton->IsLeftClicked()              ||
         m_CancelText->IsLeftClicked())
     {
-        m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
-        m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
+        m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+        m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
         return SceneId::Menu;
     }
 
@@ -257,8 +256,8 @@ SceneId OptionMenuScene::Update() {
     }
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;
-        m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
-        m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
+        m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+        m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
 
         {
             OptionSettingsData toSave{
@@ -327,8 +326,8 @@ SceneId OptionMenuScene::Update() {
             return SceneId::KeyboardConfig;
         case 5:
             m_Applied = m_Pending;
-            m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
-            m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
+            m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+            m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
 
             {
             OptionSettingsData toSave{
@@ -341,8 +340,8 @@ SceneId OptionMenuScene::Update() {
             }
             return SceneId::Menu;
         case 6:
-            m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
-            m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
+            m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+            m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
             return SceneId::Menu;
         default:
             break;
@@ -374,13 +373,13 @@ void OptionMenuScene::AdjustLeft(int row) {
                           + static_cast<int>(s_BgColorOptions.size()) - 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorLeftBtn->Press(75.0f);
-        m_Ctx.Background->SetImage(s_BgColorPaths[m_Pending.bgColorIndex]);
+        m_Theme.ApplyBackgroundByIndex(m_Pending.bgColorIndex);
         break;
     case 2:
         if (m_Pending.bgmVolume > 0) {
             --m_Pending.bgmVolume;
             m_BgmVolumeLeftBtn->Press(75.0f);
-            m_Ctx.BGMPlayer->SetVolume(m_Pending.bgmVolume * 6);
+            m_Audio.SetBgmVolume(m_Pending.bgmVolume * 6);
         }
         break;
     case 3:
@@ -411,13 +410,13 @@ void OptionMenuScene::AdjustRight(int row) {
         m_Pending.bgColorIndex = (m_Pending.bgColorIndex + 1)
                          % static_cast<int>(s_BgColorOptions.size());
         m_BgColorRightBtn->Press(75.0f);
-        m_Ctx.Background->SetImage(s_BgColorPaths[m_Pending.bgColorIndex]);
+        m_Theme.ApplyBackgroundByIndex(m_Pending.bgColorIndex);
         break;
     case 2:
         if (m_Pending.bgmVolume < 20) {
             ++m_Pending.bgmVolume;
             m_BgmVolumeRightBtn->Press(75.0f);
-            m_Ctx.BGMPlayer->SetVolume(m_Pending.bgmVolume * 6);
+            m_Audio.SetBgmVolume(m_Pending.bgmVolume * 6);
         }
         break;
     case 3:

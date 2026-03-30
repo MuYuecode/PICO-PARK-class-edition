@@ -3,10 +3,10 @@
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-ExitConfirmScene::ExitConfirmScene(GameContext& ctx,
+ExitConfirmScene::ExitConfirmScene(SceneServices services,
                                    std::shared_ptr<Character> menuFrame,
                                    std::shared_ptr<Character> exitGameButton)
-    : Scene(ctx)
+    : Scene(services)
     , m_MenuFrame(std::move(menuFrame))
     , m_ExitGameButton(std::move(exitGameButton))
 {
@@ -32,13 +32,13 @@ ExitConfirmScene::ExitConfirmScene(GameContext& ctx,
 void ExitConfirmScene::OnEnter() {
     LOG_INFO("ExitConfirmScene::OnEnter");
 
-    m_Ctx.Root.AddChild(m_MenuFrame);
-    m_Ctx.Root.AddChild(m_ExitGameButton);
+    m_Actors.Root().AddChild(m_MenuFrame);
+    m_Actors.Root().AddChild(m_ExitGameButton);
 
-    m_Ctx.Root.AddChild(m_ExitGame1Text);
-    m_Ctx.Root.AddChild(m_YesText);
-    m_Ctx.Root.AddChild(m_NoText);
-    m_Ctx.Root.AddChild(m_ChoiceFrame);
+    m_Actors.Root().AddChild(m_ExitGame1Text);
+    m_Actors.Root().AddChild(m_YesText);
+    m_Actors.Root().AddChild(m_NoText);
+    m_Actors.Root().AddChild(m_ChoiceFrame);
 
     m_MenuFrame->SetScale({408.0f / 695.0f, 287.0f / 218.0f});
     m_ExitGameButton->SetPosition({188.0f, 15.5f});
@@ -50,15 +50,15 @@ void ExitConfirmScene::OnEnter() {
 void ExitConfirmScene::OnExit() {
     LOG_INFO("ExitConfirmScene::OnExit");
 
-    m_Ctx.Root.RemoveChild(m_ExitGame1Text);
-    m_Ctx.Root.RemoveChild(m_YesText);
-    m_Ctx.Root.RemoveChild(m_NoText);
-    m_Ctx.Root.RemoveChild(m_ChoiceFrame);
+    m_Actors.Root().RemoveChild(m_ExitGame1Text);
+    m_Actors.Root().RemoveChild(m_YesText);
+    m_Actors.Root().RemoveChild(m_NoText);
+    m_Actors.Root().RemoveChild(m_ChoiceFrame);
 
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
-    m_Ctx.Root.RemoveChild(m_MenuFrame);
-    m_Ctx.Root.RemoveChild(m_ExitGameButton);
+    m_Actors.Root().RemoveChild(m_MenuFrame);
+    m_Actors.Root().RemoveChild(m_ExitGameButton);
 }
 
 SceneId ExitConfirmScene::Update() {
@@ -89,7 +89,7 @@ SceneId ExitConfirmScene::Update() {
 
     if ((confirmByKeyboard || confirmByMouseYes) && m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
-        m_Ctx.ShouldQuit = true ;
+        m_Session.RequestQuit();
         return SceneId::None;
     }
     if ((confirmByKeyboard || confirmByMouseNo) && !m_IsYesSelected) {

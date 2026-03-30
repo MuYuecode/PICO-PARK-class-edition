@@ -7,13 +7,14 @@ void App::Update() {
         return;
     }
 
-    m_Ctx->BGMPlayer->Update();
+    if (m_AudioService != nullptr) {
+        m_AudioService->UpdateBgm();
+    }
     m_SceneManager->UpdateCurrent();
 
-    if (m_Ctx->ShouldQuit) {
+    if (m_SessionState != nullptr && m_SessionState->ShouldQuit()) {
         m_CurrentState = State::END;
     }
 
     m_Root.Update();
 }
-

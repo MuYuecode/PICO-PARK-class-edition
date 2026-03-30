@@ -5,8 +5,8 @@
 #include "Util/Logger.hpp"
 #include "Util/Time.hpp"
 
-TitleScene::TitleScene(GameContext& ctx)
-    : Scene(ctx)
+TitleScene::TitleScene(SceneServices services)
+    : Scene(services)
 {
     const Util::Color orange(254, 133, 78, 255);
 
@@ -25,9 +25,9 @@ void TitleScene::SetupStaticBoundaries() {
     constexpr float kFloorHalfH = 40.f;   // thickness of the floor collider
 
     float floorSurfaceY = -360.f;  // fallback if Floor is null
-    if (m_Ctx.Floor != nullptr) {
-        floorSurfaceY = m_Ctx.Floor->GetPosition().y
-                      + m_Ctx.Floor->GetScaledSize().y * 0.5f;
+    if (m_Actors.Floor() != nullptr) {
+        floorSurfaceY = m_Actors.Floor()->GetPosition().y
+                      + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
     // Floor: center is below the surface, top edge sits at floorSurfaceY.
@@ -50,9 +50,11 @@ void TitleScene::SetupStaticBoundaries() {
 void TitleScene::OnEnter() {
     LOG_INFO("TitleScene::OnEnter");
 
-    m_Ctx.Header->SetVisible(true);
-    m_Ctx.Root.AddChild(m_TitleSub);
-    m_Ctx.Root.AddChild(m_PressEnterText);
+    if (m_Actors.Header() != nullptr) {
+        m_Actors.Header()->SetVisible(true);
+    }
+    m_Actors.Root().AddChild(m_TitleSub);
+    m_Actors.Root().AddChild(m_PressEnterText);
 
     m_FlashTimer = 0.f;
     m_PressEnterText->SetVisible(true);
@@ -61,8 +63,8 @@ void TitleScene::OnEnter() {
     m_World.Clear();
 
     // Register the decorative startup cats.
-    for (int i = 0; i < static_cast<int>(m_Ctx.StartupCats.size()); ++i) {
-        auto& cat = m_Ctx.StartupCats[i];
+    for (int i = 0; i < static_cast<int>(m_Actors.StartupCats().size()); ++i) {
+        auto& cat = m_Actors.StartupCats()[i];
         if (cat == nullptr) continue;
 
         cat->SetInputEnabled(i < 2);
@@ -72,9 +74,9 @@ void TitleScene::OnEnter() {
     }
 
     // Register the test pushable box if present.
-    if (m_Ctx.TestBox != nullptr) {
-        m_Ctx.TestBox->SetWorld(&m_World);
-        m_World.Register(m_Ctx.TestBox);
+    if (m_Actors.TestBox() != nullptr) {
+        m_Actors.TestBox()->SetWorld(&m_World);
+        m_World.Register(m_Actors.TestBox());
     }
 
     // Register immovable boundary geometry derived from the visual Floor.
@@ -84,10 +86,10 @@ void TitleScene::OnEnter() {
 void TitleScene::OnExit() {
     LOG_INFO("TitleScene::OnExit");
 
-    m_Ctx.Root.RemoveChild(m_TitleSub);
-    m_Ctx.Root.RemoveChild(m_PressEnterText);
+    m_Actors.Root().RemoveChild(m_TitleSub);
+    m_Actors.Root().RemoveChild(m_PressEnterText);
 
-    for (auto& cat : m_Ctx.StartupCats) {
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) cat->SetInputEnabled(false);
     }
 
@@ -101,7 +103,7 @@ SceneId TitleScene::Update() {
         m_FlashTimer = 0.f;
     }
 
-    for (auto& cat : m_Ctx.StartupCats) {
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat == nullptr) continue;
 
         cat->SetMoveDir(0);  // default: no horizontal input

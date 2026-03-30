@@ -12,8 +12,8 @@
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-LevelOneScene::LevelOneScene(GameContext& ctx)
-    : Scene(ctx) {
+LevelOneScene::LevelOneScene(SceneServices services)
+    : Scene(services) {
     m_FloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Floor.png");
     m_LeftWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_lwall.png");
     m_RightWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_rwall.png");
@@ -83,14 +83,14 @@ void LevelOneScene::SpawnPlayers(int count) {
     m_Players.reserve(static_cast<size_t>(count));
 
     for (int i = 0; i < count; ++i) {
-        const std::string color = GameContext::kCatColorOrder[static_cast<size_t>(i)];
+        const std::string color = m_Actors.CatColorOrder()[static_cast<size_t>(i)];
         auto cat = std::make_shared<PlayerCat>(
             CatAssets::BuildFullAnimPaths(color),
             k::UNKNOWN, k::UNKNOWN, k::UNKNOWN);
 
         PlayerBinding pb;
         pb.cat = cat;
-        pb.key = m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)];
+        pb.key = m_Session.GetAppliedKeyConfigs()[static_cast<size_t>(i)];
 
         if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
             pb.key = KeyboardConfigScene::k_Default1P;
@@ -100,7 +100,7 @@ void LevelOneScene::SpawnPlayers(int count) {
 
         cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
         m_Players.push_back(pb);
-        m_Ctx.Root.AddChild(cat);
+        m_Actors.Root().AddChild(cat);
     }
 
     ApplyInitialFormation();
@@ -123,8 +123,8 @@ void LevelOneScene::ApplyInitialFormation() {
 }
 
 void LevelOneScene::OnEnter() {
-    const int playerCount = std::clamp(m_Ctx.SelectedPlayerCount, 2, 8);
-    m_Ctx.SelectedPlayerCount = playerCount;
+    const int playerCount = std::clamp(m_Session.GetSelectedPlayerCount(), 2, 8);
+    m_Session.SetSelectedPlayerCount(playerCount);
 
     m_BoxA->SetRequiredPushers(playerCount - 1);
     m_BoxB->SetRequiredPushers(playerCount);
@@ -138,23 +138,23 @@ void LevelOneScene::OnEnter() {
     m_KeyCarrierIdx = -1;
     m_DoorOpened = false;
 
-    if (m_Ctx.Header) m_Ctx.Header->SetVisible(false);
-    if (m_Ctx.Floor)  m_Ctx.Floor->SetVisible(false);
+    if (m_Actors.Header()) m_Actors.Header()->SetVisible(false);
+    if (m_Actors.Floor())  m_Actors.Floor()->SetVisible(false);
 
-    if (m_Ctx.TestBox) {
-        m_Ctx.TestBox->SetVisible(false);
-        if (m_Ctx.TestBox->GetTextObject()) {
-            m_Ctx.TestBox->GetTextObject()->SetVisible(false);
+    if (m_Actors.TestBox()) {
+        m_Actors.TestBox()->SetVisible(false);
+        if (m_Actors.TestBox()->GetTextObject()) {
+            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
         }
     }
 
-    if (m_Ctx.Door) {
-        m_Ctx.Door->SetVisible(true);
-        m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
-        m_Ctx.Door->SetPosition(m_DoorPos);
+    if (m_Actors.Door()) {
+        m_Actors.Door()->SetVisible(true);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+        m_Actors.Door()->SetPosition(m_DoorPos);
     }
 
-    for (auto& cat : m_Ctx.StartupCats) {
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat) cat->SetVisible(false);
     }
 
@@ -184,25 +184,25 @@ void LevelOneScene::OnEnter() {
     m_BoxA->SetWorld(&m_World);
     m_BoxB->SetWorld(&m_World);
 
-    m_Ctx.Root.AddChild(m_FloorSprite);
-    m_Ctx.Root.AddChild(m_LeftWallSprite);
-    m_Ctx.Root.AddChild(m_RightWallSprite);
-    m_Ctx.Root.AddChild(m_CeilingSprite);
-    m_Ctx.Root.AddChild(m_KeySprite);
+    m_Actors.Root().AddChild(m_FloorSprite);
+    m_Actors.Root().AddChild(m_LeftWallSprite);
+    m_Actors.Root().AddChild(m_RightWallSprite);
+    m_Actors.Root().AddChild(m_CeilingSprite);
+    m_Actors.Root().AddChild(m_KeySprite);
 
-    m_Ctx.Root.AddChild(m_BoxA);
-    m_Ctx.Root.AddChild(m_BoxB);
+    m_Actors.Root().AddChild(m_BoxA);
+    m_Actors.Root().AddChild(m_BoxB);
 
     if (m_BoxA->GetTextObject()) {
         m_BoxA->GetTextObject()->SetZIndex(16.0f);
-        m_Ctx.Root.AddChild(m_BoxA->GetTextObject());
+        m_Actors.Root().AddChild(m_BoxA->GetTextObject());
     }
     if (m_BoxB->GetTextObject()) {
         m_BoxB->GetTextObject()->SetZIndex(16.0f);
-        m_Ctx.Root.AddChild(m_BoxB->GetTextObject());
+        m_Actors.Root().AddChild(m_BoxB->GetTextObject());
     }
 
-    m_Ctx.Root.AddChild(m_TimerText);
+    m_Actors.Root().AddChild(m_TimerText);
     UpdateTimerText();
 
     SpawnPlayers(playerCount);
@@ -226,36 +226,40 @@ void LevelOneScene::OnEnter() {
 
 void LevelOneScene::OnExit() {
     for (auto& pb : m_Players) {
-        if (pb.cat) m_Ctx.Root.RemoveChild(pb.cat);
+        if (pb.cat) m_Actors.Root().RemoveChild(pb.cat);
     }
     m_Players.clear();
 
     m_World.Clear();
 
-    m_Ctx.Root.RemoveChild(m_FloorSprite);
-    m_Ctx.Root.RemoveChild(m_LeftWallSprite);
-    m_Ctx.Root.RemoveChild(m_RightWallSprite);
-    m_Ctx.Root.RemoveChild(m_CeilingSprite);
-    m_Ctx.Root.RemoveChild(m_KeySprite);
-    m_Ctx.Root.RemoveChild(m_BoxA);
-    m_Ctx.Root.RemoveChild(m_BoxB);
-    m_Ctx.Root.RemoveChild(m_TimerText);
+    m_Actors.Root().RemoveChild(m_FloorSprite);
+    m_Actors.Root().RemoveChild(m_LeftWallSprite);
+    m_Actors.Root().RemoveChild(m_RightWallSprite);
+    m_Actors.Root().RemoveChild(m_CeilingSprite);
+    m_Actors.Root().RemoveChild(m_KeySprite);
+    m_Actors.Root().RemoveChild(m_BoxA);
+    m_Actors.Root().RemoveChild(m_BoxB);
+    m_Actors.Root().RemoveChild(m_TimerText);
 
-    if (m_BoxA && m_BoxA->GetTextObject()) m_Ctx.Root.RemoveChild(m_BoxA->GetTextObject());
-    if (m_BoxB && m_BoxB->GetTextObject()) m_Ctx.Root.RemoveChild(m_BoxB->GetTextObject());
+    if (m_BoxA && m_BoxA->GetTextObject()) m_Actors.Root().RemoveChild(m_BoxA->GetTextObject());
+    if (m_BoxB && m_BoxB->GetTextObject()) m_Actors.Root().RemoveChild(m_BoxB->GetTextObject());
 
-    m_Ctx.Header->SetVisible(false);
-    m_Ctx.Floor->SetVisible(false);
-    m_Ctx.TestBox->SetVisible(false);
-    m_Ctx.TestBox->GetTextObject()->SetVisible(false);
-
-
-    if (m_Ctx.Door) {
-        m_Ctx.Door->SetVisible(false);
-        m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    m_Actors.Header()->SetVisible(false);
+    m_Actors.Floor()->SetVisible(false);
+    if (m_Actors.TestBox() != nullptr) {
+        m_Actors.TestBox()->SetVisible(false);
+        if (m_Actors.TestBox()->GetTextObject() != nullptr) {
+            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
+        }
     }
 
-    for (auto& cat : m_Ctx.StartupCats) {
+
+    if (m_Actors.Door()) {
+        m_Actors.Door()->SetVisible(false);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    }
+
+    for (auto& cat : m_Actors.StartupCats()) {
         if (cat) cat->SetVisible(true);
     }
 }
@@ -307,13 +311,13 @@ void LevelOneScene::UpdateKeyFollow() const {
 
 void LevelOneScene::TryOpenDoorAndClear() {
     if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
-    if (m_Ctx.Door == nullptr || m_DoorOpened) return;
+    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
 
     const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
     if (carrier == nullptr) return;
 
-    const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
-    const glm::vec2 doorHalf = glm::abs(m_Ctx.Door->GetScaledSize()) * 0.5f;
+    const glm::vec2 doorPos  = m_Actors.Door()->GetPosition();
+    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
 
     const bool carrierTouchDoor = AabbOverlap(
         carrier->GetPosition(), carrier->GetHalfSize(),
@@ -322,16 +326,16 @@ void LevelOneScene::TryOpenDoorAndClear() {
 
     if (carrierTouchDoor) {
         m_DoorOpened = true;
-        m_Ctx.Door->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
         m_KeySprite->SetVisible(false);
     }
 }
 
 void LevelOneScene::UpdateDoorEntryAndClear() {
-    if (!m_DoorOpened || m_Ctx.Door == nullptr) return;
+    if (!m_DoorOpened || m_Actors.Door() == nullptr) return;
 
-    const glm::vec2 doorPos  = m_Ctx.Door->GetPosition();
-    const glm::vec2 doorHalf = glm::abs(m_Ctx.Door->GetScaledSize()) * 0.5f;
+    const glm::vec2 doorPos  = m_Actors.Door()->GetPosition();
+    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
     const int totalPlayers   = static_cast<int>(m_Players.size());
 
     for (int i = 0; i < totalPlayers; ++i) {
@@ -362,7 +366,7 @@ void LevelOneScene::UpdateDoorEntryAndClear() {
     }
 
     if (!m_ClearDone && m_EnteredCount == totalPlayers) {
-        SaveManager::UpdateBestTime(kLevelIndex, m_Ctx.SelectedPlayerCount, m_ElapsedSec);
+        SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
         m_ClearDone = true;
     }
 }

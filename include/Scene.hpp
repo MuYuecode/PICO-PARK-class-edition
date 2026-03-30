@@ -5,11 +5,15 @@
 #ifndef PICOPART_SCENE_HPP
 #define PICOPART_SCENE_HPP
 
-#include "GameContext.hpp"
 #include "SceneId.hpp"
+#include "SceneServices.hpp"
 class Scene {
 public:
-    explicit Scene(GameContext& ctx) : m_Ctx(ctx) {}
+    explicit Scene(SceneServices services)
+        : m_Audio(services.Audio)
+        , m_Theme(services.Theme)
+        , m_Session(services.Session)
+        , m_Actors(services.Actors) {}
 
     virtual ~Scene() = default;
 
@@ -23,7 +27,10 @@ public:
     virtual SceneId Update() = 0;
 
 protected:
-    GameContext& m_Ctx;
+    IAudioService& m_Audio;
+    IVisualThemeService& m_Theme;
+    ISessionState& m_Session;
+    IGlobalActors& m_Actors;
 };
 
 #endif //PICOPART_SCENE_HPP

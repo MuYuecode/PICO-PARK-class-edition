@@ -15,7 +15,7 @@
 
 class LevelSelectScene : public Scene {
 public:
-    explicit LevelSelectScene(GameContext& ctx);
+    explicit LevelSelectScene(SceneServices services);
     ~LevelSelectScene() override = default;
 
     void   OnEnter() override;

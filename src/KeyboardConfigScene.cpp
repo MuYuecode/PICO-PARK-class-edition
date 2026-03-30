@@ -59,9 +59,9 @@ std::vector<Keycode> PlayerKeyConfig::AllKeys() const {
     return result;
 }
 
-KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
+KeyboardConfigScene::KeyboardConfigScene(SceneServices services,
                                          std::shared_ptr<Character> exitGameButton)
-    : Scene(ctx)
+    : Scene(services)
     , m_ExitGameButton(std::move(exitGameButton))
 {
     m_Applied[0] = k_Default1P;
@@ -168,24 +168,24 @@ KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
 void KeyboardConfigScene::OnEnter() {
     LOG_INFO("KeyboardConfigScene::OnEnter");
 
-    m_Ctx.Root.AddChild(m_ExitGameButton);
-    m_Ctx.Root.AddChild(m_Frame);
-    m_Ctx.Root.AddChild(m_ChoiceFrame);
-    m_Ctx.Root.AddChild(m_HLine1);
-    m_Ctx.Root.AddChild(m_HLine2);
-    m_Ctx.Root.AddChild(m_HLine3);
-    m_Ctx.Root.AddChild(m_TitleText);
-    m_Ctx.Root.AddChild(m_PlayerLabel);
-    m_Ctx.Root.AddChild(m_PlayerLeftBtn);
-    m_Ctx.Root.AddChild(m_PlayerValue);
-    m_Ctx.Root.AddChild(m_PlayerRightBtn);
+    m_Actors.Root().AddChild(m_ExitGameButton);
+    m_Actors.Root().AddChild(m_Frame);
+    m_Actors.Root().AddChild(m_ChoiceFrame);
+    m_Actors.Root().AddChild(m_HLine1);
+    m_Actors.Root().AddChild(m_HLine2);
+    m_Actors.Root().AddChild(m_HLine3);
+    m_Actors.Root().AddChild(m_TitleText);
+    m_Actors.Root().AddChild(m_PlayerLabel);
+    m_Actors.Root().AddChild(m_PlayerLeftBtn);
+    m_Actors.Root().AddChild(m_PlayerValue);
+    m_Actors.Root().AddChild(m_PlayerRightBtn);
     for (int i = 0; i < BIND_COUNT; ++i) {
-        m_Ctx.Root.AddChild(m_BindLabels[i]);
-        m_Ctx.Root.AddChild(m_BindValues[i]);
+        m_Actors.Root().AddChild(m_BindLabels[i]);
+        m_Actors.Root().AddChild(m_BindValues[i]);
     }
-    m_Ctx.Root.AddChild(m_OkText);
-    m_Ctx.Root.AddChild(m_CancelText);
-    m_Ctx.Root.AddChild(m_DefaultText);
+    m_Actors.Root().AddChild(m_OkText);
+    m_Actors.Root().AddChild(m_CancelText);
+    m_Actors.Root().AddChild(m_DefaultText);
 
     m_ExitGameButton->SetPosition({399.2f, 285.1f});
     m_ExitGameButton->SetVisible(true);
@@ -205,26 +205,26 @@ void KeyboardConfigScene::OnEnter() {
 void KeyboardConfigScene::OnExit() {
     LOG_INFO("KeyboardConfigScene::OnExit");
 
-    m_Ctx.Root.RemoveChild(m_Frame);
-    m_Ctx.Root.RemoveChild(m_ChoiceFrame);
-    m_Ctx.Root.RemoveChild(m_HLine1);
-    m_Ctx.Root.RemoveChild(m_HLine2);
-    m_Ctx.Root.RemoveChild(m_HLine3);
-    m_Ctx.Root.RemoveChild(m_TitleText);
-    m_Ctx.Root.RemoveChild(m_PlayerLabel);
-    m_Ctx.Root.RemoveChild(m_PlayerLeftBtn);
-    m_Ctx.Root.RemoveChild(m_PlayerValue);
-    m_Ctx.Root.RemoveChild(m_PlayerRightBtn);
+    m_Actors.Root().RemoveChild(m_Frame);
+    m_Actors.Root().RemoveChild(m_ChoiceFrame);
+    m_Actors.Root().RemoveChild(m_HLine1);
+    m_Actors.Root().RemoveChild(m_HLine2);
+    m_Actors.Root().RemoveChild(m_HLine3);
+    m_Actors.Root().RemoveChild(m_TitleText);
+    m_Actors.Root().RemoveChild(m_PlayerLabel);
+    m_Actors.Root().RemoveChild(m_PlayerLeftBtn);
+    m_Actors.Root().RemoveChild(m_PlayerValue);
+    m_Actors.Root().RemoveChild(m_PlayerRightBtn);
     for (int i = 0; i < BIND_COUNT; ++i) {
-        m_Ctx.Root.RemoveChild(m_BindLabels[i]);
-        m_Ctx.Root.RemoveChild(m_BindValues[i]);
+        m_Actors.Root().RemoveChild(m_BindLabels[i]);
+        m_Actors.Root().RemoveChild(m_BindValues[i]);
     }
-    m_Ctx.Root.RemoveChild(m_OkText);
-    m_Ctx.Root.RemoveChild(m_CancelText);
-    m_Ctx.Root.RemoveChild(m_DefaultText);
+    m_Actors.Root().RemoveChild(m_OkText);
+    m_Actors.Root().RemoveChild(m_CancelText);
+    m_Actors.Root().RemoveChild(m_DefaultText);
 
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
-    m_Ctx.Root.RemoveChild(m_ExitGameButton);
+    m_Actors.Root().RemoveChild(m_ExitGameButton);
 }
 
 SceneId KeyboardConfigScene::Update() {
@@ -373,7 +373,7 @@ void KeyboardConfigScene::CommitPending() {
 
 void KeyboardConfigScene::SyncAppliedToContext() const {
     for (int i=0;i<MAX_PLAYERS;++i) {
-        m_Ctx.AppliedKeyConfigs[static_cast<size_t>(i)] = m_Applied[i];
+        m_Session.MutableAppliedKeyConfigs()[static_cast<size_t>(i)] = m_Applied[i];
     }
 }
 

@@ -14,14 +14,14 @@ const Util::Color LocalPlayScene::k_Red   = Util::Color::FromRGB(220, 50,  50,  
 using ip = Util::Input ;
 using k  = Util::Keycode ;
 
-LocalPlayScene::LocalPlayScene(GameContext& ctx,
+LocalPlayScene::LocalPlayScene(SceneServices services,
                                std::shared_ptr<Character>          menuFrame,
                                std::shared_ptr<Character>          exitGameButton,
                                std::shared_ptr<UITriangleButton> leftTriButton,
                                std::shared_ptr<UITriangleButton> rightTriButton,
                                std::shared_ptr<Character>          blueCatRunImg,
                                KeyboardConfigScene* kbConfigScene)
-    : Scene(ctx)
+    : Scene(services)
     , m_MenuFrame(std::move(menuFrame))
     , m_ExitGameButton(std::move(exitGameButton))
     , m_LeftTriButton(std::move(leftTriButton))
@@ -42,14 +42,14 @@ LocalPlayScene::LocalPlayScene(GameContext& ctx,
 void LocalPlayScene::OnEnter() {
     LOG_INFO("LocalPlayScene::OnEnter  players={}", m_PlayerCount);
     
-    m_Ctx.Root.AddChild(m_MenuFrame);
-    m_Ctx.Root.AddChild(m_ExitGameButton);
-    m_Ctx.Root.AddChild(m_LeftTriButton);
-    m_Ctx.Root.AddChild(m_RightTriButton);
-    m_Ctx.Root.AddChild(m_BlueCatRunImg);
+    m_Actors.Root().AddChild(m_MenuFrame);
+    m_Actors.Root().AddChild(m_ExitGameButton);
+    m_Actors.Root().AddChild(m_LeftTriButton);
+    m_Actors.Root().AddChild(m_RightTriButton);
+    m_Actors.Root().AddChild(m_BlueCatRunImg);
 
-    m_Ctx.Root.AddChild(m_PlayerCountText);
-    m_Ctx.Root.AddChild(m_NoConfigText);
+    m_Actors.Root().AddChild(m_PlayerCountText);
+    m_Actors.Root().AddChild(m_NoConfigText);
 
     m_MenuFrame->SetVisible(true);
     m_MenuFrame->SetScale({1.0f, 1.0f});
@@ -77,17 +77,17 @@ void LocalPlayScene::OnEnter() {
 void LocalPlayScene::OnExit() {
     LOG_INFO("LocalPlayScene::OnExit");
 
-    m_Ctx.Root.RemoveChild(m_PlayerCountText);
-    m_Ctx.Root.RemoveChild(m_NoConfigText);
+    m_Actors.Root().RemoveChild(m_PlayerCountText);
+    m_Actors.Root().RemoveChild(m_NoConfigText);
 
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
 
-    m_Ctx.Root.RemoveChild(m_LeftTriButton);
-    m_Ctx.Root.RemoveChild(m_RightTriButton);
-    m_Ctx.Root.RemoveChild(m_BlueCatRunImg);
-    m_Ctx.Root.RemoveChild(m_ExitGameButton);
-    m_Ctx.Root.RemoveChild(m_MenuFrame);
+    m_Actors.Root().RemoveChild(m_LeftTriButton);
+    m_Actors.Root().RemoveChild(m_RightTriButton);
+    m_Actors.Root().RemoveChild(m_BlueCatRunImg);
+    m_Actors.Root().RemoveChild(m_ExitGameButton);
+    m_Actors.Root().RemoveChild(m_MenuFrame);
 }
 
 SceneId LocalPlayScene::Update() {
@@ -130,7 +130,7 @@ SceneId LocalPlayScene::Update() {
         }
 
         if (m_PlayerCount <= configuredCount) {
-            m_Ctx.SelectedPlayerCount = m_PlayerCount;
+            m_Session.SetSelectedPlayerCount(m_PlayerCount);
             LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
             return SceneId::LocalPlayGame;
         }

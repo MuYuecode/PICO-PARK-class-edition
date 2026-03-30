@@ -11,7 +11,7 @@
 
 class LocalPlayGameScene : public Scene {
 public:
-    explicit LocalPlayGameScene(GameContext& ctx);
+    explicit LocalPlayGameScene(SceneServices services);
     ~LocalPlayGameScene() override = default;
 
     void   OnEnter() override;

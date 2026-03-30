@@ -15,7 +15,7 @@
 
 class OptionMenuScene : public Scene {
 public:
-    OptionMenuScene(GameContext& ctx,
+    OptionMenuScene(SceneServices services,
                     std::shared_ptr<Character> exitGameButton);
     ~OptionMenuScene() override = default;
 
