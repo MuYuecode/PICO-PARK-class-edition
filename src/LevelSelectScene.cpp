@@ -184,7 +184,12 @@ void LevelSelectScene::UpdateBestTimeText() const {
 }
 
 void LevelSelectScene::UpdateCrowns() const {
+    const int players = m_Ctx.SelectedPlayerCount;
+    const bool validPlayerCount = (players >= 2 && players <= 8);
+
     for (int i = 0; i < LEVEL_COUNT; ++i) {
-        m_Crown[i]->SetVisible(m_LevelData[i].completed);
+        const bool completedForCurrentPlayers =
+            validPlayerCount && m_LevelData[i].bestTimes[players] >= 0.0f;
+        m_Crown[i]->SetVisible(completedForCurrentPlayers);
     }
 }

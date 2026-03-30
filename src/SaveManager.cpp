@@ -164,7 +164,6 @@ bool SaveManager::SaveLevelData(const array<LevelSaveData, LEVEL_COUNT>& levels)
     for (int i = 0; i < LEVEL_COUNT; ++i) {
         json lj;
         lj["levelId"]   = i + 1;
-        lj["completed"] = levels[i].completed;
         json times = json::object();
         for (int p = 2; p <= 8; ++p) {
             times[to_string(p)] = levels[i].bestTimes[p];
@@ -201,7 +200,6 @@ bool SaveManager::LoadLevelData(array<LevelSaveData, LEVEL_COUNT>& outLevels) {
             int id = lj.value("levelId", 0);
             if (id < 1 || id > LEVEL_COUNT) continue;
             int idx = id - 1;
-            outLevels[idx].completed = lj.value("completed", false);
             if (lj.contains("bestTimes") && lj["bestTimes"].is_object()) {
                 for (int p = 2; p <= 8; ++p) {
                     string key = to_string(p);
@@ -230,7 +228,6 @@ bool SaveManager::UpdateBestTime(int levelIdx, int playerCount, float elapsed) {
     float& best = levels[levelIdx].bestTimes[playerCount];
     if (best < 0.0f || elapsed < best) {
         best = elapsed;
-        levels[levelIdx].completed = true;
         LOG_INFO("SaveManager: new best time Level {} ({}P): {}s",
                  levelIdx + 1, playerCount, elapsed);
         return SaveLevelData(levels);

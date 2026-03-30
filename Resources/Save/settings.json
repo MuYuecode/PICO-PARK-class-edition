@@ -2,5 +2,95 @@
   "bgColorIndex": 1,
   "bgmVolume": 10,
   "dispNumber": false,
+  "keyConfigs": [
+    {
+      "cancel": 41,
+      "down": 22,
+      "jump": 26,
+      "left": 4,
+      "menu": 40,
+      "right": 7,
+      "shot": 44,
+      "subMenu": 43,
+      "up": 26
+    },
+    {
+      "cancel": 270,
+      "down": 81,
+      "jump": 82,
+      "left": 80,
+      "menu": 0,
+      "right": 79,
+      "shot": 228,
+      "subMenu": 0,
+      "up": 82
+    },
+    {
+      "cancel": 24,
+      "down": 14,
+      "jump": 12,
+      "left": 13,
+      "menu": 0,
+      "right": 15,
+      "shot": 18,
+      "subMenu": 0,
+      "up": 12
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    }
+  ],
   "seVolume": 10
 }

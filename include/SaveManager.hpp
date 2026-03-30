@@ -44,10 +44,9 @@ struct KeyConfigData {
 };
 
 struct LevelSaveData {
-    bool completed = false;
     std::array<float, 9> bestTimes;
 
-    LevelSaveData() { bestTimes.fill(-1.0f); }
+    LevelSaveData() : bestTimes{} { bestTimes.fill(-1.0f); }
 };
 
 class SaveManager {

@@ -56,3 +56,4 @@ target_link_libraries(${PROJECT_NAME}
     PTSD
     nlohmann_json
 )
+

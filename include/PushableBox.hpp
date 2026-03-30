@@ -22,6 +22,7 @@ public:
     PushableBox(const std::string& imagePath, int requiredPushers = 2);
 
     void SetWorld(PhysicsWorld* world) { m_World = world; }
+    void SetRequiredPushers(int requiredPushers);
 
     [[nodiscard]] int GetRequiredPushers() const override { return m_RequiredPushers; }
 

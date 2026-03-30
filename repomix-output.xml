@@ -974,6 +974,7 @@ public:
     void OnExit() override;
     SceneId Update() override;
 
+
 private:
     struct PlayerBinding {
         std::shared_ptr<PlayerCat> cat;
@@ -1694,6 +1695,7 @@ public:
     PushableBox(const std::string& imagePath, int requiredPushers = 2);
 
     void SetWorld(PhysicsWorld* world) { m_World = world; }
+    void SetRequiredPushers(int requiredPushers);
 
     [[nodiscard]] int GetRequiredPushers() const override { return m_RequiredPushers; }
 
@@ -1777,10 +1779,9 @@ struct KeyConfigData {
 };
 
 struct LevelSaveData {
-    bool completed = false;
     std::array<float, 9> bestTimes;
 
-    LevelSaveData() { bestTimes.fill(-1.0f); }
+    LevelSaveData() : bestTimes{} { bestTimes.fill(-1.0f); }
 };
 
 class SaveManager {
@@ -2906,7 +2907,7 @@ SceneId KeyboardConfigScene::Update() {
         m_PlayerLeftBtn->Press(75.0f);
         UpdateValueTexts();
     }
-    else if ((m_SelectedRow == ROW_PLAYER && pressedRight) || m_PlayerLeftBtn->IsLeftClicked()) {
+    else if ((m_SelectedRow == ROW_PLAYER && pressedRight) || m_PlayerRightBtn->IsLeftClicked()) {
         m_SelectedRow = ROW_PLAYER ;
         int next = (m_CurrentPlayer + 1) % MAX_PLAYERS;
         m_CurrentPlayer = next;
@@ -3141,8 +3142,8 @@ LevelOneScene::LevelOneScene(GameContext& ctx)
 
     m_KeySprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Key.png");
 
-    m_BoxA = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", m_Ctx.SelectedPlayerCount-1);
-    m_BoxB = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", m_Ctx.SelectedPlayerCount);
+    m_BoxA = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1);
+    m_BoxB = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1);
 
     m_TimerText = std::make_shared<GameText>("TIME 00:00.00", 42, Util::Color::FromRGB(255, 140, 0, 255));
 
@@ -3245,6 +3246,9 @@ void LevelOneScene::ApplyInitialFormation() {
 void LevelOneScene::OnEnter() {
     const int playerCount = std::clamp(m_Ctx.SelectedPlayerCount, 2, 8);
     m_Ctx.SelectedPlayerCount = playerCount;
+
+    m_BoxA->SetRequiredPushers(playerCount - 1);
+    m_BoxB->SetRequiredPushers(playerCount);
 
     m_PlayerEntered.assign(static_cast<size_t>(playerCount), false);
     m_EnteredCount = 0;
@@ -3694,8 +3698,13 @@ void LevelSelectScene::UpdateBestTimeText() const {
 }
 
 void LevelSelectScene::UpdateCrowns() const {
+    const int players = m_Ctx.SelectedPlayerCount;
+    const bool validPlayerCount = (players >= 2 && players <= 8);
+
     for (int i = 0; i < LEVEL_COUNT; ++i) {
-        m_Crown[i]->SetVisible(m_LevelData[i].completed);
+        const bool completedForCurrentPlayers =
+            validPlayerCount && m_LevelData[i].bestTimes[players] >= 0.0f;
+        m_Crown[i]->SetVisible(completedForCurrentPlayers);
     }
 }
 </file>
@@ -5419,6 +5428,13 @@ PushableBox::PushableBox(const std::string& imagePath, int requiredPushers)
         std::to_string(requiredPushers), 30, orange);
 }
 
+void PushableBox::SetRequiredPushers(int requiredPushers) {
+    m_RequiredPushers = std::max(1, requiredPushers);
+    if (m_CountText != nullptr) {
+        m_CountText->SetText(std::to_string(m_RequiredPushers));
+    }
+}
+
 void PushableBox::SetPosition(const glm::vec2& pos) {
     m_Transform.translation = pos;
 }
@@ -5683,7 +5699,6 @@ bool SaveManager::SaveLevelData(const array<LevelSaveData, LEVEL_COUNT>& levels)
     for (int i = 0; i < LEVEL_COUNT; ++i) {
         json lj;
         lj["levelId"]   = i + 1;
-        lj["completed"] = levels[i].completed;
         json times = json::object();
         for (int p = 2; p <= 8; ++p) {
             times[to_string(p)] = levels[i].bestTimes[p];
@@ -5720,7 +5735,6 @@ bool SaveManager::LoadLevelData(array<LevelSaveData, LEVEL_COUNT>& outLevels) {
             int id = lj.value("levelId", 0);
             if (id < 1 || id > LEVEL_COUNT) continue;
             int idx = id - 1;
-            outLevels[idx].completed = lj.value("completed", false);
             if (lj.contains("bestTimes") && lj["bestTimes"].is_object()) {
                 for (int p = 2; p <= 8; ++p) {
                     string key = to_string(p);
@@ -5749,7 +5763,6 @@ bool SaveManager::UpdateBestTime(int levelIdx, int playerCount, float elapsed) {
     float& best = levels[levelIdx].bestTimes[playerCount];
     if (best < 0.0f || elapsed < best) {
         best = elapsed;
-        levels[levelIdx].completed = true;
         LOG_INFO("SaveManager: new best time Level {} ({}P): {}s",
                  levelIdx + 1, playerCount, elapsed);
         return SaveLevelData(levels);
@@ -8084,6 +8097,96 @@ This design allows the entire simulation to be paused cleanly without destroying
   "bgColorIndex": 1,
   "bgmVolume": 10,
   "dispNumber": false,
+  "keyConfigs": [
+    {
+      "cancel": 41,
+      "down": 22,
+      "jump": 26,
+      "left": 4,
+      "menu": 40,
+      "right": 7,
+      "shot": 44,
+      "subMenu": 43,
+      "up": 26
+    },
+    {
+      "cancel": 270,
+      "down": 81,
+      "jump": 82,
+      "left": 80,
+      "menu": 0,
+      "right": 79,
+      "shot": 228,
+      "subMenu": 0,
+      "up": 82
+    },
+    {
+      "cancel": 24,
+      "down": 14,
+      "jump": 12,
+      "left": 13,
+      "menu": 0,
+      "right": 15,
+      "shot": 18,
+      "subMenu": 0,
+      "up": 12
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    },
+    {
+      "cancel": 0,
+      "down": 0,
+      "jump": 0,
+      "left": 0,
+      "menu": 0,
+      "right": 0,
+      "shot": 0,
+      "subMenu": 0,
+      "up": 0
+    }
+  ],
   "seVolume": 10
 }
 </file>

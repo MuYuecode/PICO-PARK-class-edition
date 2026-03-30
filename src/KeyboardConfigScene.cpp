@@ -286,7 +286,7 @@ SceneId KeyboardConfigScene::Update() {
         m_PlayerLeftBtn->Press(75.0f);
         UpdateValueTexts();
     }
-    else if ((m_SelectedRow == ROW_PLAYER && pressedRight) || m_PlayerLeftBtn->IsLeftClicked()) {
+    else if ((m_SelectedRow == ROW_PLAYER && pressedRight) || m_PlayerRightBtn->IsLeftClicked()) {
         m_SelectedRow = ROW_PLAYER ;
         int next = (m_CurrentPlayer + 1) % MAX_PLAYERS;
         m_CurrentPlayer = next;

@@ -18,6 +18,13 @@ PushableBox::PushableBox(const std::string& imagePath, int requiredPushers)
         std::to_string(requiredPushers), 30, orange);
 }
 
+void PushableBox::SetRequiredPushers(int requiredPushers) {
+    m_RequiredPushers = std::max(1, requiredPushers);
+    if (m_CountText != nullptr) {
+        m_CountText->SetText(std::to_string(m_RequiredPushers));
+    }
+}
+
 void PushableBox::SetPosition(const glm::vec2& pos) {
     m_Transform.translation = pos;
 }

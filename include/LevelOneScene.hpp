@@ -21,6 +21,7 @@ public:
     void OnExit() override;
     SceneId Update() override;
 
+
 private:
     struct PlayerBinding {
         std::shared_ptr<PlayerCat> cat;

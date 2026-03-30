@@ -21,8 +21,8 @@ LevelOneScene::LevelOneScene(GameContext& ctx)
 
     m_KeySprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Key.png");
 
-    m_BoxA = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", m_Ctx.SelectedPlayerCount-1);
-    m_BoxB = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", m_Ctx.SelectedPlayerCount);
+    m_BoxA = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1);
+    m_BoxB = std::make_shared<PushableBox>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Box.png", 1);
 
     m_TimerText = std::make_shared<GameText>("TIME 00:00.00", 42, Util::Color::FromRGB(255, 140, 0, 255));
 
@@ -125,6 +125,9 @@ void LevelOneScene::ApplyInitialFormation() {
 void LevelOneScene::OnEnter() {
     const int playerCount = std::clamp(m_Ctx.SelectedPlayerCount, 2, 8);
     m_Ctx.SelectedPlayerCount = playerCount;
+
+    m_BoxA->SetRequiredPushers(playerCount - 1);
+    m_BoxB->SetRequiredPushers(playerCount);
 
     m_PlayerEntered.assign(static_cast<size_t>(playerCount), false);
     m_EnteredCount = 0;
