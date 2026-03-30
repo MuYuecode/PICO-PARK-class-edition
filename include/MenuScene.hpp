@@ -7,27 +7,14 @@
 #include "UITriangleButton.hpp"
 #include "PhysicsWorld.hpp"
 
-class ExitConfirmScene;
-class OptionMenuScene;
-class LocalPlayScene;
-
 class MenuScene : public Scene {
 public:
-    MenuScene(GameContext& ctx,
-              Scene*            titleScene,
-              ExitConfirmScene* exitConfirmScene,
-              OptionMenuScene*  optionScene,
-              LocalPlayScene*   playerSelectScene);
+    explicit MenuScene(GameContext& ctx);
     ~MenuScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetTitleScene(Scene* s)                  { m_TitleScene       = s; }
-    void SetExitConfirmScene(ExitConfirmScene* s)  { m_ExitConfirmScene = s; }
-    void SetOptionScene(OptionMenuScene* s)        { m_OptionScene      = s; }
-    void SetLocalPlayScene(LocalPlayScene* s)      { m_LocalPlayScene   = s; }
+    SceneId Update()  override;
 
     [[nodiscard]] std::shared_ptr<Character>          GetMenuFrame()      const { return m_MenuFrame;      }
     [[nodiscard]] std::shared_ptr<Character>          GetExitGameButton() const { return m_ExitGameButton; }
@@ -54,10 +41,6 @@ private:
 
     int m_SelectedIndex = 0;
 
-    Scene*            m_TitleScene       = nullptr;
-    ExitConfirmScene* m_ExitConfirmScene = nullptr;
-    OptionMenuScene*  m_OptionScene      = nullptr;
-    LocalPlayScene*   m_LocalPlayScene   = nullptr;
 };
 
 #endif // MENU_SCENE_HPP

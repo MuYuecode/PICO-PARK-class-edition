@@ -3,9 +3,7 @@
 //
 
 #include "LocalPlayScene.hpp"
-#include "MenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "LocalPlayGameScene.hpp"      // <--- ADD THIS LINE
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -17,7 +15,6 @@ using ip = Util::Input ;
 using k  = Util::Keycode ;
 
 LocalPlayScene::LocalPlayScene(GameContext& ctx,
-                               MenuScene* menuScene,
                                std::shared_ptr<Character>          menuFrame,
                                std::shared_ptr<Character>          exitGameButton,
                                std::shared_ptr<UITriangleButton> leftTriButton,
@@ -30,7 +27,6 @@ LocalPlayScene::LocalPlayScene(GameContext& ctx,
     , m_LeftTriButton(std::move(leftTriButton))
     , m_RightTriButton(std::move(rightTriButton))
     , m_BlueCatRunImg(std::move(blueCatRunImg))
-    , m_MenuScene(menuScene)
     , m_KbConfigScene(kbConfigScene)
 {
     m_PlayerCountText = std::make_shared<GameText>("2PLAYER GAME", 65, k_Black);
@@ -94,14 +90,14 @@ void LocalPlayScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_MenuFrame);
 }
 
-Scene* LocalPlayScene::Update() {
+SceneId LocalPlayScene::Update() {
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
     if ( ip::IsKeyDown(k::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("LocalPlayScene: back to MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     const bool pressedLeft  =  ip::IsKeyDown(k::A)    ||
@@ -136,14 +132,14 @@ Scene* LocalPlayScene::Update() {
         if (m_PlayerCount <= configuredCount) {
             m_Ctx.SelectedPlayerCount = m_PlayerCount;
             LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
-            return m_GameScene;
+            return SceneId::LocalPlayGame;
         }
 
         LOG_INFO("LocalPlayScene: ENTER blocked, selected={} configured={}",
                  m_PlayerCount, configuredCount);
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void LocalPlayScene::UpdateDisplay() const {

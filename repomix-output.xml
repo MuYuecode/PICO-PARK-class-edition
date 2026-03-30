@@ -67,6 +67,8 @@ The content is organized as follows:
   PushableBox.hpp
   SaveManager.hpp
   Scene.hpp
+  SceneId.hpp
+  SceneManager.hpp
   StaticBody.hpp
   TitleScene.hpp
   UITriangleButton.hpp
@@ -95,6 +97,7 @@ The content is organized as follows:
   PlayerCat.cpp
   PushableBox.cpp
   SaveManager.cpp
+  SceneManager.cpp
   StaticBody.cpp
   TitleScene.cpp
   UITriangleButton.cpp
@@ -398,17 +401,7 @@ public:
 
 #include "Util/Renderer.hpp"
 #include "GameContext.hpp"
-#include "Scene.hpp"
-
-class TitleScene;
-class MenuScene;
-class ExitConfirmScene;
-class OptionMenuScene;
-class KeyboardConfigScene;
-class LocalPlayScene;
-class LocalPlayGameScene;
-class LevelSelectScene;
-class LevelOneScene;
+#include "SceneManager.hpp"
 
 class App {
 public:
@@ -421,24 +414,11 @@ public:
     void End();
 
 private:
-    void TransitionTo(Scene* next);
-
     State          m_CurrentState = State::START;
     Util::Renderer m_Root;
 
     std::unique_ptr<GameContext> m_Ctx;
-
-    std::unique_ptr<Scene> m_TitleScene;
-    std::unique_ptr<Scene> m_MenuScene;
-    std::unique_ptr<Scene> m_ExitConfirmScene;
-    std::unique_ptr<Scene> m_OptionMenuScene;
-    std::unique_ptr<Scene> m_KeyboardConfigScene;
-    std::unique_ptr<Scene> m_LocalPlayScene;
-    std::unique_ptr<Scene> m_LocalPlayGameScene;
-    std::unique_ptr<Scene> m_LevelSelectScene;
-    std::array<std::unique_ptr<Scene>, 10> m_LevelXScenes; // 10 is num of level
-
-    Scene* m_CurrentScene = nullptr;
+    std::unique_ptr<SceneManager> m_SceneManager;
 };
 
 #endif // APP_HPP
@@ -635,21 +615,16 @@ struct CharacterPhysicsSystem {
 #include "Character.hpp"
 #include "GameText.hpp"
 
-class MenuScene;
-
 class ExitConfirmScene : public Scene {
 public:
     ExitConfirmScene(GameContext& ctx,
-                     MenuScene* menuScene,
                      std::shared_ptr<Character> menuFrame,
                      std::shared_ptr<Character> exitGameButton);
     ~ExitConfirmScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
+    SceneId Update()  override;
 
 private:
     std::shared_ptr<GameText>  m_ExitGame1Text;
@@ -660,7 +635,6 @@ private:
     std::shared_ptr<Character> m_MenuFrame;
     std::shared_ptr<Character> m_ExitGameButton;
 
-    MenuScene* m_MenuScene = nullptr;
 
     bool m_IsYesSelected = true;
 
@@ -858,20 +832,15 @@ public:
 #include "PlayerKeyConfig.hpp"
 #include "Util/Keycode.hpp"
 
-class OptionMenuScene;
-
 class KeyboardConfigScene : public Scene {
 public:
     KeyboardConfigScene(GameContext& ctx,
-                        OptionMenuScene* optionScene,
                         std::shared_ptr<Character> exitGameButton);
     ~KeyboardConfigScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetOptionScene(OptionMenuScene* s) { m_OptionScene = s; }
+    SceneId Update()  override;
 
     static const PlayerKeyConfig k_Default1P;
     static const PlayerKeyConfig k_Default2P;
@@ -910,7 +879,6 @@ private:
     std::shared_ptr<GameText> m_CancelText;
     std::shared_ptr<GameText> m_DefaultText;
 
-    OptionMenuScene* m_OptionScene = nullptr;
 
     std::array<PlayerKeyConfig, MAX_PLAYERS> m_Applied;
     PlayerKeyConfig m_Pending;
@@ -997,19 +965,14 @@ private:
 #include "GameText.hpp"
 #include "PlayerKeyConfig.hpp"
 
-class LevelSelectScene;
-
 class LevelOneScene : public Scene {
 public:
-    LevelOneScene(GameContext& ctx,
-                  LevelSelectScene* levelSelectScene);
+    explicit LevelOneScene(GameContext& ctx);
     ~LevelOneScene() override = default;
 
     void OnEnter() override;
     void OnExit() override;
-    Scene* Update() override;
-
-    void SetLevelExitScene(Scene* s) { m_LevelExitScene = s; }
+    SceneId Update() override;
 
 private:
     struct PlayerBinding {
@@ -1061,8 +1024,6 @@ private:
     bool  m_DoorOpened    = false;
     float m_ElapsedSec    = 0.0f;
 
-    Scene*            m_LevelExitScene   = nullptr;
-    LevelSelectScene* m_LevelSelectScene = nullptr;
 
     // enter door
     void UpdateDoorEntryAndClear();
@@ -1090,21 +1051,18 @@ private:
 #include "GameText.hpp"
 #include "SaveManager.hpp"
 
-class LocalPlayGameScene;
-
 class LevelSelectScene : public Scene {
 public:
-    LevelSelectScene(GameContext& ctx,
-                     LocalPlayGameScene* localPlayGameScene);
+    explicit LevelSelectScene(GameContext& ctx);
     ~LevelSelectScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
+    SceneId Update()  override;
 
-    void SetLevelScene(int levelIdx, Scene* scene) {
+    void SetLevelSceneId(int levelIdx, SceneId sceneId) {
         if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)
-            m_LevelScenes[levelIdx] = scene;
+            m_LevelSceneIds[levelIdx] = sceneId;
     }
 
     static constexpr int   LEVEL_COUNT = 10;
@@ -1143,8 +1101,7 @@ private:
 
     std::array<LevelSaveData, LEVEL_COUNT> m_LevelData;
 
-    LocalPlayGameScene*             m_LocalPlayGameScene = nullptr;
-    std::array<Scene*, LEVEL_COUNT> m_LevelScenes;
+    std::array<SceneId, LEVEL_COUNT> m_LevelSceneIds{};
 
     void UpdateSelectorPos()  const;
     void UpdateTitleText()    const;
@@ -1166,20 +1123,15 @@ private:
 #include "PhysicsWorld.hpp"
 #include "KeyboardConfigScene.hpp"
 
-class LocalPlayScene;
-class LevelSelectScene;
 
 class LocalPlayGameScene : public Scene {
 public:
-    LocalPlayGameScene(GameContext& ctx,
-                       LocalPlayScene*      localPlayScene);
+    explicit LocalPlayGameScene(GameContext& ctx);
     ~LocalPlayGameScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetLevelSelectScene(LevelSelectScene* s) { m_LevelSelectScene = s; }
+    SceneId Update()  override;
 
 private:
     // One entry per active player.
@@ -1198,8 +1150,6 @@ private:
     std::shared_ptr<GameText> m_DoorCountText;
     int                       m_EnteredCount = 0;
 
-    LevelSelectScene*    m_LevelSelectScene = nullptr;
-    LocalPlayScene*      m_LocalPlayScene   = nullptr;
 
     PhysicsWorld               m_World;
     std::vector<PlayerBinding> m_Players;
@@ -1222,14 +1172,11 @@ private:
 
 #include "UITriangleButton.hpp"
 
-class MenuScene;
 class KeyboardConfigScene;
-class LocalPlayGameScene;
 
 class LocalPlayScene : public Scene {
 public:
     LocalPlayScene(GameContext& ctx,
-                   MenuScene* menuScene,
                    std::shared_ptr<Character>          menuFrame,
                    std::shared_ptr<Character>          exitGameButton,
                    std::shared_ptr<UITriangleButton> leftTriButton,
@@ -1240,10 +1187,7 @@ public:
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
-    void SetGameScene(LocalPlayGameScene* s) { m_GameScene = s; }
+    SceneId Update()  override;
 
     [[nodiscard]]int GetPlayerCount() const { return m_PlayerCount; }
 
@@ -1262,9 +1206,7 @@ private:
 
     int m_PlayerCount = MIN_PLAYERS;
 
-    MenuScene*           m_MenuScene     = nullptr;
     KeyboardConfigScene* m_KbConfigScene = nullptr;
-    LocalPlayGameScene*  m_GameScene     = nullptr;
 
     static const Util::Color k_Black;
     static const Util::Color k_Red;
@@ -1285,27 +1227,14 @@ private:
 #include "UITriangleButton.hpp"
 #include "PhysicsWorld.hpp"
 
-class ExitConfirmScene;
-class OptionMenuScene;
-class LocalPlayScene;
-
 class MenuScene : public Scene {
 public:
-    MenuScene(GameContext& ctx,
-              Scene*            titleScene,
-              ExitConfirmScene* exitConfirmScene,
-              OptionMenuScene*  optionScene,
-              LocalPlayScene*   playerSelectScene);
+    explicit MenuScene(GameContext& ctx);
     ~MenuScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetTitleScene(Scene* s)                  { m_TitleScene       = s; }
-    void SetExitConfirmScene(ExitConfirmScene* s)  { m_ExitConfirmScene = s; }
-    void SetOptionScene(OptionMenuScene* s)        { m_OptionScene      = s; }
-    void SetLocalPlayScene(LocalPlayScene* s)      { m_LocalPlayScene   = s; }
+    SceneId Update()  override;
 
     [[nodiscard]] std::shared_ptr<Character>          GetMenuFrame()      const { return m_MenuFrame;      }
     [[nodiscard]] std::shared_ptr<Character>          GetExitGameButton() const { return m_ExitGameButton; }
@@ -1332,10 +1261,6 @@ private:
 
     int m_SelectedIndex = 0;
 
-    Scene*            m_TitleScene       = nullptr;
-    ExitConfirmScene* m_ExitConfirmScene = nullptr;
-    OptionMenuScene*  m_OptionScene      = nullptr;
-    LocalPlayScene*   m_LocalPlayScene   = nullptr;
 };
 
 #endif // MENU_SCENE_HPP
@@ -1357,22 +1282,15 @@ private:
 #include "GameText.hpp"
 #include "UITriangleButton.hpp"
 
-class MenuScene;
-class KeyboardConfigScene;
-
 class OptionMenuScene : public Scene {
 public:
     OptionMenuScene(GameContext& ctx,
-                    MenuScene* menuScene,
                     std::shared_ptr<Character> exitGameButton);
     ~OptionMenuScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
-    void SetKeyboardConfigScene(KeyboardConfigScene* s) { m_KeyboardConfigScene = s; }
+    SceneId Update()  override;
 
     struct Settings {
         int  bgColorIndex = 0;
@@ -1417,8 +1335,6 @@ private:
     std::shared_ptr<GameText> m_OkText;
     std::shared_ptr<GameText> m_CancelText;
 
-    MenuScene* m_MenuScene = nullptr;
-    KeyboardConfigScene* m_KeyboardConfigScene = nullptr;
 
     static const std::vector<std::string> s_BgColorOptions;
     static const std::vector<std::string> s_BgColorPaths;
@@ -1908,6 +1824,7 @@ public:
 #define PICOPART_SCENE_HPP
 
 #include "GameContext.hpp"
+#include "SceneId.hpp"
 class Scene {
 public:
     explicit Scene(GameContext& ctx) : m_Ctx(ctx) {}
@@ -1921,13 +1838,79 @@ public:
 
     virtual void OnEnter() = 0;
     virtual void OnExit()  = 0;
-    virtual Scene* Update() = 0;
+    virtual SceneId Update() = 0;
 
 protected:
     GameContext& m_Ctx;
 };
 
 #endif //PICOPART_SCENE_HPP
+</file>
+
+<file path="SceneId.hpp">
+#ifndef SCENE_ID_HPP
+#define SCENE_ID_HPP
+
+enum class SceneId {
+    None,
+    Title,
+    Menu,
+    ExitConfirm,
+    OptionMenu,
+    KeyboardConfig,
+    LocalPlay,
+    LocalPlayGame,
+    LevelSelect,
+    Level01,
+    Level02,
+    Level03,
+    Level04,
+    Level05,
+    Level06,
+    Level07,
+    Level08,
+    Level09,
+    Level10,
+};
+
+#endif // SCENE_ID_HPP
+</file>
+
+<file path="SceneManager.hpp">
+#ifndef SCENE_MANAGER_HPP
+#define SCENE_MANAGER_HPP
+
+#include <memory>
+#include <unordered_map>
+
+#include "Scene.hpp"
+#include "SceneId.hpp"
+
+struct SceneIdHash {
+    std::size_t operator()(SceneId id) const noexcept {
+        return static_cast<std::size_t>(id);
+    }
+};
+
+class SceneManager {
+public:
+    explicit SceneManager(GameContext& ctx);
+
+    void Register(SceneId id, std::unique_ptr<Scene> scene);
+    void GoTo(SceneId id);
+    SceneId UpdateCurrent();
+
+    [[nodiscard]] SceneId GetCurrentId() const { return m_CurrentId; }
+    [[nodiscard]] Scene* GetCurrentScene() const { return m_Current; }
+
+private:
+    GameContext& m_Ctx;
+    std::unordered_map<SceneId, std::unique_ptr<Scene>, SceneIdHash> m_Scenes;
+    SceneId m_CurrentId = SceneId::None;
+    Scene* m_Current = nullptr;
+};
+
+#endif // SCENE_MANAGER_HPP
 </file>
 
 <file path="StaticBody.hpp">
@@ -1969,24 +1952,20 @@ private:
 #ifndef PICOPART_TITLESCENE_HPP
 #define PICOPART_TITLESCENE_HPP
 
-#include <vector>
 #include <memory>
 #include "Scene.hpp"
 #include "GameText.hpp"
 #include "PhysicsWorld.hpp"
 
-class MenuScene;
 
 class TitleScene : public Scene {
 public:
-    TitleScene(GameContext& ctx, MenuScene* menuScene);
+    explicit TitleScene(GameContext& ctx);
     ~TitleScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
+    SceneId Update()  override;
 
 private:
     void SetupStaticBoundaries();
@@ -1995,7 +1974,6 @@ private:
     std::shared_ptr<GameText> m_PressEnterText;
 
     float      m_FlashTimer = 0.0f;
-    MenuScene* m_MenuScene  = nullptr;
 
     PhysicsWorld m_World;
 };
@@ -2070,6 +2048,7 @@ void App::End() {
 #include "LocalPlayGameScene.hpp"
 #include "LevelSelectScene.hpp"
 #include "LevelOneScene.hpp"
+#include "SceneId.hpp"
 
 #include "Util/Logger.hpp"
 #include <array>
@@ -2081,6 +2060,7 @@ void App::Start() {
     LOG_TRACE("Start");
 
     m_Ctx = make_unique<GameContext>(m_Root);
+    m_SceneManager = make_unique<SceneManager>(*m_Ctx);
 
     m_Ctx->Background = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/white_background.png");
@@ -2183,30 +2163,25 @@ void App::Start() {
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 
-    auto titleScene = make_unique<TitleScene>(*m_Ctx, nullptr);
+    auto titleScene = make_unique<TitleScene>(*m_Ctx);
 
-    auto menuScene = make_unique<MenuScene>(
-        *m_Ctx, titleScene.get(), nullptr, nullptr, nullptr);
+    auto menuScene = make_unique<MenuScene>(*m_Ctx);
 
     auto exitConfirmScene = make_unique<ExitConfirmScene>(
         *m_Ctx,
-        menuScene.get(),
         menuScene->GetMenuFrame(),
         menuScene->GetExitGameButton());
 
     auto optionMenuScene = make_unique<OptionMenuScene>(
         *m_Ctx,
-        menuScene.get(),
         menuScene->GetExitGameButton());
 
     auto kbConfigScene = make_unique<KeyboardConfigScene>(
         *m_Ctx,
-        optionMenuScene.get(),
         menuScene->GetExitGameButton());
 
     auto localPlayScene = make_unique<LocalPlayScene>(
         *m_Ctx,
-        menuScene.get(),
         menuScene->GetMenuFrame(),
         menuScene->GetExitGameButton(),
         menuScene->GetLeftTriButton(),
@@ -2214,44 +2189,24 @@ void App::Start() {
         menuScene->GetBlueCatRunImg(),
         kbConfigScene.get());
 
-    auto localPlayGameScene = make_unique<LocalPlayGameScene>(
-        *m_Ctx,
-        localPlayScene.get());
+    auto localPlayGameScene = make_unique<LocalPlayGameScene>(*m_Ctx);
 
-    auto levelSelectScene = make_unique<LevelSelectScene>(
-        *m_Ctx,
-        localPlayGameScene.get());
+    auto levelSelectScene = make_unique<LevelSelectScene>(*m_Ctx);
+    levelSelectScene->SetLevelSceneId(0, SceneId::Level01);
 
-    auto levelOneScene = make_unique<LevelOneScene>(
-        *m_Ctx,
-        levelSelectScene.get());
+    auto levelOneScene = make_unique<LevelOneScene>(*m_Ctx);
 
-    titleScene->SetMenuScene(menuScene.get());
-    menuScene->SetExitConfirmScene(exitConfirmScene.get());
-    menuScene->SetOptionScene(optionMenuScene.get());
-    menuScene->SetLocalPlayScene(localPlayScene.get());
-    optionMenuScene->SetKeyboardConfigScene(kbConfigScene.get());
-    localPlayScene->SetGameScene(localPlayGameScene.get());
-    localPlayGameScene->SetLevelSelectScene(levelSelectScene.get());
+    m_SceneManager->Register(SceneId::Title, std::move(titleScene));
+    m_SceneManager->Register(SceneId::Menu, std::move(menuScene));
+    m_SceneManager->Register(SceneId::ExitConfirm, std::move(exitConfirmScene));
+    m_SceneManager->Register(SceneId::OptionMenu, std::move(optionMenuScene));
+    m_SceneManager->Register(SceneId::KeyboardConfig, std::move(kbConfigScene));
+    m_SceneManager->Register(SceneId::LocalPlay, std::move(localPlayScene));
+    m_SceneManager->Register(SceneId::LocalPlayGame, std::move(localPlayGameScene));
+    m_SceneManager->Register(SceneId::LevelSelect, std::move(levelSelectScene));
+    m_SceneManager->Register(SceneId::Level01, std::move(levelOneScene));
 
-    levelSelectScene->SetLevelScene(0, levelOneScene.get());
-
-    m_TitleScene          = std::move(titleScene);
-    m_MenuScene           = std::move(menuScene);
-    m_ExitConfirmScene    = std::move(exitConfirmScene);
-    m_OptionMenuScene     = std::move(optionMenuScene);
-    m_KeyboardConfigScene = std::move(kbConfigScene);
-    m_LocalPlayScene      = std::move(localPlayScene);
-    m_LocalPlayGameScene  = std::move(localPlayGameScene);
-    m_LevelSelectScene    = std::move(levelSelectScene);
-
-    for (auto& s : m_LevelXScenes) {
-        s.reset();
-    }
-    m_LevelXScenes[0] = std::move(levelOneScene);
-
-    TransitionTo(m_TitleScene.get()); // ture scene
-    // TransitionTo(m_LevelXScenes[0].get()) ; // test
+    m_SceneManager->GoTo(SceneId::Title);
     m_CurrentState = State::UPDATE;
 }
 </file>
@@ -2261,35 +2216,19 @@ void App::Start() {
 #include "Util/Logger.hpp"
  
 void App::Update() {
-    if (m_CurrentScene == nullptr) {
-        LOG_ERROR("m_CurrentScene is nullptr!");
+    if (m_SceneManager == nullptr || m_SceneManager->GetCurrentScene() == nullptr) {
+        LOG_ERROR("SceneManager current scene is nullptr!");
         return;
     }
 
     m_Ctx->BGMPlayer->Update();
-    Scene* next = m_CurrentScene->Update();
-
-
-    if (next != nullptr && next != m_CurrentScene) {
-        TransitionTo(next);
-    }
+    m_SceneManager->UpdateCurrent();
 
     if (m_Ctx->ShouldQuit) {
         m_CurrentState = State::END;
     }
 
     m_Root.Update();
-}
-
-void App::TransitionTo(Scene* next) {
-    if (m_CurrentScene != nullptr) {
-        m_CurrentScene->OnExit();
-    }
-    m_CurrentScene = next;
-    if (m_CurrentScene != nullptr) {
-        LOG_INFO("now is {}", typeid(*m_CurrentScene).name());
-        m_CurrentScene->OnEnter();
-    }
 }
 </file>
 
@@ -2526,19 +2465,16 @@ bool Character::IsLeftClicked() const {
 
 <file path="ExitConfirmScene.cpp">
 #include "ExitConfirmScene.hpp"
-#include "MenuScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
 ExitConfirmScene::ExitConfirmScene(GameContext& ctx,
-                                   MenuScene* menuScene,
                                    std::shared_ptr<Character> menuFrame,
                                    std::shared_ptr<Character> exitGameButton)
     : Scene(ctx)
     , m_MenuFrame(std::move(menuFrame))
     , m_ExitGameButton(std::move(exitGameButton))
-    , m_MenuScene(menuScene)
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
@@ -2591,7 +2527,7 @@ void ExitConfirmScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-Scene* ExitConfirmScene::Update() {
+SceneId ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::A) ||
         Util::Input::IsKeyDown(Util::Keycode::D)) {
         m_IsYesSelected = !m_IsYesSelected;
@@ -2610,7 +2546,7 @@ Scene* ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("ExitConfirmScene: cancelled, back to MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     const bool confirmByKeyboard = Util::Input::IsKeyDown(Util::Keycode::RETURN);
@@ -2620,14 +2556,14 @@ Scene* ExitConfirmScene::Update() {
     if ((confirmByKeyboard || confirmByMouseYes) && m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
         m_Ctx.ShouldQuit = true ;
-        return nullptr;
+        return SceneId::None;
     }
     if ((confirmByKeyboard || confirmByMouseNo) && !m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void ExitConfirmScene::UpdateChoiceFramePosition() const {
@@ -2689,7 +2625,6 @@ bool GameText::IsLeftClicked() const {
 #include "SaveManager.hpp"
 #include "AppUtil.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "OptionMenuScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -2745,11 +2680,9 @@ std::vector<Keycode> PlayerKeyConfig::AllKeys() const {
 }
 
 KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
-                                         OptionMenuScene* optionScene,
                                          std::shared_ptr<Character> exitGameButton)
     : Scene(ctx)
     , m_ExitGameButton(std::move(exitGameButton))
-    , m_OptionScene(optionScene)
 {
     m_Applied[0] = k_Default1P;
     m_Applied[1] = k_Default2P;
@@ -2914,7 +2847,7 @@ void KeyboardConfigScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-Scene* KeyboardConfigScene::Update() {
+SceneId KeyboardConfigScene::Update() {
     m_PlayerLeftBtn->UpdateButton();
     m_PlayerRightBtn->UpdateButton();
 
@@ -2927,13 +2860,13 @@ Scene* KeyboardConfigScene::Update() {
             m_WaitingForKey = false;
             UpdateValueTexts();
         }
-        return nullptr;
+        return SceneId::None;
     }
 
     if (Input::IsKeyDown(Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked() ||
         m_CancelText->IsLeftClicked()) {
-        return m_OptionScene;
+        return SceneId::OptionMenu;
     }
 
     if (Input::IsKeyDown(Keycode::W) ||
@@ -3000,11 +2933,11 @@ Scene* KeyboardConfigScene::Update() {
             }
             else {
                 CommitPending();
-                return m_OptionScene;
+                return SceneId::OptionMenu;
             }
         }
         else if (m_SelectedRow == ROW_CANCEL) {
-            return m_OptionScene;
+            return SceneId::OptionMenu;
         }
         else if (m_SelectedRow == ROW_DEFAULT) {
             ApplyDefault();
@@ -3023,7 +2956,7 @@ Scene* KeyboardConfigScene::Update() {
     if (m_OkText->IsLeftClicked()) {
         if (!(m_CurrentPlayer >= 1 && HasConflicts())) {
             CommitPending();
-            return m_OptionScene;
+            return SceneId::OptionMenu;
         }
     }
     if (m_DefaultText->IsLeftClicked()) {
@@ -3031,7 +2964,7 @@ Scene* KeyboardConfigScene::Update() {
         UpdateValueTexts();
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void KeyboardConfigScene::LoadPlayer(int playerIdx) {
@@ -3190,7 +3123,6 @@ int KeyboardConfigScene::GetConfiguredPlayerCount() const {
 #include <cmath>
 #include "CatAssets.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "LevelSelectScene.hpp"
 #include "SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -3200,11 +3132,8 @@ int KeyboardConfigScene::GetConfiguredPlayerCount() const {
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-LevelOneScene::LevelOneScene(GameContext& ctx,
-                             LevelSelectScene* levelSelectScene)
-    : Scene(ctx)
-    , m_LevelSelectScene(levelSelectScene)
-{
+LevelOneScene::LevelOneScene(GameContext& ctx)
+    : Scene(ctx) {
     m_FloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Floor.png");
     m_LeftWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_lwall.png");
     m_RightWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_rwall.png");
@@ -3555,9 +3484,9 @@ void LevelOneScene::UpdateDoorEntryAndClear() {
     }
 }
 
-Scene* LevelOneScene::Update() {
+SceneId LevelOneScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
-        return m_LevelExitScene;
+        return SceneId::LevelSelect;
     }
 
     HandlePlayerInput();
@@ -3571,10 +3500,10 @@ Scene* LevelOneScene::Update() {
     TryOpenDoorAndClear();
     UpdateDoorEntryAndClear();
     if (m_ClearDone) {
-        return m_LevelSelectScene;
+        return SceneId::LevelSelect;
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 </file>
 
@@ -3584,16 +3513,12 @@ Scene* LevelOneScene::Update() {
 //
 
 #include "LevelSelectScene.hpp"
-#include "LocalPlayGameScene.hpp"
 #include "AppUtil.hpp"
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 
-LevelSelectScene::LevelSelectScene(GameContext& ctx,
-                                   LocalPlayGameScene* localPlayGameScene)
-    : Scene(ctx)
-    , m_LocalPlayGameScene(localPlayGameScene)
-{
+LevelSelectScene::LevelSelectScene(GameContext& ctx)
+    : Scene(ctx) {
     m_SelectorFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/level_select_frame.png");
     m_SelectorFrame->SetZIndex(32);
@@ -3681,12 +3606,12 @@ void LevelSelectScene::OnExit() {
     }
 }
 
-Scene* LevelSelectScene::Update() {
+SceneId LevelSelectScene::Update() {
     using ip = Util::Input ;
     using k  = Util::Keycode;
     if (ip::IsKeyDown(k::ESCAPE)) {
         LOG_INFO("LevelSelectScene: ESC → LocalPlayGameScene");
-        return m_LocalPlayGameScene;
+        return SceneId::LocalPlayGame;
     }
 
     int  newIdx     = m_SelectedIdx;
@@ -3740,14 +3665,14 @@ Scene* LevelSelectScene::Update() {
     }
 
     if (confirmed) {
-        if (m_LevelScenes[m_SelectedIdx] != nullptr) {
+        if (m_LevelSceneIds[m_SelectedIdx] != SceneId::None) {
             LOG_INFO("LevelSelectScene: entering Level {}",m_SelectedIdx+1);
-            return m_LevelScenes[m_SelectedIdx];
+            return m_LevelSceneIds[m_SelectedIdx];
         }
         LOG_INFO("LevelSelectScene: Level {} not implemented yet", m_SelectedIdx+1);
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void LevelSelectScene::UpdateSelectorPos() const {
@@ -3778,7 +3703,6 @@ void LevelSelectScene::UpdateCrowns() const {
 <file path="LocalPlayGameScene.cpp">
 #include "LocalPlayGameScene.hpp"
 #include "LocalPlayScene.hpp"
-#include "LevelSelectScene.hpp"
 #include "KeyboardConfigScene.hpp"
 #include "CatAssets.hpp"
 #include "Util/Input.hpp"
@@ -3789,10 +3713,8 @@ void LevelSelectScene::UpdateCrowns() const {
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
-                                       LocalPlayScene* localPlayScene)
-    : Scene(ctx)
-    , m_LocalPlayScene(localPlayScene) {}
+LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx)
+    : Scene(ctx) {}
 
 void LocalPlayGameScene::SetupStaticBoundaries() {
     constexpr float kWallHalfW  = 50.f;
@@ -3889,9 +3811,9 @@ void LocalPlayGameScene::OnExit() {
     LOG_INFO("LocalPlayGameScene::OnExit");
 }
 
-Scene* LocalPlayGameScene::Update() {
+SceneId LocalPlayGameScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
-        return m_LocalPlayScene;
+        return SceneId::LocalPlay;
     }
 
     for (auto& pb : m_Players) {
@@ -3939,7 +3861,7 @@ Scene* LocalPlayGameScene::Update() {
 
             if (m_EnteredCount == m_Ctx.SelectedPlayerCount) {
                 LOG_INFO("LocalPlayGameScene: all players entered -> LevelSelectScene");
-                return m_LevelSelectScene;
+                return SceneId::LevelSelect;
             }
         }
     }
@@ -3947,7 +3869,7 @@ Scene* LocalPlayGameScene::Update() {
     m_World.Update();
     UpdateCooperativePower();
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void LocalPlayGameScene::SpawnPlayers(int count) {
@@ -4069,9 +3991,7 @@ void LocalPlayGameScene::UpdateDoorCountText() const {
 //
 
 #include "LocalPlayScene.hpp"
-#include "MenuScene.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "LocalPlayGameScene.hpp"      // <--- ADD THIS LINE
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -4083,7 +4003,6 @@ using ip = Util::Input ;
 using k  = Util::Keycode ;
 
 LocalPlayScene::LocalPlayScene(GameContext& ctx,
-                               MenuScene* menuScene,
                                std::shared_ptr<Character>          menuFrame,
                                std::shared_ptr<Character>          exitGameButton,
                                std::shared_ptr<UITriangleButton> leftTriButton,
@@ -4096,7 +4015,6 @@ LocalPlayScene::LocalPlayScene(GameContext& ctx,
     , m_LeftTriButton(std::move(leftTriButton))
     , m_RightTriButton(std::move(rightTriButton))
     , m_BlueCatRunImg(std::move(blueCatRunImg))
-    , m_MenuScene(menuScene)
     , m_KbConfigScene(kbConfigScene)
 {
     m_PlayerCountText = std::make_shared<GameText>("2PLAYER GAME", 65, k_Black);
@@ -4160,14 +4078,14 @@ void LocalPlayScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_MenuFrame);
 }
 
-Scene* LocalPlayScene::Update() {
+SceneId LocalPlayScene::Update() {
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
     if ( ip::IsKeyDown(k::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("LocalPlayScene: back to MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     const bool pressedLeft  =  ip::IsKeyDown(k::A)    ||
@@ -4202,14 +4120,14 @@ Scene* LocalPlayScene::Update() {
         if (m_PlayerCount <= configuredCount) {
             m_Ctx.SelectedPlayerCount = m_PlayerCount;
             LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
-            return m_GameScene;
+            return SceneId::LocalPlayGame;
         }
 
         LOG_INFO("LocalPlayScene: ENTER blocked, selected={} configured={}",
                  m_PlayerCount, configuredCount);
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void LocalPlayScene::UpdateDisplay() const {
@@ -4259,9 +4177,6 @@ int main(int, char**) {
 
 <file path="MenuScene.cpp">
 #include "MenuScene.hpp"
-#include "ExitConfirmScene.hpp"
-#include "OptionMenuScene.hpp"
-#include "LocalPlayScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -4269,17 +4184,8 @@ int main(int, char**) {
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-MenuScene::MenuScene(GameContext&      ctx,
-                     Scene*            titleScene,
-                     ExitConfirmScene* exitConfirmScene,
-                     OptionMenuScene*  optionScene,
-                     LocalPlayScene*   localPlayScene)
-    : Scene(ctx)
-    , m_TitleScene(titleScene)
-    , m_ExitConfirmScene(exitConfirmScene)
-    , m_OptionScene(optionScene)
-    , m_LocalPlayScene(localPlayScene)
-{
+MenuScene::MenuScene(GameContext& ctx)
+    : Scene(ctx) {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
     m_MenuFrame = std::make_shared<Character>(
@@ -4396,14 +4302,14 @@ void MenuScene::OnExit() {
     m_World.Clear();
 }
 
-Scene* MenuScene::Update() {
+SceneId MenuScene::Update() {
     m_World.Update();
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
     if (ip::IsKeyDown(k::ESCAPE) || m_ExitGameButton->IsLeftClicked()) {
-        return m_TitleScene;
+        return SceneId::Title;
     }
 
     if (ip::IsKeyDown(k::A)) {
@@ -4411,7 +4317,7 @@ Scene* MenuScene::Update() {
         m_SelectedIndex = (m_SelectedIndex + 2) % 3;
         m_LeftTriButton->Press(75.f);
         ShowCurrentOption();
-        return nullptr;
+        return SceneId::None;
     }
 
     if (ip::IsKeyDown(k::D)) {
@@ -4419,19 +4325,19 @@ Scene* MenuScene::Update() {
         m_SelectedIndex = (m_SelectedIndex + 1) % 3;
         m_RightTriButton->Press(75.f);
         ShowCurrentOption();
-        return nullptr;
+        return SceneId::None;
     }
 
     if (ip::IsKeyDown(k::RETURN)) {
         switch (m_SelectedIndex) {
-        case 0: if (m_ExitConfirmScene != nullptr) return m_ExitConfirmScene; break;
-        case 1: if (m_OptionScene      != nullptr) return m_OptionScene;      break;
-        case 2: if (m_LocalPlayScene   != nullptr) return m_LocalPlayScene;   break;
+        case 0: return SceneId::ExitConfirm;
+        case 1: return SceneId::OptionMenu;
+        case 2: return SceneId::LocalPlay;
         default: break;
         }
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void MenuScene::ShowCurrentOption() const {
@@ -4456,9 +4362,7 @@ void MenuScene::HideAllOptions() const {
 #include "BGMPlayer.hpp"
 #include "AppUtil.hpp"
 
-#include "MenuScene.hpp"
 #include "OptionMenuScene.hpp"
-#include "KeyboardConfigScene.hpp"
 
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -4479,11 +4383,9 @@ const vector<string> OptionMenuScene::s_BgColorPaths = {
 };
 
 OptionMenuScene::OptionMenuScene(GameContext& ctx,
-                                 MenuScene* menuScene,
                                  shared_ptr<Character> exitGameButton)
     : Scene(ctx)
     , m_ExitGameButton(std::move(exitGameButton))
-    , m_MenuScene(menuScene)
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
@@ -4687,7 +4589,7 @@ void OptionMenuScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-Scene* OptionMenuScene::Update() {
+SceneId OptionMenuScene::Update() {
     m_BgColorLeftBtn->UpdateButton();
     m_BgColorRightBtn->UpdateButton();
     m_BgmVolumeLeftBtn->UpdateButton();
@@ -4703,11 +4605,11 @@ Scene* OptionMenuScene::Update() {
     {
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
         m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     if (m_KbConfigOpen->IsLeftClicked()) {
-        return m_KeyboardConfigScene;
+        return SceneId::KeyboardConfig;
     }
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;
@@ -4723,7 +4625,7 @@ Scene* OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
         }
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     if (Util::Input::IsKeyDown(Util::Keycode::W) || Util::Input::IsKeyDown(Util::Keycode::UP)) {
@@ -4778,7 +4680,7 @@ Scene* OptionMenuScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         switch (m_SelectedRow) {
         case 0:
-            return m_KeyboardConfigScene;
+            return SceneId::KeyboardConfig;
         case 5:
             m_Applied = m_Pending;
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
@@ -4793,17 +4695,17 @@ Scene* OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
             }
-            return m_MenuScene;
+            return SceneId::Menu;
         case 6:
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
             m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
-            return m_MenuScene;
+            return SceneId::Menu;
         default:
             break;
         }
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void OptionMenuScene::DecrementRow() {
@@ -5856,6 +5758,51 @@ bool SaveManager::UpdateBestTime(int levelIdx, int playerCount, float elapsed) {
 }
 </file>
 
+<file path="SceneManager.cpp">
+#include "SceneManager.hpp"
+#include "Util/Logger.hpp"
+
+SceneManager::SceneManager(GameContext& ctx)
+    : m_Ctx(ctx) {}
+
+void SceneManager::Register(SceneId id, std::unique_ptr<Scene> scene) {
+    if (scene == nullptr) {
+        LOG_ERROR("SceneManager::Register got nullptr for SceneId {}", static_cast<int>(id));
+        return;
+    }
+    m_Scenes[id] = std::move(scene);
+}
+
+void SceneManager::GoTo(SceneId id) {
+    const auto it = m_Scenes.find(id);
+    if (it == m_Scenes.end() || it->second == nullptr) {
+        LOG_ERROR("SceneManager::GoTo failed, SceneId {} not registered", static_cast<int>(id));
+        return;
+    }
+
+    if (m_Current != nullptr) {
+        m_Current->OnExit();
+    }
+
+    m_CurrentId = id;
+    m_Current = it->second.get();
+    m_Current->OnEnter();
+}
+
+SceneId SceneManager::UpdateCurrent() {
+    if (m_Current == nullptr) {
+        return SceneId::None;
+    }
+
+    const SceneId next = m_Current->Update();
+    if (next != SceneId::None && next != m_CurrentId) {
+        GoTo(next);
+    }
+
+    return next;
+}
+</file>
+
 <file path="StaticBody.cpp">
 //
 // Created by cody2 on 2026/3/28.
@@ -5871,15 +5818,14 @@ StaticBody::StaticBody(glm::vec2 center, glm::vec2 halfSize, BodyType type)
 
 <file path="TitleScene.cpp">
 #include "TitleScene.hpp"
-#include "MenuScene.hpp"
 
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 #include "Util/Time.hpp"
 
-TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
-    : Scene(ctx), m_MenuScene(menuScene)
+TitleScene::TitleScene(GameContext& ctx)
+    : Scene(ctx)
 {
     const Util::Color orange(254, 133, 78, 255);
 
@@ -5967,7 +5913,7 @@ void TitleScene::OnExit() {
     m_World.Clear();
 }
 
-Scene* TitleScene::Update() {
+SceneId TitleScene::Update() {
     m_FlashTimer += Util::Time::GetDeltaTimeMs();
     if (m_FlashTimer >= 1000.f) {
         m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
@@ -6005,9 +5951,9 @@ Scene* TitleScene::Update() {
 
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         LOG_INFO("TitleScene: ENTER pressed -> MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
-    return nullptr;
+    return SceneId::None;
 }
 </file>
 
@@ -6099,22 +6045,22 @@ App::State:  START ──→ UPDATE ──→ END
 |--------|------|-------|
 | `m_Ctx` | `unique_ptr<GameContext>` | cross-scene shared data |
 | `m_Root` | `Util::Renderer` | global render root |
-| `m_TitleScene` … `m_LevelSelectScene` | `unique_ptr<Scene>` | sole owners of each scene |
-| `m_CurrentScene` | `Scene*` (non-owning) | active scene |
+| `m_SceneManager` | `unique_ptr<SceneManager>` | sole owner of scene registry and transition pipeline |
 
-> **Adding a new scene:** declare `unique_ptr<Scene> m_XxxScene` in `App.hpp`, construct in `AppStart.cpp`, wire pointers via setters, then `std::move` into the member.
+> **Adding a new scene:** construct it in `AppStart.cpp`, `Register(SceneId::Xxx, std::move(scene))`, then route to it by returning `SceneId::Xxx` from `Scene::Update()`.
 
-### TransitionTo
+### Transition Pipeline
 
 ```cpp
-void App::TransitionTo(Scene* next) {
-    if (m_CurrentScene) m_CurrentScene->OnExit();
-    m_CurrentScene = next;
-    if (m_CurrentScene) m_CurrentScene->OnEnter();
+SceneId SceneManager::UpdateCurrent() {
+    if (!m_Current) return SceneId::None;
+    const SceneId next = m_Current->Update();
+    if (next != SceneId::None && next != m_CurrentId) GoTo(next);
+    return next;
 }
 ```
 
-Called by `App::Update()` when `m_CurrentScene->Update()` returns a non-null, different pointer.  
+Called by `App::Update()` once per frame; `SceneManager` is the only component allowed to switch scenes.
 `GameContext::ShouldQuit = true` → `App::Update()` sets state to `END`.
 
 ---
@@ -6128,20 +6074,23 @@ struct GameContext {
     Util::Renderer& Root;           // borrowed from App, not owned
 
     // Permanent render-tree objects (added in AppStart, never removed)
-    shared_ptr<Character>  Background;  // hot-swappable bg image
-    shared_ptr<Character>  Floor;
-    shared_ptr<BGMPlayer>  BGMPlayer;
-    shared_ptr<Character>  Header;
-    shared_ptr<Character>  Door;        // switched open/close by LocalPlayGameScene
-    shared_ptr<PushableBox> TestBox;    // demo box on title screen
+    shared_ptr<Character>   Background;  // hot-swappable bg image
+    shared_ptr<Character>   Floor;
+    shared_ptr<BGMPlayer>   BGMPlayer;
+    shared_ptr<Character>   Header;
+    shared_ptr<Character>   Door;        // switched open/close by gameplay scenes
+    shared_ptr<PushableBox> TestBox;     // demo box on title/menu screen
 
     // 8 decoration cats shared between title screen and gameplay
     vector<shared_ptr<PlayerCat>> StartupCats;
 
     // Runtime game data
-    int  SelectedPlayerCount  = 2;
-    int  CooperativePushPower = 1;
+    int  SelectedPlayerCount  = 2;   // written by LocalPlayScene; read by all level scenes
+    int  CooperativePushPower = 1;   // written by LocalPlayGameScene; for future use
     bool ShouldQuit           = false;
+
+    // Per-player key bindings, applied by KeyboardConfigScene and read by level scenes
+    std::array<PlayerKeyConfig, 8> AppliedKeyConfigs{};
 
     // index 0–7: blue, red, yellow, green, purple, pink, orange, gray
     static constexpr array<const char*, 8> kCatColorOrder = { … };
@@ -6151,7 +6100,8 @@ struct GameContext {
 **Rules:**
 - Permanent objects are added to the render tree once in `AppStart`; scenes must not remove them (`LevelSelectScene` hides `Header` via `SetVisible`, not `RemoveChild`).
 - Cross-scene game state (`SelectedPlayerCount`, `CooperativePushPower`) lives here; scenes must not read each other's members directly.
-- `TestBox` is a `PushableBox` used for the title-screen physics demo. It is registered into `TitleScene`'s local `PhysicsWorld` during `TitleScene::OnEnter()`, and un-registered when `m_World.Clear()` is called on exit.
+- `TestBox` is a `PushableBox` used for the title-screen physics demo. It is registered into `TitleScene`'s local `PhysicsWorld` during `TitleScene::OnEnter()`, and unregistered when `m_World.Clear()` is called on exit.
+- `AppliedKeyConfigs` is written by `KeyboardConfigScene::SyncAppliedToContext()` (called on construction and on every `CommitPending()`). Level scenes read this array to bind player keys at spawn time.
 
 ---
 
@@ -6164,7 +6114,7 @@ class Scene {
 public:
     virtual void   OnEnter() = 0;  // AddChild + reset state
     virtual void   OnExit()  = 0;  // RemoveChild (must pair with OnEnter)
-    virtual Scene* Update()  = 0;  // per-frame logic; return next scene or nullptr
+    virtual SceneId Update() = 0;  // per-frame logic; return next SceneId or SceneId::None
 protected:
     GameContext& m_Ctx;
 };
@@ -6177,22 +6127,22 @@ protected:
 | Scene | Role | Physics | Destinations |
 |-------|------|---------|-------------|
 | `TitleScene` | title screen, flashing prompt, 8 cats + TestBox | `PhysicsWorld` (floor + walls; cats + TestBox) | MenuScene |
-| `MenuScene` | main menu (EXIT / OPTION / LOCAL PLAY) | `PhysicsWorld` (floor + walls; startup cats) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
+| `MenuScene` | main menu (EXIT GAME / OPTION / LOCAL PLAY), 3 options via A/D | `PhysicsWorld` (floor + walls; startup cats) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
 | `ExitConfirmScene` | YES/NO quit dialog | none | MenuScene (or ShouldQuit) |
 | `OptionMenuScene` | bg color, volume, disp number; saves on OK | none | MenuScene, KeyboardConfigScene |
 | `KeyboardConfigScene` | key binding (1P–8P); saves on CommitPending | none | OptionMenuScene |
-| `LocalPlayScene` | select player count (2–8) | none | MenuScene, LocalPlayGameScene |
-| `LocalPlayGameScene` | multi-player physics, door entry | `PhysicsWorld` (floor + ceiling + walls; player cats) | LocalPlayScene, LevelSelectScene |
-| `LevelSelectScene` | 10-level grid, crown marks, best times | none | LocalPlayGameScene (ESC), LevelNScene (ENTER) |
-| `LevelOneScene` | actual gameplay level | `PhysicsWorld` (to be implemented) | **not yet implemented** |
-| `LevelExitScene` | confirmation before exiting a level | none | **not yet implemented** |
+| `LocalPlayScene` | select player count (2–8); blocks entry if insufficient key configs | none | MenuScene, LocalPlayGameScene |
+| `LocalPlayGameScene` | title-screen physics demo with open door; players enter to proceed | `PhysicsWorld` (floor + ceiling + walls; player cats) | LocalPlayScene (ESC), LevelSelectScene (all players entered) |
+| `LevelSelectScene` | 10-level grid, crown marks, best times per player count | none | LocalPlayGameScene (ESC), LevelNScene (ENTER/click) |
+| `LevelOneScene` | cooperative level: pick up key, push boxes, open door, enter ✅ fully implemented | `PhysicsWorld` (floor + ceiling + walls; player cats + 2 PushableBoxes) | LevelSelectScene (clear), LevelSelectScene (ESC) |
+| `LevelExitScene` | confirmation before exiting a level | none | ⬜ **empty stub — not yet implemented** |
 
-`LevelOneScene` is the scene where the actual cooperative level takes place. `LevelExitScene` is a confirmation dialog (analogous to `ExitConfirmScene`) that appears when players try to exit mid-level. Both are currently empty stubs with no implementation.
+`LevelExitScene` remains an empty stub (both `.hpp` and `.cpp` are blank). The current SceneId routing does not pass through it.
 
 ### 4.3 PhysicsWorld Lifecycle in Scenes
 
 Scenes that own a `PhysicsWorld` member (`TitleScene`, `MenuScene`,
-`LocalPlayGameScene`) follow a strict pattern:
+`LocalPlayGameScene`, `LevelOneScene`) follow a strict pattern:
 
 ```
 OnEnter:
@@ -6233,11 +6183,13 @@ GetBlueCatRunImg()   → LocalPlayScene
 
 Borrowers call `AddChild`/`RemoveChild` in `OnEnter`/`OnExit` and restore position/scale on exit.
 
-### 4.5 Scene Pointer Rules
+### 4.5 Scene Transition Rules
 
-- `App` owns scenes via `unique_ptr` (sole owner).
-- Inter-scene references use **raw non-owning pointers**; never `delete`.
-- Circular references (A↔B) resolved via `SetXxx(ptr)` setters after both are constructed in `AppStart`.
+- `App` owns exactly one `SceneManager` instance.
+- `SceneManager` owns all scenes via `unique_ptr`.
+- Scene classes do not hold pointers to other scenes.
+- Scene transitions are expressed only by `SceneId` return values from `Update()`.
+- `SceneManager::GoTo` is the single place that calls `OnExit()` and `OnEnter()`.
 
 ---
 
@@ -6280,23 +6232,27 @@ Util::GameObject         (PTSD base: m_Drawable, m_Transform, m_ZIndex)
 | `GetSize()` | pixel dimensions (used for alignment math) |
 | `IsMouseHovering()` / `IsLeftClicked()` | AABB hit-test via `AppUtil` |
 
+Default color: orange `(255, 140, 0, 255)`. Font: `TerminusTTFWindows-Bold-4.49.3.ttf`.
+
 ### 5.5 ZIndex Convention
 
 | Range | Usage |
 |------|-------|
 | `-10` | background |
 | `0` | floor, header, title-scene subtitle/prompt text |
+| `4–4.1` | LevelOneScene floor, ceiling, wall sprites |
 | `5` | door |
 | `10` | menu frame, blue cat image |
 | `15` | triangle buttons, `PushableBox` body, startup cats (`15.0 + i*0.01`) |
 | `16` | `PushableBox` counter text |
-| `20` | Option menu frame, ExitConfirm choice frame |
-| `20` | LocalPlay gameplay cats |
+| `18` | LevelOneScene key sprite |
+| `20` | Option menu frame, ExitConfirm choice frame; gameplay cats (`20.0 + i*0.01`) |
 | `25` | ExitConfirm texts, KeyboardConfig frame |
 | `30` | ExitGameButton, Option/Keyboard choice frame, door count text |
 | `32` | LevelSelect selector frame |
 | `35` | Option/Keyboard UI texts & buttons, level covers, LevelSelect title/best-time text |
 | `36` | LevelSelect crown marks |
+| `40` | LevelOneScene timer text |
 | `100` | GameText default (when not explicitly overridden) |
 
 ---
@@ -6324,7 +6280,7 @@ Normal ──Press(ms)──→ Pressed ──timer expires──→ Normal
 **Source:** PTSD `Util/Input.hpp`
 
 | Function | Semantics |
-|----------|-----------|
+|----------|----|
 | `IsKeyDown(key)` | pressed **this frame only** |
 | `IsKeyPressed(key)` | held down (true every frame) |
 | `GetCursorPosition()` | mouse in screen space (Y-up) |
@@ -6344,42 +6300,47 @@ Normal ──Press(ms)──→ Pressed ──timer expires──→ Normal
 
 ## 8. Settings System
 
-### PlayerKeyConfig (`KeyboardConfigScene.hpp`)
+### PlayerKeyConfig (`PlayerKeyConfig.hpp`)
 
 ```cpp
+// Defined in its own header PlayerKeyConfig.hpp
 struct PlayerKeyConfig {
     Util::Keycode up, down, left, right, jump, cancel, shot;
-    Util::Keycode menu;     // 1P only
+    Util::Keycode menu;     // 1P only (rows marked non-selectable for 2P–8P)
     Util::Keycode subMenu;  // 1P only
+    vector<Keycode> AllKeys() const;  // returns all non-UNKNOWN keys
 };
 ```
 
-**Defaults:**
+> Note: `PlayerKeyConfig` is declared in `PlayerKeyConfig.hpp`, **not** inside `KeyboardConfigScene.hpp`. `KeyboardConfigScene.hpp` includes `PlayerKeyConfig.hpp`.
+
+**Defaults (defined in `KeyboardConfigScene.cpp`):**
 - `k_Default1P`: W/S/A/D move, W jump, ESC cancel, SPACE shot, ENTER menu, TAB submenu
-- `k_Default2P`: arrow keys move, UP jump, AC_BACK cancel, R_CTRL shot
+- `k_Default2P`: arrow keys move, UP jump, AC_BACK cancel, R_CTRL shot, UNKNOWN for menu/submenu
 - 3P–8P: all `UNKNOWN` (must be configured manually)
 
 ### KeyboardConfigScene
 
-- Constructor loads `settings.json` via `SaveManager::LoadKeyConfigs()`.
+- Constructor loads `settings.json` via `SaveManager::LoadKeyConfigs()` and calls `SyncAppliedToContext()`.
 - `m_Applied[8]` = committed configs; `m_Pending` = in-edit buffer.
-- `CommitPending()` writes `m_Applied[m_CurrentPlayer]` and calls `SaveManager::SaveKeyConfigs()`.
-- `GetAppliedConfig(i)` → used by `LocalPlayGameScene::SpawnPlayers()`.
-- `GetConfiguredPlayerCount()` → returns count of players with ≥4 non-UNKNOWN keys; used by `LocalPlayScene` to block entry.
-- `menu` and `subMenu` rows are **not selectable** for players other than 1P.
+- `CommitPending()` writes `m_Applied[m_CurrentPlayer]`, calls `SaveManager::SaveKeyConfigs()`, then `SyncAppliedToContext()` to push the new bindings into `m_Ctx.AppliedKeyConfigs`.
+- `GetAppliedConfig(i)` → used as a fallback reference; level scenes read `m_Ctx.AppliedKeyConfigs` directly.
+- `GetConfiguredPlayerCount()` → returns count of players with `AllKeys().size() >= 4`; used by `LocalPlayScene` to block entry.
+- `menu` and `subMenu` rows are **not selectable** for players other than 1P (index 0).
 
 ### OptionMenuScene::Settings
 
 ```cpp
 struct Settings {
-    int  bgColorIndex = 0;   // WHITE / CREAM / DARK
-    int  bgmVolume    = 10;  // 0–20, multiplied by 6 when passed to BGMPlayer
+    int  bgColorIndex = 0;   // 0=WHITE / 1=CREAM / 2=DARK
+    int  bgmVolume    = 10;  // 0–20, multiplied by 6 when passed to BGMPlayer::SetVolume
     int  seVolume     = 10;  // 0–20 (SE system not yet implemented)
     bool dispNumber   = false;
 };
 ```
 
 - `m_Applied` = live values; `m_Pending` = in-edit buffer; OK commits and persists, CANCEL discards.
+- Background color change and volume adjustment are previewed **live** during editing; CANCEL restores `m_Applied` values.
 
 ---
 
@@ -6406,7 +6367,7 @@ Pure-static utility class. Uses **nlohmann/json** (bundled with PTSD).
   "keyConfigs": [
     { "up": 26, "down": 22, "left": 4, "right": 7,
       "jump": 26, "cancel": 41, "shot": 44, "menu": 40, "subMenu": 43 },
-    …
+    ...
   ]
 }
 ```
@@ -6419,12 +6380,13 @@ Keys stored as `int` (SDL_Scancode; `UNKNOWN = 0`).
 {
   "levels": [
     { "levelId": 1, "completed": true,
-      "bestTimes": { "2": 45.3, "3": -1.0, … "8": -1.0 } }
+      "bestTimes": { "2": 45.3, "3": -1.0, ... "8": -1.0 } }
   ]
 }
 ```
 
-`bestTimes` key is player count (2–8); `-1.0` = not yet cleared.
+`bestTimes` key is the player count (2–8) as a string; `-1.0` = not yet cleared.
+`bestTimes` is stored as `array<float, 9>` in `LevelSaveData`; indices 0–1 are unused (2P is minimum).
 
 ### Read-Modify-Write Strategy
 
@@ -6474,7 +6436,8 @@ resources/
 │   │   └── {color}_cat_push_1–3.png    (3 frames, 120ms, looping)
 │   └── Level_Cover/
 │       ├── LevelOne–LevelFour.png  Crown.png  02.png  ExitFrame.png  Key.png
-│       └── LevelOneScene/  Box.png  Frame.png  LevelOneScene.png
+│       ├── Background_lwall.png  background_rwall.png  Ceiling.png
+│       └── LevelOneScene/  Box.png  Floor.png  Frame.png  LevelOneScene.png
 └── Save/         settings.json  save_data.json
 ```
 
@@ -6487,7 +6450,7 @@ blue · red · yellow · green · purple · pink · orange · gray
 |----------|-------|
 | `BuildFramePath(color, action, frameNum)` | single frame path |
 | `BuildFramePaths(color, action, n)` | frames 1..n |
-| `BuildFullAnimPaths(color)` | complete `CatAnimPaths` struct |
+| `BuildFullAnimPaths(color)` | complete `CatAnimPaths` struct (stand×8, run×9, jump×2, land×1, push×3) |
 
 ---
 
@@ -6496,53 +6459,59 @@ blue · red · yellow · green · purple · pink · orange · gray
 ```
 AppStart
     ↓
-TitleScene ──ENTER──→ MenuScene ──A/D──→ ExitConfirmScene ──YES──→ ShouldQuit
-                          │                    │
-                          │               ESC/NO──→ MenuScene
+TitleScene ──ENTER──→ MenuScene ──A/D cycles: EXIT GAME / OPTION / LOCAL PLAY──→
                           │
-                          ├──→ OptionMenuScene ──row0/mouse──→ KeyboardConfigScene
-                          │         │                                   │
-                          │    OK/ESC/CANCEL ←────────────────────────-┘
+                          ├──ENTER on EXIT GAME──→ ExitConfirmScene ──YES──→ ShouldQuit
+                          │                              │
+                          │                         ESC/NO──→ MenuScene
                           │
-                          └──→ LocalPlayScene ──ENTER(count≤configured)──→ LocalPlayGameScene
-                                   │                                              │
-                              ESC/X←──────────────────────  all entered──→ LevelSelectScene
-                              → MenuScene                                         │
-                                                               ENTER/click──→ LevelOneScene (TODO)
-                                                               ESC──────────→ LocalPlayGameScene
+                          ├──ENTER on OPTION──→ OptionMenuScene ──row0 OPEN──→ KeyboardConfigScene
+                          │       │                                                    │
+                          │  OK/CANCEL/ESC ←───────────────────────────────────────-──┘
+                          │
+                          └──ENTER on LOCAL PLAY──→ LocalPlayScene ──ENTER(count≤configured)──→ LocalPlayGameScene
+                                   │                                        │
+                              ESC/X──→ MenuScene          all entered door──→ LevelSelectScene
+                                                                              │
+                                                           ENTER/click──→ LevelOneScene ──clear──→ LevelSelectScene
+                                                           ESC──────────→ LocalPlayGameScene
+                                                                         LevelOneScene ──ESC──→ LevelSelectScene
 
-LevelOneScene (TODO) ──completion──→ LevelExitScene (TODO) ──confirm──→ LevelSelectScene
-                      ──ESC / abort──→ LevelExitScene (TODO)
+LevelExitScene ⬜ empty stub — currently not part of the SceneId routing path
 ```
 
 ---
 
 ## 12. Extension Guide
 
-### Add a Level Scene (e.g. `LevelOneScene`)
+### Add a Level Scene (e.g. `LevelTwoScene`)
 
-`LevelOneScene` and `LevelExitScene` are declared but contain no implementation
-yet. When ready:
+`LevelOneScene` is a complete reference implementation. To add a new level:
 
-1. Implement `LevelOneScene` in `include/LevelOneScene.hpp` + `src/LevelOneScene.cpp`,
-   inheriting `Scene`. Give it a `PhysicsWorld m_World` member.
-2. In `OnEnter`: clear the world, spawn cats + boxes (with `box->SetWorld(&m_World)`),
-   call `SetupStaticBoundaries()` which uses `m_World.AddStaticBoundary()` for
-   floor, ceiling, and all wall geometry.
-3. In `Update`: read input → `SetMoveDir`/`Jump` on cats → `m_World.Update()`.
-4. On completion: call `SaveManager::UpdateBestTime(levelIdx, playerCount, elapsed)`,
-   then transition to `LevelExitScene` (the level-exit confirmation).
-5. Implement `LevelExitScene` similarly to `ExitConfirmScene` (YES/NO pattern).
-6. In `AppStart.cpp`, construct both scenes, wire them via `LevelSelectScene`'s
-   currently-commented-out `m_LevelScenes[0]` slot.
+1. Create `include/LevelTwoScene.hpp` + `src/LevelTwoScene.cpp` following `LevelOneScene` as a template. Inherit `Scene`. Add `PhysicsWorld m_World`.
+2. In `OnEnter`: clear the world, hide `m_Ctx.Header` and `m_Ctx.Floor`, spawn cats using `CatAssets::BuildFullAnimPaths`, create PushableBoxes with `box->SetWorld(&m_World)`, call `m_World.Register(...)`, then `SetupStaticBoundaries()` using `m_World.AddStaticBoundary()`.
+3. In `Update`: call `HandlePlayerInput()` (or inline), then `m_World.Update()`, then game-specific logic (timer, key/door, etc.).
+4. On completion: call `SaveManager::UpdateBestTime(levelIdx, m_Ctx.SelectedPlayerCount, elapsed)`, then return `SceneId::LevelSelect`.
+5. Implement `LevelExitScene` (currently an empty stub) similarly to `ExitConfirmScene` (YES/NO pattern); wire it as the ESC destination.
+6. In `AppStart.cpp`, construct and register the new scene in `SceneManager`, then call `levelSelectScene->SetLevelSceneId(1, SceneId::Level02)` (index 1 for level 2).
+
+### LevelOneScene Mechanics (Reference)
+
+`LevelOneScene` (index 0, `kLevelIndex = 0`) implements the following mechanics:
+
+- **Room bounds**: left −624, right +624, top +337, floor −337 (all in world units).
+- **Two PushableBoxes**: BoxA/BoxB thresholds are initialized from `m_Ctx.SelectedPlayerCount` in the `LevelOneScene` constructor (scene-creation time in `AppStart.cpp`) and are fixed afterward; they are not recomputed on each `OnEnter()`.
+- **Key pickup**: AABB overlap between any player and the key sprite (`kKeyHalf = {20, 26}`) makes that player the carrier. Key follows at offset `(−28, +28)` from the carrier.
+- **Door mechanic**: When the key carrier touches the door (`kDoorHalf = {31, 34}` at position `(420, kRoomFloorY + kDoorHalf.y)`), the door opens and the key becomes invisible.
+- **Door entry**: Players press the `up` key while overlapping the (open) door to enter. The last player to enter triggers `SaveManager::UpdateBestTime`.
+- **Timer**: Counts seconds from `OnEnter` using `Util::Time::GetDeltaTimeMs()`; displayed as `TIME mm:ss.cs`.
 
 ### Add Wall Geometry in a Level
 
 All in-level walls that should block movement must be registered as `StaticBody`
 objects via `m_World.AddStaticBoundary(center, halfSize)`. The visual wall
 sprite (`Character`) is added to the renderer separately; it is purely decorative.
-The `StaticBody` has `IsSolid() = true` and `IsKinematic() = true`, so all
-dynamic bodies (cats, boxes) are resolved against it via AABB separation.
+The `StaticBody` has `IsSolid() = true` and `IsKinematic() = true`.
 
 ```cpp
 // Example: a narrow vertical wall at x = 200, spanning y = -200 to +200
@@ -6567,8 +6536,7 @@ if (box->GetTextObject()) {
 }
 ```
 
-On `OnExit`, remove both the box and its text from `m_Ctx.Root`, then call
-`m_World.Clear()`.
+On `OnExit`, remove both the box and its text from `m_Ctx.Root`, then call `m_World.Clear()`.
 
 ### Add a Global Setting
 
@@ -6579,15 +6547,15 @@ On `OnExit`, remove both the box and its text from `m_Ctx.Root`, then call
 
 ### Add a Cat Color
 
-1. Create `resources/Image/Character/{color}_cat/` with all animation frames.
-2. Append the color string to `GameContext::kCatColorOrder`.
-3. Adjust `LocalPlayScene::MAX_PLAYERS` if supporting more than 8 players.
+1. Create `resources/Image/Character/{color}_cat/` with all animation frames (stand×8, run×9, jump×2, land×1, push×3).
+2. Append the color string to `GameContext::kCatColorOrder` (currently 8 entries).
+3. Adjust `LocalPlayScene::MAX_PLAYERS` and `GameContext::kCatColorOrder` array size if supporting more than 8 players.
 </file>
 
 <file path="CLASS_RELATIONSHIPS.md">
 # Class Relationships
 
-> Method listings → `ARCHITECTURE.md §5`.  Physics pipeline detail → `PHYSICS_DESIGN.md`.
+> Method listings → `ARCHITECTURE.md §5`. Physics pipeline detail → `PHYSICS_DESIGN.md`.
 > This document focuses on OOP structure: inheritance, composition, dependency.
 
 ## Contents
@@ -6629,10 +6597,12 @@ Scene                         Scene.hpp  (pure-virtual ABC)
 ├── LocalPlayScene
 ├── LocalPlayGameScene
 ├── LevelSelectScene
-├── LevelOneScene             (not yet implemented — empty stub)
-└── LevelExitScene            (not yet implemented — empty stub)
+├── LevelOneScene             ✅ fully implemented
+└── LevelExitScene            ⬜ empty stub — not yet implemented
 
 SaveManager                   SaveManager.hpp / .cpp  (pure-static utility, no base class)
+
+PlayerKeyConfig               PlayerKeyConfig.hpp  (POD struct, no base class)
 ```
 
 ---
@@ -6640,15 +6610,19 @@ SaveManager                   SaveManager.hpp / .cpp  (pure-static utility, no b
 ## 2. Render Object Chain
 
 ### 2.1 `Character`
+
 **IS-A** `Util::GameObject`. Encapsulates a static image (`Util::Image`). Handles AABB mouse interaction. Base for all image-type UI elements.
 
 ### 2.2 `UITriangleButton`
+
 **IS-A** `Character`. Adds two-image pressed/normal switching and a countdown timer (`m_PressTimer`). Uses `Character::SetImage()` for visual feedback without object reconstruction.
 
 ### 2.3 `AnimatedCharacter`
+
 **IS-A** `Util::GameObject` (parallel to `Character`, not derived from it). `m_Drawable` is `Util::Animation`. Encapsulates single-clip playback. Does **not** inherit `Character` because their `Drawable` types differ — forcing inheritance would violate LSP.
 
 ### 2.4 `PlayerCat`
+
 **IS-A** `AnimatedCharacter` + **IS-A** `IPhysicsBody` (multiple inheritance, fully implemented).
 
 ```cpp
@@ -6659,19 +6633,22 @@ class PlayerCat : public AnimatedCharacter, public IPhysicsBody { … };
 Holds six animation clips (stand / run / jump_rise / jump_fall / land / push) driven by a state machine in `PostUpdate() → UpdateAnimState()`.
 
 ### 2.5 `PushableBox`
+
 **IS-A** `Character` (renders a static image) + **IS-A** `IPhysicsBody` + **IS-A** `IPushable`.
 
 ```cpp
 class PushableBox : public Character, public IPhysicsBody, public IPushable { … };
 ```
 
-Carries an owned `GameText` (`m_CountText`) that displays the remaining number of pushers needed. Both the box and its text must be added to the renderer separately.
+Carries an owned `GameText` (`m_CountText`) that displays the number of remaining pushers needed. Both the box and its text must be added to the renderer separately. The `m_CountText` label is repositioned inside `ApplyResolvedDelta()` so it tracks the box every frame without scene involvement.
 
 ### 2.6 `StaticBody`
-**IS-A** `IPhysicsBody` only — no render component. Used exclusively for invisible collision geometry (floor, ceiling, walls). Created and owned by `PhysicsWorld` via `AddStaticBoundary()`.
+
+**IS-A** `IPhysicsBody` only — no render component. Used exclusively for invisible collision geometry (floor, ceiling, walls). Created and owned by `PhysicsWorld` via `AddStaticBoundary()`. It overrides `SetPosition` and `ApplyResolvedDelta` as no-ops because static bodies never move.
 
 ### 2.7 `GameText`
-**IS-A** `Util::GameObject`. `m_Drawable` is `Util::Text`. Parallel to `Character` and `AnimatedCharacter`.
+
+**IS-A** `Util::GameObject`. `m_Drawable` is `Util::Text`. Parallel to `Character` and `AnimatedCharacter`. Default color is orange `(255, 140, 0)`; accepts a `Util::Color` parameter for other tints. Font is always `TerminusTTFWindows-Bold-4.49.3.ttf`.
 
 ---
 
@@ -6684,7 +6661,7 @@ class Scene {
 public:
     virtual void   OnEnter() = 0;
     virtual void   OnExit()  = 0;
-    virtual Scene* Update()  = 0;
+    virtual SceneId Update() = 0;
 protected:
     GameContext& m_Ctx;   // reference: non-null, non-reassignable (borrowed, not owned)
 };
@@ -6692,22 +6669,27 @@ protected:
 
 Three pure-virtual functions enforce the complete lifecycle contract on all subclasses.
 
-### 3.2 Inter-scene Pointer Ownership
+### 3.2 SceneManager Ownership and Routing
 
-All ownership is in `App` (`unique_ptr`). Scenes hold **non-owning raw pointers** to each other.
+`App` owns one `SceneManager`. `SceneManager` owns all concrete scenes via `unique_ptr`.
+Scenes do not hold pointers to other scene instances.
 
 ```
-App (unique_ptr owners)
-├── TitleScene ─────────────────────────→ MenuScene*
-├── MenuScene ──────────────────────────→ TitleScene*, ExitConfirmScene*,
-│                                         OptionMenuScene*, LocalPlayScene*
-├── ExitConfirmScene ───────────────────→ MenuScene*
-├── OptionMenuScene ────────────────────→ MenuScene*, KeyboardConfigScene*
-├── KeyboardConfigScene ────────────────→ OptionMenuScene*
-├── LocalPlayScene ─────────────────────→ MenuScene*, KeyboardConfigScene*, LocalPlayGameScene*
-├── LocalPlayGameScene ─────────────────→ LocalPlayScene*, KeyboardConfigScene*, LevelSelectScene*
-└── LevelSelectScene ───────────────────→ LocalPlayGameScene*, LevelNScene*[0..9] (nullptr until implemented)
+App
+└── SceneManager
+    ├── owns SceneId::Title          -> TitleScene
+    ├── owns SceneId::Menu           -> MenuScene
+    ├── owns SceneId::ExitConfirm    -> ExitConfirmScene
+    ├── owns SceneId::OptionMenu     -> OptionMenuScene
+    ├── owns SceneId::KeyboardConfig -> KeyboardConfigScene
+    ├── owns SceneId::LocalPlay      -> LocalPlayScene
+    ├── owns SceneId::LocalPlayGame  -> LocalPlayGameScene
+    ├── owns SceneId::LevelSelect    -> LevelSelectScene
+    └── owns SceneId::Level01        -> LevelOneScene
 ```
+
+`LevelSelectScene` stores `std::array<SceneId, LEVEL_COUNT> m_LevelSceneIds` for level routing.
+
 
 ### 3.3 MenuScene Shared UI — Borrowing Pattern
 
@@ -6739,6 +6721,24 @@ m_LevelCover[LEVEL_COUNT]    ← Character array with level cover images (ZIndex
 m_Crown[LEVEL_COUNT]         ← Character array with Crown.png (ZIndex 36)
 ```
 
+Level 1–4 use their own cover images (`LevelOne.png` … `LevelFour.png`); levels 5–10 all reuse `LevelOne.png` as a placeholder.
+
+### 3.5 LevelOneScene Internal Composition
+
+`LevelOneScene` self-owns all gameplay objects:
+
+```
+m_FloorSprite, m_LeftWallSprite, m_RightWallSprite, m_CeilingSprite  ← room art
+m_KeySprite          ← pickup item; follows m_Players[m_KeyCarrierIdx] once picked up
+m_BoxA               ← PushableBox requiring SelectedPlayerCount−1 pushers
+m_BoxB               ← PushableBox requiring SelectedPlayerCount pushers
+m_TimerText          ← elapsed time display (ZIndex 40)
+m_Players            ← vector<PlayerBinding> { cat, key }
+m_PlayerEntered      ← vector<bool> door-entry flags (separate from PlayerBinding)
+m_EnteredCount       ← entered player counter
+m_World              ← PhysicsWorld (value member, not a pointer)
+```
+
 ---
 
 ## 4. Physics System Composition
@@ -6751,7 +6751,7 @@ that every simulated object must implement, the concrete body types (`PlayerCat`
 coordinator that runs the entire two-phase pipeline.
 
 ```
-Scene (e.g. LocalPlayGameScene, TitleScene, MenuScene)
+Scene (e.g. LocalPlayGameScene, TitleScene, MenuScene, LevelOneScene)
 │
 └── HAS-A  PhysicsWorld  m_World
                │
@@ -6765,18 +6765,20 @@ Scene (e.g. LocalPlayGameScene, TitleScene, MenuScene)
 Every simulated object implements this pure-virtual ABC. The key methods are:
 
 ```cpp
-GetBodyType()        // enum tag for type dispatch
+GetBodyType()        // enum tag for type dispatch (CHARACTER, PUSHABLE_BOX, STATIC_BOUNDARY, …)
 GetPosition() / SetPosition()
 GetHalfSize()        // AABB half-dimensions (x and y)
-IsSolid()            // true = blocks other bodies
-IsKinematic()        // true = moves by own logic, not resolved against geometry
+IsSolid()            // true = blocks other bodies during resolution
+IsKinematic()        // true = moves by own logic, resolved immediately with desired={0,0}
 GetDesiredDelta()    // the delta this body *wants* to move this frame
 ApplyResolvedDelta() // apply the collision-resolved delta (may differ from desired)
 OnCollision()        // called post-resolution with contact normal
 PhysicsUpdate()      // per-frame self-drive (gravity, input, push queries)
 PostUpdate()         // called after ApplyResolvedDelta; used for animation updates
-NotifyPush()         // called by PushableBox to set the push animation on a cat
-GetMoveDir()         // current horizontal intent (-1 / 0 / +1); CHARACTER only meaningful
+NotifyPush()         // called by PushableBox to set the push animation state on a cat
+GetMoveDir()         // current horizontal intent (−1 / 0 / +1); meaningful for CHARACTER
+IsFrozen() / Freeze() / Unfreeze()   // pause-friendly; frozen bodies produce delta {0,0}
+IsActive() / SetActive()             // inactive bodies are skipped entirely
 ```
 
 ### 4.3 `IPushable` — Pushable Object Contract
@@ -6787,8 +6789,7 @@ A lightweight secondary interface requiring only:
 int GetRequiredPushers() const;   // how many net pushing characters are needed
 ```
 
-`PushableBox` implements this. Future types such as `ConditionalPlatform` may
-also implement it to express activation thresholds.
+`PushableBox` implements this. Future types such as `ConditionalPlatform` (declared in the `BodyType` enum but not yet implemented) may also implement it to express activation thresholds.
 
 ### 4.4 `StaticBody` — Immovable Collision Geometry
 
@@ -6823,11 +6824,7 @@ See `PHYSICS_DESIGN.md §2` for the full annotated pipeline.
 
 ### 4.6 `CharacterPhysicsSystem` — Constants Only
 
-After the refactoring, `CharacterPhysicsSystem` is a constants-only header.
-Its former `static void Update(...)`, `ResolveHorizontal(...)`, and
-`ApplyJump(...)` methods no longer exist. The constants (`kGravity`,
-`kJumpForce`, `kGroundMoveSpeed`, etc.) are still useful as shared documentation.
-All runtime logic lives in `PlayerCat::PhysicsUpdate()` and `PhysicsWorld`.
+`CharacterPhysicsSystem` (`CharacterPhysicsSystem.hpp`) is a **constants-only header**. Its `.cpp` contains only a comment stating all runtime logic has been moved to `PlayerCat` and `PhysicsWorld`. The constants (`kGravity`, `kJumpForce`, `kGroundMoveSpeed`, `kRunOnPlayerSpeed`, etc.) are **duplicated** verbatim in `PlayerCat.hpp` for convenience. The constant `kRunOnPlayerSpeed = 6.2f` is defined in both headers but not yet used anywhere in the runtime code — it is reserved for a future mechanic where cats move faster when running on top of another cat.
 
 ### 4.7 Scene ↔ PhysicsWorld Contract
 
@@ -6858,7 +6855,7 @@ SaveManager  (pure-static, no inheritance)
 ├── POD structs (data transfer):
 │   ├── OptionSettingsData    bgColorIndex, bgmVolume, seVolume, dispNumber
 │   ├── KeyConfigData         up/down/left/right/jump/cancel/shot/menu/subMenu (int)
-│   └── LevelSaveData         completed (bool), bestTimes[9] (float)
+│   └── LevelSaveData         completed (bool), bestTimes[9] (float, index = player count)
 │
 └── Static methods:
     ├── settings.json group:   Save/LoadOptionSettings, Save/LoadKeyConfigs
@@ -6874,7 +6871,7 @@ SaveManager  (pure-static, no inheritance)
 | `KeyboardConfigScene` constructor | restore `m_Applied[]` | read |
 | `KeyboardConfigScene::CommitPending()` | persist key bindings | write |
 | `LevelSelectScene::OnEnter()` | load level save data | read |
-| Level scene completion | `UpdateBestTime()` | read+write |
+| `LevelOneScene` completion | `UpdateBestTime(0, playerCount, elapsed)` | read+write |
 
 ### `OptionSettingsData` vs `OptionMenuScene::Settings`
 
@@ -6890,23 +6887,32 @@ Arrows = `#include` dependency.
 main.cpp
   └── App.hpp
         ├── Scene.hpp ──── GameContext.hpp ─── Character.hpp, PlayerCat.hpp,
-        │                                       PushableBox.hpp, BGMPlayer.hpp
+        │                                       PushableBox.hpp, BGMPlayer.hpp,
+        │                                       PlayerKeyConfig.hpp
         └── Scene subclasses (all #include Scene.hpp)
 
-IPhysicsBody.hpp ── (no game-class dependencies; only glm)
+IPhysicsBody.hpp ── (no game-class dependencies; only pch.hpp / glm)
 
 IPushable.hpp    ── (no dependencies)
 
 StaticBody.hpp   ── IPhysicsBody.hpp
 
-PlayerCat.hpp    ── AnimatedCharacter.hpp, IPhysicsBody.hpp
+PlayerKeyConfig.hpp ── Util/Keycode.hpp  (standalone — no game-class dependencies)
+
+PlayerCat.hpp    ── AnimatedCharacter.hpp, IPhysicsBody.hpp, Util/Keycode.hpp
 
 PushableBox.hpp  ── Character.hpp, IPhysicsBody.hpp, IPushable.hpp, GameText.hpp
 
 PhysicsWorld.hpp ── IPhysicsBody.hpp, StaticBody.hpp
 
+KeyboardConfigScene.hpp ── Scene.hpp, Character.hpp, GameText.hpp,
+                           UITriangleButton.hpp, PlayerKeyConfig.hpp, Util/Keycode.hpp
+
 LocalPlayGameScene.hpp ── Scene.hpp, PlayerCat.hpp, PhysicsWorld.hpp,
                           KeyboardConfigScene.hpp
+
+LevelOneScene.hpp ── Scene.hpp, PhysicsWorld.hpp, Character.hpp,
+                     PlayerCat.hpp, PushableBox.hpp, GameText.hpp, PlayerKeyConfig.hpp
 
 LevelSelectScene.hpp ── Scene.hpp, Character.hpp, GameText.hpp, SaveManager.hpp
 
@@ -6916,14 +6922,15 @@ CharacterPhysicsSystem.hpp ── (no dependencies; constants only)
 
 CatAssets.hpp ── PlayerCat.hpp   (header-only utility)
 
-AppUtil.hpp ── Character.hpp, GameText.hpp, Util/Keycode.hpp
+AppUtil.hpp ── GameText.hpp, Util/Keycode.hpp
 ```
 
 **Design rules enforced:**
 - `SaveManager` never `#include`s any Scene or game-object header (unidirectional dependency).
 - `CharacterPhysicsSystem` never `#include`s any Scene.
 - `IPhysicsBody`, `IPushable`, and `StaticBody` do not include any Scene or concrete game-object headers.
-- `GameContext` only includes the concrete types it holds (`Character`, `PlayerCat`, `PushableBox`, `BGMPlayer`), not Scenes.
+- `PlayerKeyConfig` has no game-class dependencies — it can be included by both `GameContext` and `KeyboardConfigScene` without a circular chain.
+- `GameContext` only includes the concrete types it holds (`Character`, `PlayerCat`, `PushableBox`, `BGMPlayer`, `PlayerKeyConfig`), not Scenes.
 - Scenes depend on `GameContext`, not on each other's full headers (forward declarations + raw pointers).
 
 ---
@@ -6937,7 +6944,7 @@ AppUtil.hpp ── Character.hpp, GameText.hpp, Util/Keycode.hpp
 | **Two-Phase Pipeline** | `PhysicsWorld::Update` | Phase 1 computes desired deltas; Phase 2 resolves collisions and applies; clean separation prevents mid-frame interference |
 | **Topological Resolution** | `PhysicsWorld::StepResolveAndApply` | Resolve supports before riders — iterative passes handle stacking chains of arbitrary depth |
 | **Stateless Utility** | `SaveManager`, `CharacterPhysicsSystem` (constants) | All-static classes reusable by multiple scenes with no instance state |
-| **DTO** | `OptionSettingsData`, `KeyConfigData`, `LevelSaveData` | Data packets crossing Scene ↔ SaveManager boundaries |
+| **DTO** | `OptionSettingsData`, `KeyConfigData`, `LevelSaveData`, `PlayerKeyConfig` | Data packets crossing Scene ↔ SaveManager and Scene ↔ Scene boundaries |
 | **Borrowing** | MenuScene shared UI | Fixed `shared_ptr` owner; borrowers pair AddChild/RemoveChild in OnEnter/OnExit |
 | **Dependency Injection** | Scene constructors, `PushableBox::SetWorld` | Avoid global access; dependencies passed in from outside |
 | **Abstract Base Class** | `Scene`, `IPhysicsBody`, `IPushable` | Compile-time enforcement of complete interface |
@@ -6945,6 +6952,7 @@ AppUtil.hpp ── Character.hpp, GameText.hpp, Util/Keycode.hpp
 | **Pending / Applied** | `KeyboardConfigScene`, `OptionMenuScene` | In-edit buffer; committed to live value and persisted only on OK |
 | **Read-Modify-Write** | `SaveManager` | `settings.json` shared by two scenes; each modifies only its own fields |
 | **Header-only Utility** | `CatAssets.hpp` | `inline` functions for resource paths; no compilation unit needed |
+| **Weak-Ptr Registry** | `PhysicsWorld::m_Bodies` | Bodies stored as `weak_ptr`; expired entries purged every 60 frames — scenes need not explicitly unregister bodies on destruction |
 </file>
 
 <file path="COMPONENT_INTERACTION.md">
@@ -6958,14 +6966,16 @@ AppUtil.hpp ── Character.hpp, GameText.hpp, Util/Keycode.hpp
 ## Contents
 1. [Main Loop Data Flow](#1-main-loop-data-flow)
 2. [Scene Lifecycle Protocol](#2-scene-lifecycle-protocol)
-3. [Input → Physics → Render Pipeline](#3-input--physics--render-pipeline)
-4. [PhysicsWorld Internal Pipeline](#4-physicsworld-internal-pipeline)
-5. [GameContext as Cross-scene Bus](#5-gamecontext-as-cross-scene-bus)
-6. [Settings Confirmation Pattern](#6-settings-confirmation-pattern)
-7. [Character Animation State Machine](#7-character-animation-state-machine)
-8. [BGMPlayer & Volume Control](#8-bgmplayer--volume-control)
-9. [SaveManager Data Flow](#9-savemanager-data-flow)
-10. [LevelSelectScene Interaction Flow](#10-levelselectscene-interaction-flow)
+3. [Input → Physics → Render Pipeline (LocalPlayGameScene)](#3-input--physics--render-pipeline-localplaygamescene)
+4. [Input → Physics → Render Pipeline (LevelOneScene)](#4-input--physics--render-pipeline-levelonescene)
+5. [PhysicsWorld Internal Pipeline](#5-physicsworld-internal-pipeline)
+6. [GameContext as Cross-scene Bus](#6-gamecontext-as-cross-scene-bus)
+7. [Settings Confirmation Pattern](#7-settings-confirmation-pattern)
+8. [Character Animation State Machine](#8-character-animation-state-machine)
+9. [BGMPlayer & Volume Control](#9-bgmplayer--volume-control)
+10. [SaveManager Data Flow](#10-savemanager-data-flow)
+11. [LevelSelectScene Interaction Flow](#11-levelselectscene-interaction-flow)
+12. [LevelOneScene Gameplay Mechanics](#12-levelonescene-gameplay-mechanics)
 
 ---
 
@@ -6977,17 +6987,17 @@ Core::Context (PTSD engine)
     ▼
 App::Update()                              AppUpdate.cpp
     ├─→ m_Ctx->BGMPlayer->Update()         detect track end, advance to next
-    ├─→ m_CurrentScene->Update()           returns Scene* next
-    │       └─→ if next ≠ nullptr && ≠ current
-    │               └─→ App::TransitionTo(next)
+    ├─→ m_SceneManager->UpdateCurrent()    Scene::Update() returns SceneId
+    │       └─→ if next != SceneId::None && next != currentId
+    │               └─→ SceneManager::GoTo(next)
     │                       ├─ current->OnExit()
-    │                       └─- next->OnEnter()
+    │                       └─ next->OnEnter()
     ├─→ check m_Ctx->ShouldQuit            if true → State = END
     └─→ m_Ctx->Root.Update()              Util::Renderer: render all children
 ```
 
 **Key points:**
-- `Scene::Update()` return value is the only legal scene-switch trigger.
+- `Scene::Update()` returns `SceneId`; this is the only legal scene-switch trigger.
 - `BGMPlayer::Update()` runs before `Root.Update()` to avoid skipped-frame music transitions.
 - `Root.Update()` runs after scene logic so this frame's position/state changes are reflected immediately.
 
@@ -7009,14 +7019,20 @@ Violations:
 
 **Borrowed-object exception (MenuScene UI):** borrower adds in `OnEnter`, removes in `OnExit`, and restores position/scale before exit.
 
-**Permanent-object hide exception (LevelSelectScene + Header):** `LevelSelectScene::OnEnter` calls `m_Ctx.Header->SetVisible(false)`; `OnExit` calls `SetVisible(true)`. No `RemoveChild`.
+**Permanent-object hide exception (LevelSelectScene + LevelOneScene):**
+these scenes use `SetVisible(...)` for permanent objects owned by `App`
+instead of `RemoveChild(...)`.
+
+- `LevelSelectScene`: hides `Header/Floor/Door/TestBox` on `OnEnter`, restores
+  `Header/Floor/Door` on `OnExit` (TestBox visibility is not restored here).
+- `LevelOneScene`: hides `Header/Floor/TestBox` on `OnEnter` and currently keeps
+  them hidden on `OnExit` in the current implementation.
 
 ---
 
-## 3. Input → Physics → Render Pipeline
+## 3. Input → Physics → Render Pipeline (LocalPlayGameScene)
 
-The complete per-frame flow in a physics-enabled scene (shown for
-`LocalPlayGameScene::Update()`):
+The complete per-frame flow in `LocalPlayGameScene::Update()`:
 
 ```
 Step 1  Read input → set move directions on each cat
@@ -7025,9 +7041,11 @@ Step 1  Read input → set move directions on each cat
             Jump() sets: m_VelocityY = kJumpForce, m_Grounded = false
 
 Step 2  Door-entry check (positional logic; runs before physics)
-        If cat within door AABB && IsKeyDown(key.up):
-            pb.entered = true, cat->SetActive(false), ++m_EnteredCount
-            if all entered → return m_LevelSelectScene
+        For each non-entered player:
+            if cat within door AABB (door half + 10px margin) && IsKeyDown(key.up):
+                pb.entered = true, cat->SetActive(false), ++m_EnteredCount
+                UpdateDoorCountText()
+                if m_EnteredCount == SelectedPlayerCount → return SceneId::LevelSelect
 
 Step 3  Unified physics pipeline
         m_World.Update()
@@ -7039,23 +7057,83 @@ Step 3  Unified physics pipeline
 
 Step 4  Game statistics (pure read, no displacement)
         UpdateCooperativePower() → writes m_Ctx.CooperativePushPower
+            Counts players that share the same moveDir and are within
+            halfWidth * 1.7 * 1.02 × 40px AABB of each other;
+            the largest co-moving group size is stored.
 ```
 
 **Ordering rule:** `SetMoveDir()` and `Jump()` must be called **before**
 `m_World.Update()` because `PhysicsWorld::StepPhysicsUpdate()` reads
-`GetMoveDir()` and integrates velocity during `PhysicsUpdate()`. Any input
-applied after `m_World.Update()` would silently take effect one frame late.
-
-**Why no agent snapshot?** The old architecture used a per-frame `vector<PhysicsAgent>` copy to give `CharacterPhysicsSystem` a consistent baseline. The new architecture achieves the same guarantee via the two-pass ordering inside `StepPhysicsUpdate()` (characters commit desired deltas before boxes query them) and the topological resolution order in `StepResolveAndApply()` (supports resolved before riders). No external snapshot is required.
+`GetMoveDir()` and integrates velocity during `PhysicsUpdate()`. Input applied
+after `m_World.Update()` silently takes effect one frame late.
 
 ---
 
-## 4. PhysicsWorld Internal Pipeline
+## 4. Input → Physics → Render Pipeline (LevelOneScene)
+
+`LevelOneScene::Update()` follows a similar but extended flow to handle the
+key/door puzzle mechanics:
+
+```
+Step 1  ESC check (returns SceneId::LevelSelect)
+
+Step 2  Read input → set move directions on each player
+        HandlePlayerInput():
+            IsKeyPressed(key.left / key.right) → cat->SetMoveDir(dir)
+            IsKeyDown(key.jump) && cat->IsGrounded() → cat->Jump()
+
+Step 3  Unified physics pipeline
+        m_World.Update()    ← same two-phase pipeline as LocalPlayGameScene
+
+Step 4  Timer update
+        m_ElapsedSec += Util::Time::GetDeltaTimeMs() / 1000.0f
+        UpdateTimerText() → "TIME mm:ss.cs" via SaveManager::FormatTime
+
+Step 5  Key pickup check
+        TryPickKey():
+            if m_KeyCarrierIdx < 0:
+                for each player: AABB(cat, keyHalf={20,26}) → first overlap wins
+                m_KeyCarrierIdx = winning player index
+
+Step 6  Key follow
+        UpdateKeyFollow():
+            if m_KeyCarrierIdx >= 0:
+                key position = carrier position + offset{-28, +28}
+
+Step 7  Door open check
+        TryOpenDoorAndClear():
+            if m_KeyCarrierIdx >= 0 && !m_DoorOpened:
+                if AABB(carrier, door) → m_DoorOpened = true
+                    door image → door_open.png, key → SetVisible(false)
+
+Step 8  Door entry check
+        UpdateDoorEntryAndClear():
+            if m_DoorOpened:
+                for each non-entered player:
+                    if AABB(cat, door) && IsKeyDown(key.up):
+                        m_PlayerEntered[i] = true, ++m_EnteredCount
+                        cat->SetVisible(false) / SetInputEnabled(false) / SetActive(false)
+                if m_EnteredCount == totalPlayers && !m_ClearDone:
+                    SaveManager::UpdateBestTime(0, SelectedPlayerCount, m_ElapsedSec)
+                    m_ClearDone = true
+
+Step 9  Clear transition
+        if m_ClearDone → return SceneId::LevelSelect
+```
+
+The key difference from `LocalPlayGameScene` is that all game-mechanic checks
+(key pickup, door open, door entry, clear) run *after* `m_World.Update()`.
+This guarantees that character positions are already at their resolved final
+locations for this frame before overlap tests are performed.
+
+---
+
+## 5. PhysicsWorld Internal Pipeline
 
 `PhysicsWorld::Update()` internally orchestrates four sub-steps. This section
 documents what happens inside each one.
 
-### 4.1 Phase 1 — `StepPhysicsUpdate()`
+### 5.1 Phase 1 — `StepPhysicsUpdate()`
 
 ```
 Pass A (non-PUSHABLE_BOX bodies):
@@ -7063,11 +7141,12 @@ Pass A (non-PUSHABLE_BOX bodies):
         body->PhysicsUpdate()
 
     PlayerCat::PhysicsUpdate():
-        m_Grounded = false          // will be restored by OnCollision
-        m_IsPushing = false         // will be restored by NotifyAdjacentPushers
-        m_VelocityY -= kGravity
-        read own keys (if m_InputEnabled && key bindings are not UNKNOWN)
-        m_DesiredDelta = {moveDir * kGroundMoveSpeed, m_VelocityY}
+        m_PrevGrounded = m_Grounded   // snapshot for "just landed" detection
+        m_Grounded = false            // will be restored by OnCollision
+        m_IsPushing = false           // will be restored by NotifyAdjacentPushers
+        m_VelocityY -= kGravity (0.75)
+        read own keys if (m_InputEnabled && key bindings are not UNKNOWN)
+        m_DesiredDelta = {moveDir * kGroundMoveSpeed(5.0), m_VelocityY}
         flip m_Transform.scale.x to face movement direction
 
 Pass B (PUSHABLE_BOX bodies):
@@ -7075,14 +7154,15 @@ Pass B (PUSHABLE_BOX bodies):
         box->PhysicsUpdate()
 
     PushableBox::PhysicsUpdate():
-        m_VelocityY -= kGravity
+        m_VelocityY -= kGravity (0.5, different from PlayerCat)
         netRight = m_World->CountCharactersPushing(this, +1)
         netLeft  = m_World->CountCharactersPushing(this, -1)
         net = netRight - netLeft
-        update m_CountText (deficit = max(0, required - |net|))
-        vx = kPushSpeed * sign(net)  if |net| >= requiredPushers, else 0
+        deficit = max(0, requiredPushers - |net|)
+        update m_CountText to show deficit
+        vx = kPushSpeed(2.0) * sign(net)  if |net| >= requiredPushers, else 0
         m_DesiredDelta = {vx, m_VelocityY}
-        if moving: NotifyAdjacentPushers(activeDir)
+        if net != 0: NotifyAdjacentPushers(activeDir)
             → calls ch->NotifyPush() on adjacent characters on the push side
 ```
 
@@ -7091,7 +7171,7 @@ on CHARACTER bodies. If boxes ran first, they would see stale `moveDir` values
 from the previous frame. The two-pass ordering guarantees all `moveDir` values
 are current-frame before any box queries them.
 
-### 4.2 Resolve — `StepResolveAndApply()`
+### 5.2 Resolve — `StepResolveAndApply()`
 
 ```
 1. Snapshot:  build vector<BodyInfo> from all active bodies
@@ -7100,13 +7180,12 @@ are current-frame before any box queries them.
 2. DetectRiding():
    for each non-kinematic body A:
      for each solid body B:
-       if A's bottom edge is within 5 px of B's top edge
+       if A's bottom edge is within 5 px (kRidingTolerance) of B's top edge
           AND horizontal overlap > 85% of combined half-widths:
            A.supportIdx = B's index  (A is riding B)
 
 3. Immediate resolution for kinematic / frozen bodies:
-   StaticBody: resolvedFlag=true, resolved={0,0}
-   Frozen body: resolvedFlag=true, resolved={0,0}
+   StaticBody / frozen body: resolvedFlag=true, resolved={0,0}
 
 4. Iterative topological loop (repeat until no progress):
    for each body i that is NOT yet resolved:
@@ -7116,7 +7195,7 @@ are current-frame before any box queries them.
      i.resolvedFlag = true
 
    ResolveBody():
-     Horizontal pass: sweep body rightward/leftward by resolved.x;
+     Horizontal pass: sweep body by resolved.x;
        for each solid body (using resolved position if already resolved,
        pre-move position otherwise):
          if AABB overlap → push self out horizontally; record collidedH + normalH
@@ -7133,10 +7212,10 @@ are current-frame before any box queries them.
 
 The topological ordering ensures that a character standing on a moving platform
 (or on another character's head) inherits the support's horizontal displacement
-before their own collision is resolved — producing correct platform-following
-and stacking behaviour without extra special-case code.
+before their own collision is resolved — producing correct stacking behaviour
+without extra special-case code.
 
-### 4.3 Callbacks — `StepCollisionCallbacks()`
+### 5.3 Callbacks — `StepCollisionCallbacks()`
 
 ```
 for each body that recorded a horizontal contact during resolution:
@@ -7156,7 +7235,7 @@ PushableBox::OnCollision:
     normal.y < -0.5  → m_VelocityY = 0  (hit ceiling)
 ```
 
-### 4.4 PostUpdate
+### 5.4 PostUpdate
 
 ```
 for each active non-frozen body:
@@ -7167,13 +7246,13 @@ PlayerCat::PostUpdate():
         priority (high to low):
           airborne rising        → JUMP_RISE
           airborne falling       → JUMP_FALL
-          just landed            → LAND (hold until clip ends)
+          just landed            → LAND (hold until clip ends — checked via IfAnimationEnds)
           m_IsPushing            → PUSH
           moveDir != 0           → RUN
           (default)              → STAND
 ```
 
-### 4.5 Chain-Pushing Query — `CountCharactersPushing(target, dir)`
+### 5.5 Chain-Pushing Query — `CountCharactersPushing(target, dir)`
 
 This is called by `PushableBox::PhysicsUpdate()` during Pass B of Phase 1.
 The algorithm walks the adjacency graph recursively:
@@ -7182,6 +7261,9 @@ The algorithm walks the adjacency graph recursively:
 CountCharactersPushingImpl(target, dir, visited):
     add target to visited
     for each active body sp adjacent to target on the correct side:
+        adjacent = within (tHalf.x + cHalf.x + 4px) horizontally
+                   AND within 90% of combined heights vertically
+                   AND positioned on the origin side of the push force
         if sp is CHARACTER:
             if sp->GetMoveDir() == dir → ++count       (active pusher)
             always recurse into sp                      (passive chain transmission)
@@ -7191,34 +7273,47 @@ CountCharactersPushingImpl(target, dir, visited):
 ```
 
 The unconditional recursion for `CHARACTER` bodies (regardless of their own
-`moveDir`) is essential for scenario 3: a passive character standing between an
-active pusher and the box still transmits the upstream force. See `PHYSICS_DESIGN.md §4`
-for the full scenario verification table.
+`moveDir`) is essential for the passive chain scenario: a stationary character
+standing between an active pusher and the box still transmits the upstream force.
+See `PHYSICS_DESIGN.md §4` for the full scenario verification table.
 
 ---
 
-## 5. GameContext as Cross-scene Bus
+## 6. GameContext as Cross-scene Bus
 
 `GameContext` is the only legal channel for sharing state between scenes.
 
 ```
-LocalPlayScene          writes SelectedPlayerCount
+LocalPlayScene          writes SelectedPlayerCount (via m_Ctx.SelectedPlayerCount = m_PlayerCount)
 LocalPlayGameScene      reads  SelectedPlayerCount → SpawnPlayers(count)
+LevelOneScene           reads  SelectedPlayerCount → clamp active player count (2..8),
+                                                      best-time index on clear
+                       (Box required-pusher thresholds are currently fixed at
+                        scene construction time, not recomputed each OnEnter)
 LevelSelectScene        reads  SelectedPlayerCount → UpdateBestTimeText()
 
-LocalPlayGameScene      writes CooperativePushPower
-(future level scenes)   reads  CooperativePushPower
 
-OptionMenuScene         calls  m_Ctx.BGMPlayer->SetVolume(v * 6)   on adjust/OK/CANCEL
-                               m_Ctx.Background->SetImage(path)    on bg color change
+LocalPlayGameScene      writes CooperativePushPower (currently informational; not consumed)
+
+KeyboardConfigScene     writes AppliedKeyConfigs[0..7] via SyncAppliedToContext()
+LocalPlayGameScene      reads  AppliedKeyConfigs[i] → per-player key binding at spawn
+LevelOneScene           reads  AppliedKeyConfigs[i] → per-player key binding at spawn
+
+OptionMenuScene         calls  m_Ctx.BGMPlayer->SetVolume(pending * 6)   on adjust (live preview)
+                               m_Ctx.BGMPlayer->SetVolume(applied * 6)   on OK/CANCEL
+                               m_Ctx.Background->SetImage(path)          on bg color change
+
+LevelOneScene           reads  m_Ctx.Door (swaps open/close image; sets position)
+LevelOneScene           reads  m_Ctx.Header, m_Ctx.Floor, m_Ctx.TestBox
+                               (hides on enter; currently remains hidden on exit)
 
 LocalPlayGameScene      reads  m_Ctx.Floor (for boundary positioning)
-                               m_Ctx.Door  (swaps open/close image on enter/exit)
+                               m_Ctx.Door  (swaps open/close image; door count text position)
 ```
 
 ---
 
-## 6. Settings Confirmation Pattern
+## 7. Settings Confirmation Pattern
 
 Both `KeyboardConfigScene` and `OptionMenuScene` use a **Pending / Applied** pattern:
 
@@ -7232,26 +7327,29 @@ m_Pending (buffer)     ← all UI edits go here immediately
     │                        → write to GA_RESOURCE_DIR/Save/settings.json
     │
     └─ CANCEL / ESC → discard m_Pending, revert to m_Applied (no file write)
+                          (OptionMenuScene also calls SetVolume(applied*6) and
+                           SetImage(appliedBgPath) to revert live previews)
 ```
 
 **Load timing (constructor):**
 ```
 OptionMenuScene()       → SaveManager::LoadOptionSettings()  → init m_Applied
 KeyboardConfigScene()   → SaveManager::LoadKeyConfigs()      → init m_Applied[0..7]
+                        → SyncAppliedToContext()             → init m_Ctx.AppliedKeyConfigs
 ```
 
 **LocalPlayScene entry gate:**
 ```
 ENTER pressed
     → configuredCount = m_KbConfigScene->GetConfiguredPlayerCount()
-         (players with AllKeys().size() >= 4)
-    → if m_PlayerCount <= configuredCount → return m_GameScene
-    → else → LOG only, show red warning text, do not transition
+         (players with AllKeys().size() >= 4 non-UNKNOWN bindings)
+    → if m_PlayerCount <= configuredCount → return SceneId::LocalPlayGame
+    → else → show red warning text ("No keyboard config"), do not transition
 ```
 
 ---
 
-## 7. Character Animation State Machine
+## 8. Character Animation State Machine
 
 `PlayerCat::UpdateAnimState()` runs inside `PostUpdate()` every frame.
 Priority order (high → low):
@@ -7259,14 +7357,18 @@ Priority order (high → low):
 ```
 Condition                              → Target State
 ───────────────────────────────────    ─────────────
+cur == LAND && !IfAnimationEnds()      LAND  (hold until 80ms clip completes)
 !grounded && velocityY > 0             JUMP_RISE
 !grounded && velocityY <= 0            JUMP_FALL
-grounded && !prevGrounded              LAND  (justLanded)
-cur == LAND && !IfAnimationEnds()      LAND  (hold until clip ends)
+grounded && !prevGrounded              LAND  (justLanded; triggers only once)
 m_IsPushing                            PUSH
 moveDir != 0                           RUN
 (otherwise)                            STAND
 ```
+
+Note: the LAND hold check runs at the top of `UpdateAnimState()` before all
+other conditions — this ensures the landing clip plays to completion even if
+the player immediately begins moving or pushing.
 
 **Transition diagram:**
 
@@ -7288,35 +7390,39 @@ activates only when a push is genuinely occurring.
 
 ---
 
-## 8. BGMPlayer & Volume Control
+## 9. BGMPlayer & Volume Control
 
-Uses a **static callback + flag** pattern to bridge SDL_mixer's audio thread to the main thread:
+`BGMPlayer` manages three MP3 tracks (`ppc.mp3`, `pp1.mp3`, `pp2.mp3`) with
+automatic sequential playback. It uses a **static callback + flag** pattern to
+bridge SDL_mixer's audio thread to the main thread safely:
 
 ```
 SDL_mixer music-end (audio thread)
     └── BGMPlayer::MusicFinishedCallback()
-            └── s_ShouldPlayNext = true
+            └── s_ShouldPlayNext = true   (atomic-safe static flag)
 
-Main thread (each frame)
+Main thread (each frame via App::Update)
     └── BGMPlayer::Update()
-            └── if s_ShouldPlayNext → Next() → advance index → Play()
+            └── if s_ShouldPlayNext → s_ShouldPlayNext = false → Next() → Play()
 ```
 
 **Volume control timing:**
-- `OptionMenuScene::AdjustLeft/Right` (row 2, BGM VOLUME) → **live preview**: calls `SetVolume(pending * 6)` immediately.
+- `OptionMenuScene::AdjustLeft/Right` (row 2, BGM VOLUME, range 0–20) → **live preview**: calls `BGMPlayer::SetVolume(pending * 6)` immediately. Multiplier 6 maps the 0–20 UI range to SDL_mixer's 0–120 internal range.
 - OK confirmed → `SetVolume(applied * 6)` + write to `settings.json`.
 - CANCEL / ESC → `SetVolume(applied * 6)` to revert preview; no file write.
 
 ---
 
-## 9. SaveManager Data Flow
+## 10. SaveManager Data Flow
 
-### 9.1 settings.json Read/Write Sequence
+### 10.1 settings.json Read/Write Sequence
 
 ```
 App startup
     ├─ OptionMenuScene()   → LoadOptionSettings()  → init m_Applied
+    │                         applies: BGMPlayer volume + Background image
     └─ KeyboardConfigScene() → LoadKeyConfigs()    → init m_Applied[0..7]
+                              → SyncAppliedToContext() → init m_Ctx.AppliedKeyConfigs
 
 OptionMenuScene OK   → SaveOptionSettings(toSave)
     read-modify-write settings.json (only option fields; keyConfigs untouched)
@@ -7325,70 +7431,73 @@ KeyboardConfigScene CommitPending → SaveKeyConfigs(saveData)
     read-modify-write settings.json (only keyConfigs; option fields untouched)
 ```
 
-### 9.2 save_data.json Read/Write Sequence
+### 10.2 save_data.json Read/Write Sequence
 
 ```
 LevelSelectScene::OnEnter()
     → LoadLevelData(m_LevelData) → update crown visibility, best time text
 
-Level scene completion
-    → UpdateBestTime(levelIdx, playerCount, elapsed)
+LevelOneScene completion (all players entered door)
+    → UpdateBestTime(0, SelectedPlayerCount, m_ElapsedSec)
         ├─ LoadLevelData(levels)
-        ├─ if elapsed < bestTimes[p] (or no record)
+        ├─ if elapsed < bestTimes[playerCount] (or bestTimes[p] == −1.0)
         │       → bestTimes[p] = elapsed, completed = true
         │       → SaveLevelData(levels)
-        └─ else: no-op
+        └─ else: no-op (existing record stands)
 ```
 
-### 9.3 Why Read-Modify-Write?
+### 10.3 Why Read-Modify-Write?
 
 `settings.json` is shared by `OptionMenuScene` and `KeyboardConfigScene`. A direct overwrite by either would erase the other's data. Each scene reads the current file, modifies only its own fields, and writes the merged result back.
 
 ---
 
-## 10. LevelSelectScene Interaction Flow
+## 11. LevelSelectScene Interaction Flow
 
-### 10.1 Entry
+### 11.1 Entry
 
 ```
 LocalPlayGameScene::Update()
     └─ all players entered door (m_EnteredCount >= SelectedPlayerCount)
-           → return m_LevelSelectScene
-               → App::TransitionTo(LevelSelectScene)
+           → return SceneId::LevelSelect
+               → SceneManager::GoTo(SceneId::LevelSelect)
                    → LevelSelectScene::OnEnter()
                        ├─ SaveManager::LoadLevelData(m_LevelData)
-                       ├─ AddChild all UI objects
+                       ├─ AddChild all UI objects (selector, title, best-time, covers, crowns)
                        ├─ m_Ctx.Header->SetVisible(false)
+                       ├─ m_Ctx.Floor / Door / TestBox → SetVisible(false)
+                       ├─ StartupCats → SetVisible(false)
                        └─ UpdateSelectorPos / UpdateTitleText / UpdateBestTimeText / UpdateCrowns
 ```
 
-### 10.2 Per-frame Update
+### 11.2 Per-frame Update
 
 ```
 LevelSelectScene::Update()
-    ├─ ESC → return m_LocalPlayGameScene
-    ├─ WASD / arrow keys → update m_SelectedIdx
+    ├─ ESC → return SceneId::LocalPlayGame
+    ├─ WASD / arrow keys → update m_SelectedIdx (clamped, grid-aware)
     │       → UpdateSelectorPos + UpdateTitleText + UpdateBestTimeText
     ├─ Mouse hover → AppUtil::IsMouseHovering(*m_LevelCover[i])
     │       → auto-switch m_SelectedIdx (same updates as above)
     └─ ENTER or left-click on cover → confirmed
-            ├─ if m_LevelScenes[i] != nullptr → return that scene  (not yet implemented)
-            └─ else: stay in LevelSelectScene
+            ├─ if m_LevelSceneIds[i] != SceneId::None → return that SceneId
+            └─ else: stay in LevelSelectScene (levels 2–10 not yet implemented)
 ```
 
-### 10.3 Best Time Display
+### 11.3 Best Time Display
 
 ```
 UpdateBestTimeText()
     ├─ p    = m_Ctx.SelectedPlayerCount
     ├─ best = m_LevelData[m_SelectedIdx].bestTimes[p]
+    │         (index p into array<float,9>; indices 0–1 unused)
     └─ m_BestTimeText->SetText(
            to_string(p) + " PLAYERS BEST TIME: " + SaveManager::FormatTime(best))
-               FormatTime: -1.0f → "--:--.--"
+               FormatTime: −1.0f → "--:--.--"
                            ≥0.0f → "mm:ss.cs"
 ```
 
-### 10.4 Crown (Completion) Display
+### 11.4 Crown (Completion) Display
 
 ```
 UpdateCrowns()
@@ -7398,7 +7507,88 @@ UpdateCrowns()
 
 `completed` is set to `true` by `SaveManager::UpdateBestTime()` when a level is
 first cleared and persisted. The next `LevelSelectScene::OnEnter()` reloads and
-displays it correctly.
+displays the crown correctly.
+
+---
+
+## 12. LevelOneScene Gameplay Mechanics
+
+This section documents the runtime interaction between the key, door, timer, and
+player systems — all of which are unique to `LevelOneScene` and not present in
+the lobby (`LocalPlayGameScene`).
+
+### 12.1 Key Pickup and Follow
+
+```
+Key initial position: (−400, −220) in world space
+Key half-size: {20, 26}
+
+TryPickKey() — called every frame until m_KeyCarrierIdx >= 0:
+    for i in 0..players.size():
+        if AABB(players[i].cat, kKeyHalf) overlaps AABB(key, kKeyHalf):
+            m_KeyCarrierIdx = i; return
+
+UpdateKeyFollow() — called every frame after TryPickKey():
+    if m_KeyCarrierIdx >= 0:
+        key.SetPosition(carrier.GetPosition() + {−28, +28})
+        (offset keeps the key visible above-left of the carrier)
+```
+
+### 12.2 Door Open Sequence
+
+```
+Door initial position: (420, kRoomFloorY + kDoorHalf.y)  = (420, −303)
+Door half-size: {31, 34}  (derived from scaled sprite size in TryOpenDoorAndClear)
+
+TryOpenDoorAndClear() — called every frame after UpdateKeyFollow():
+    if m_KeyCarrierIdx >= 0 && !m_DoorOpened:
+        if AABB(carrier, m_Ctx.Door): (exact scaled size * 0.5 used as half-size)
+            m_DoorOpened = true
+            m_Ctx.Door->SetImage(door_open.png)
+            m_KeySprite->SetVisible(false)
+```
+
+Note: after `TryOpenDoorAndClear()` runs, the key sprite is hidden but
+`m_KeyCarrierIdx` is not cleared. The carrier still "holds" the key logically;
+this has no functional consequence since the door is already open.
+
+### 12.3 Door Entry and Level Clear
+
+```
+UpdateDoorEntryAndClear() — called every frame after TryOpenDoorAndClear():
+    if !m_DoorOpened: return
+
+    doorPos  = m_Ctx.Door->GetPosition()
+    doorHalf = |m_Ctx.Door->GetScaledSize()| * 0.5
+
+    for i in 0..players.size():
+        if already entered: skip
+        if AABB(cat[i], doorHalf) && IsKeyDown(key.up):
+            m_PlayerEntered[i] = true, ++m_EnteredCount
+            cat→SetVisible(false), SetInputEnabled(false), SetActive(false)
+            cat→SetPosition({640, −360})   (off-screen parking position)
+
+    if !m_ClearDone && m_EnteredCount == totalPlayers:
+        SaveManager::UpdateBestTime(0, SelectedPlayerCount, m_ElapsedSec)
+        m_ClearDone = true
+
+Then in Update(), after UpdateDoorEntryAndClear():
+    if m_ClearDone → return SceneId::LevelSelect
+```
+
+All players must enter individually by pressing their own `up` key while
+overlapping the open door. There is no time limit — players may enter in any
+order. The timer continues running until the last player enters.
+
+### 12.4 PushableBox Configuration
+
+`LevelOneScene` creates two boxes in its constructor:
+- `m_BoxA` requires `m_Ctx.SelectedPlayerCount − 1` pushers (constructor-time value)
+- `m_BoxB` requires `m_Ctx.SelectedPlayerCount` pushers (constructor-time value)
+
+Because `LevelOneScene` is instantiated once in `AppStart.cpp`, these required
+counts are currently fixed after construction and are **not** recalculated on
+each `OnEnter()`.
 </file>
 
 <file path="PHYSICS_DESIGN.md">
@@ -7432,15 +7622,21 @@ PhysicsWorld  (pipeline coordinator — PhysicsWorld.hpp / .cpp)
 ├── Register / Unregister / Clear
 ├── AddStaticBoundary(center, halfSize)  → creates & owns a StaticBody
 ├── Update()                             → runs the full per-frame pipeline
-├── CountCharactersPushing(target, dir)  → chain-push query
-├── GetBodiesOfType(type)
-├── FreezeAll / UnfreezeAll
+├── CountCharactersPushing(target, dir)  → recursive chain-push query
+├── GetBodiesOfType(type)                → returns all active bodies of given type
+├── FreezeAll / UnfreezeAll              → for game-pause without destroying state
 └── AddRope / RemoveRope / GetRopesOf    → structural wiring (step not yet implemented)
 
 CharacterPhysicsSystem  (constants header only — CharacterPhysicsSystem.hpp)
 └── compile-time float constants shared by PlayerCat and documentation
     (all runtime logic has been moved to PlayerCat::PhysicsUpdate and PhysicsWorld)
 ```
+
+### 1.1 Scene lifecycle trigger (post-refactor)
+
+- Scene transitions are now dispatched by `SceneManager` via `SceneId` (not scene pointers).
+- `SceneManager::GoTo(...)` is the single place that calls `OnExit()` on the old scene and `OnEnter()` on the new scene.
+- Physics cleanup timing remains unchanged: scenes still call `m_World.Clear()` in `OnExit()` and re-register in `OnEnter()`.
 
 ---
 
@@ -7464,8 +7660,9 @@ PhysicsWorld::Update()
 ├── [Resolve]  StepResolveAndApply()
 │   ├── Snapshot all active bodies into vector<BodyInfo>
 │   ├── DetectRiding() — record which body each dynamic body sits on top of
-│   ├── Mark kinematic / frozen bodies as immediately resolved (desired = {0,0}
-│   │   for StaticBody; no collision resolution needed)
+│   ├── Mark kinematic / frozen bodies as immediately resolved
+│   │   StaticBody: desired = {0,0}, resolved = {0,0}, resolvedFlag = true
+│   │   Frozen body: same (held in place, not moved by world)
 │   ├── Iterative topological resolution loop:
 │   │   for each unresolved body whose support IS already resolved:
 │   │     effective = desired + support's horizontal resolved delta (carry)
@@ -7473,7 +7670,7 @@ PhysicsWorld::Update()
 │   │         ResolveBody performs horizontal pass then vertical pass,
 │   │         pushing self out of any solid overlap and recording contact normals
 │   │   repeat until no progress (handles stacking chains of arbitrary depth)
-│   ├── Safety pass — resolve any remaining orphaned bodies without carry
+│   ├── Safety pass — resolve any remaining orphaned/cyclic bodies without carry
 │   └── ApplyResolvedDelta() on every body
 │
 ├── [Callbacks]  StepCollisionCallbacks()
@@ -7498,504 +7695,241 @@ otherwise, a box might read stale move directions from the previous frame.
 
 `PlayerCat` derives from both `AnimatedCharacter` and `IPhysicsBody`.
 
-```cpp
-class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
-    // GetBodyType()        → CHARACTER
-    // GetPosition()        → m_Transform.translation
-    // SetPosition(pos)     → m_Transform.translation = pos
-    // GetHalfSize()        → {kHalfWidth=18, kHalfHeight=23}  (fixed, avoids jitter)
-    // IsSolid()            → true
-    // IsKinematic()        → false
-    // GetMoveDir()         → m_MoveDir (-1 / 0 / +1), set by scene or own input
-    // GetDesiredDelta()    → m_DesiredDelta = {moveDir * kGroundMoveSpeed, velocityY}
-    // ApplyResolvedDelta() → SetPosition(pos + delta)
-    // OnCollision()        → sets m_Grounded, clamps velocityY, sets m_IsPushing
-    // PhysicsUpdate()      → gravity, optional direct-input read, desired delta
-    // PostUpdate()         → UpdateAnimState()
-    // NotifyPush()         → m_IsPushing = true  (called by PushableBox)
-};
-```
+**Physics constants** (defined in `PlayerCat.hpp` and mirrored in `CharacterPhysicsSystem.hpp`):
 
-**Input sourcing:** if a cat has real key bindings and `m_InputEnabled == true`,
-`PhysicsUpdate()` reads `Util::Input` directly. For cats spawned in
-`LocalPlayGameScene` with `UNKNOWN` keys, the scene calls `SetMoveDir()` and
-`Jump()` externally before `m_World.Update()`.
+| Constant | Value | Usage |
+|----------|-------|-------|
+| `kGravity` | 0.75 | subtracted from `m_VelocityY` every `PhysicsUpdate` |
+| `kJumpForce` | 11.0 | `m_VelocityY` set to this value on `Jump()` |
+| `kGroundMoveSpeed` | 5.0 | horizontal velocity = `moveDir * kGroundMoveSpeed` |
+| `kRunOnPlayerSpeed` | 6.2 | **defined but not yet used** — reserved for a future mechanic where cats move faster when standing on another cat |
+| `kHalfWidth` | 18.0 | AABB half-size X |
+| `kHalfHeight` | 23.0 | AABB half-size Y |
 
----
+Note: `kGravity` and `kRunOnPlayerSpeed` appear in both `PlayerCat.hpp` and `CharacterPhysicsSystem.hpp` with identical values. This is a deliberate duplication for documentation convenience but represents a technical debt — if the values ever diverge, it could cause subtle bugs.
+
+**Per-frame flow in `PhysicsUpdate()`:**
+1. Snapshot `m_Grounded` into `m_PrevGrounded`; reset `m_Grounded = false` and `m_IsPushing = false`.
+2. Apply gravity: `m_VelocityY -= kGravity`.
+3. If `m_InputEnabled` and key bindings are not `UNKNOWN`, read keys directly; otherwise use `m_MoveDir` set by the scene.
+4. If `m_InputEnabled`, check jump key: `IsKeyDown(jumpKey) && m_PrevGrounded → Jump()`.
+5. Compute `m_DesiredDelta = {moveDir * kGroundMoveSpeed, m_VelocityY}`.
+6. Flip `m_Transform.scale.x` to face the movement direction.
+
+**`ApplyResolvedDelta`:** simply adds `delta` to `m_Transform.translation`.
+
+**`OnCollision`:**
+- `normal.y > +0.5` (floor contact): set `m_Grounded = true`, zero `m_VelocityY`.
+- `normal.y < -0.5` (ceiling contact): clamp `m_VelocityY` to 0 if currently rising.
+- `|normal.x| > 0.5` (wall contact) with non-zero `moveDir` in the blocked direction: set `m_IsPushing = true`.
 
 ### 3.2 PushableBox (PUSHABLE_BOX) — Fully Implemented
 
 `PushableBox` derives from `Character`, `IPhysicsBody`, and `IPushable`.
 
-```cpp
-class PushableBox : public Character, public IPhysicsBody, public IPushable {
-    // GetBodyType()         → PUSHABLE_BOX
-    // IsSolid()             → true
-    // IsKinematic()         → false
-    // GetRequiredPushers()  → m_RequiredPushers (set at construction)
-    // PhysicsUpdate()       → gravity + CountCharactersPushing query → desired delta
-    // ApplyResolvedDelta()  → move box + reposition m_CountText label
-    // OnCollision()         → floor/ceiling velocityY clamp
-};
-```
+**Physics constants:**
 
-`m_CountText` is an overlaid `GameText` showing how many more pushers are still
-needed (`std::max(0, requiredPushers - |net|)`). Both the box and its text object
-must be added to the renderer and registered with the world separately.
+| Constant | Value | Usage |
+|----------|-------|-------|
+| `kGravity` | 0.5 | boxes fall slower than cats |
+| `kPushSpeed` | 2.0 | horizontal velocity when net push force meets the threshold |
 
-`SetWorld(PhysicsWorld*)` must be called before the box is registered, so
-`PhysicsUpdate()` can reach `CountCharactersPushing()`.
+**Per-frame flow in `PhysicsUpdate()`:**
+1. Apply gravity: `m_VelocityY -= kGravity`.
+2. Query net push force: `netRight = CountCharactersPushing(this, +1)`, `netLeft = CountCharactersPushing(this, -1)`, `net = netRight - netLeft`.
+3. Compute deficit = `max(0, m_RequiredPushers - |net|)` and update `m_CountText` to display it.
+4. If `|net| >= m_RequiredPushers`: `vx = kPushSpeed * sign(net)`, else `vx = 0`.
+5. `m_DesiredDelta = {vx, m_VelocityY}`.
+6. Call `NotifyAdjacentPushers(activeDir)` to trigger the PUSH animation on contributing cats.
 
----
+**`ApplyResolvedDelta`:** adds `delta` to position; also repositions `m_CountText` to `{newPos.x + 10, newPos.y}` so the label tracks the box without scene intervention.
+
+**`NotifyAdjacentPushers(activeDir)`:** scans all CHARACTER bodies in the world. For each character within `(chHalf.x + myHalf.x) * 1.15` horizontally and `(chHalf.y + myHalf.y) * 0.90` vertically, whose `moveDir` matches `activeDir` and who is on the correct push side, calls `ch->NotifyPush()` to set `m_IsPushing = true`.
 
 ### 3.3 StaticBody (STATIC_BOUNDARY) — Fully Implemented
 
-`StaticBody` is the correct type for **all immovable solid geometry** — floor,
-ceiling, left/right boundary walls, and any in-level wall that should never move.
+`StaticBody` is a pure-collision object with no visual component. It always returns `IsSolid() = true` and `IsKinematic() = true`. `SetPosition` and `ApplyResolvedDelta` are no-ops. It is created and exclusively owned by `PhysicsWorld::AddStaticBoundary()`, which stores it in `m_OwnedStatics` and registers it. When `PhysicsWorld::Clear()` is called, all owned statics are destroyed with the world.
+
+The `BodyType` passed to `AddStaticBoundary` defaults to `STATIC_BOUNDARY`; passing other types (e.g., future `MOVING_PLATFORM`) is supported by the interface but no implementation exists yet.
+
+---
+
+## 4. Chain-Push Algorithm
+
+### 4.1 Problem Statement
+
+The cooperative push mechanic requires counting how many characters are
+collectively pushing on a box (or chain of boxes and characters). A single
+character on its own may not meet the threshold (`m_RequiredPushers`); a group
+pushing in the same direction can.
+
+The algorithm must handle three scenarios:
+
+| Scenario | Expected Behaviour |
+|----------|-------------------|
+| `[A(→) → Box]` | Box sees 1 pusher from A. |
+| `[A(→) → B(→) → Box]` | Box sees 2 pushers: A transmits through B. |
+| `[A(→) → B(0) → Box]` | Box sees 1 pusher: B is passive but transmits A's force. |
+| `[A(→) → Box ← B(←)]` | Box sees net 0 (1 right, 1 left). No movement. |
+
+### 4.2 Algorithm — `CountCharactersPushingImpl`
 
 ```cpp
-class StaticBody final : public IPhysicsBody {
-    // GetBodyType()        → STATIC_BOUNDARY (or any BodyType passed at construction)
-    // IsSolid()            → true   — blocks all dynamic bodies
-    // IsKinematic()        → true   — never moved by the resolver
-    // GetDesiredDelta()    → {0, 0} — stationary by definition
-    // ApplyResolvedDelta() → no-op
-    // SetPosition()        → no-op
+CountCharactersPushingImpl(target, dir, visited):
+    if target in visited: return 0
+    visited.push_back(target)
+
+    count = 0
+    for each active body sp adjacent to target:
+        // Adjacency criteria:
+        //   |cPos.y − tPos.y| < (tHalf.y + cHalf.y) * 0.9   (same vertical band)
+        //   |cPos.x − tPos.x| ≤ (tHalf.x + cHalf.x) + 4.0   (touching or nearly so)
+        //   sp is on the origin side of the push:
+        //       dir=+1: sp.x < target.x  (pusher is to the left)
+        //       dir=−1: sp.x > target.x  (pusher is to the right)
+
+        if sp is CHARACTER:
+            if sp->GetMoveDir() == dir: ++count    // active contribution
+            count += recurse(sp, dir, visited)     // always recurse (passive chain)
+
+        if sp is PUSHABLE_BOX:
+            count += recurse(sp, dir, visited)     // box transmits passively
+
+    return count
+```
+
+**Why unconditional recursion for CHARACTER?** A passive character (not pressing any key, `moveDir = 0`) sandwiched between an active pusher and the target box still physically transmits the upstream force. If recursion were conditional on `moveDir == dir`, this scenario would report 0 pushers instead of 1, breaking the mechanic.
+
+### 4.3 Scenario Verification
+
+| Chain | Active pushers counted | Net result |
+|-------|----------------------|------------|
+| `A(→) → Box` | A (+1) | 1 |
+| `A(→) → B(→) → Box` | A found via B recursion (+1), B direct (+1) | 2 |
+| `A(→) → B(0) → Box` | B recurses into A, A active (+1); B passive (0) | 1 |
+| `A(→) → C(box) ← B(←)` | netRight=1, netLeft=1; CountCharactersPushing returns independently | net=0, no move |
+
+---
+
+## 5. Collision Resolution Detail
+
+### 5.1 AABB Overlap Test
+
+```cpp
+// Returns true if two bodies overlap (touching edges are NOT overlap)
+bool AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) {
+    glm::vec2 delta = a->GetPosition() - b->GetPosition();
+    glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
+    return abs(delta.x) < sum.x && abs(delta.y) < sum.y;
+}
+```
+
+### 5.2 Riding Detection
+
+Before any body moves, `DetectRiding()` scans for stacking relationships. Body A "rides" body B if:
+- A is not kinematic (kinematic bodies define their own path).
+- A's bottom edge (`aPos.y - aHalf.y`) is within `kRidingTolerance = 5.0` pixels of B's top edge (`bPos.y + bHalf.y`).
+- A and B share at least 85% of their combined horizontal half-width overlap.
+
+If A rides B, `A.supportIdx = B's index in the snapshot`. During the topological loop, A's effective delta inherits B's horizontal resolved delta, producing automatic platform-following and stacking without any special-case code in the scene.
+
+### 5.3 Topological Resolution Loop
+
+```
+Repeat until no progress:
+    for each unresolved body i:
+        if i has a support j AND j is not yet resolved: skip (defer to next pass)
+        effective.x = i.desired.x + (j is non-kinematic ? j.resolved.x : 0)
+        effective.y = i.desired.y
+        i.resolved = ResolveBody(i, effective, infos)
+        i.resolvedFlag = true
+```
+
+This loop automatically handles stacking chains of any depth. A body on top of a body on top of a platform resolves in three passes: platform first (kinematic, resolved immediately), middle layer second, top layer last, each inheriting the horizontal delta of the one below.
+
+### 5.4 ResolveBody — Horizontal-then-Vertical Separation
+
+```
+Horizontal pass:
+    testPos = selfPos + {resolved.x, 0}
+    for each solid body j (using j's resolved position if already finalised):
+        overlap = (selfHalf + jHalf) - |testPos - jPos|
+        if overlap.x > 0 AND overlap.y > 0:   // full AABB overlap
+            sign = sign(testPos.x - jPos.x)
+            resolved.x = (jPos.x + (selfHalf.x + jHalf.x) * sign) - selfPos.x
+            record collidedH = j, normalH = {sign, 0}
+
+Vertical pass (using resolved horizontal position):
+    testPos = selfPos + {resolved.x, resolved.y}
+    for each solid body j:
+        if overlap.x > 0 AND overlap.y > 0:
+            sign = sign(testPos.y - jPos.y)
+            resolved.y = (jPos.y + (selfHalf.y + jHalf.y) * sign) - selfPos.y
+            record collidedV = j, normalV = {0, sign}
+```
+
+The horizontal pass runs first to correctly handle corner cases. Solving Y after X means a body sliding diagonally along a wall resolves its horizontal position first, then checks vertically with the corrected X — this prevents false ceiling hits when a body grazes a wall corner.
+
+When another body has already been resolved (`infos[j].resolvedFlag == true`), its position is advanced by `j.resolved` before overlap-testing. This ensures that a body resolving against a moving platform or a just-resolved box sees that object's final-frame position, not its pre-move position.
+
+---
+
+## 6. Rope Constraint System (Structural Wiring — Not Yet Active)
+
+`PhysicsWorld` stores `RopeConstraint` records but does not step them:
+
+```cpp
+struct RopeConstraint {
+    IPhysicsBody* bodyA   = nullptr;
+    IPhysicsBody* bodyB   = nullptr;
+    float         maxLen  = 200.f;
+    float         friction = 0.5f;
+    // TODO: implement force resolution in StepRopes()
 };
 ```
 
-`PhysicsWorld::AddStaticBoundary(center, halfSize)` creates, owns, and
-immediately registers a `StaticBody`. The returned raw pointer is only for
-identification; ownership stays with `PhysicsWorld::m_OwnedStatics`.
-
-**Wall design rule:** all visual wall sprites (e.g. `background_lwall.png`,
-`background_rwall.png`) are purely decorative. Their physics counterpart must be
-a `StaticBody` registered via `AddStaticBoundary()`. The AABB should match the
-visible surface of the wall, not the entire sprite bounding box.
+`AddRope()`, `RemoveRope()`, and `GetRopesOf()` exist for future use. The
+`Update()` pipeline does not call any rope-stepping function. When implemented,
+`StepRopes()` would run after `StepPhysicsUpdate()` and before
+`StepResolveAndApply()`, adding constraint forces to bodies' desired deltas.
 
 ---
 
-### 3.4 Future Body Types (Not Yet Implemented)
+## 7. Freeze / Pause System
 
-The `BodyType` enum reserves values for `PATROL_ENEMY`, `MOVING_PLATFORM`,
-`CONDITIONAL_PLATFORM`, `ROPE_ENDPOINT`, and `BULLET`. These are not required
-for the current scope; their implementation can be deferred until the respective
-level scenes are built. The rope constraint struct (`RopeConstraint`) and
-`AddRope`/`RemoveRope` API already exist in `PhysicsWorld` for future use.
+`IPhysicsBody` exposes `Freeze()`, `Unfreeze()`, and `IsFrozen()`. `PhysicsWorld` exposes `FreezeAll()` and `UnfreezeAll()` as convenience wrappers.
 
----
+A frozen body:
+- Has its `desired` delta overridden to `{0, 0}` in `StepResolveAndApply()` — it does not move regardless of velocity.
+- Is marked as `resolvedFlag = true` immediately (no collision resolution performed against it as a resolver, though solid frozen bodies still block other bodies normally).
+- Is skipped in `StepPhysicsUpdate()` (Phase 1 and PostUpdate) — its state does not evolve.
 
-## 4. Chain Pushing Algorithm
-
-### 4.1 API
-
-```cpp
-// PhysicsWorld public method
-int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
-//   dir: +1 = querying right-side pushers, -1 = querying left-side pushers
-//   Returns the net number of CHARACTER bodies directly or transitively
-//   contributing force toward 'target' from the 'dir' origin side.
-```
-
-`PushableBox::PhysicsUpdate()` calls this twice:
-
-```cpp
-int netRight = m_World->CountCharactersPushing(this, +1);
-int netLeft  = m_World->CountCharactersPushing(this, -1);
-const int net = netRight - netLeft;
-if (std::abs(net) >= m_RequiredPushers)
-    vx = (net > 0) ? kPushSpeed : -kPushSpeed;
-```
-
-### 4.2 Recursive Traversal — `CountCharactersPushingImpl`
-
-The algorithm walks the adjacency graph recursively, using a `visited` set to
-prevent infinite loops.
-
-**Proximity tests** (both must pass for a body to be considered adjacent):
-
-```
-vertical band  : |cPos.y - tPos.y| < (tHalf.y + cHalf.y) * 0.9f
-horizontal gap : |dxToTarget|      ≤ tHalf.x + cHalf.x + 4.0f (touch tolerance)
-direction side : dir=+1 → cPos.x < tPos.x   (pusher is to the left)
-                 dir=-1 → cPos.x > tPos.x   (pusher is to the right)
-```
-
-**Per-neighbor logic:**
-
-```
-CHARACTER body adjacent to target:
-    if moveDir == dir → ++count           (actively pushing: counts directly)
-    always recurse(sp, dir, visited)      (passive characters still transmit)
-
-PUSHABLE_BOX body adjacent to target:
-    recurse(sp, dir, visited)             (box transmits passively, never counts itself)
-```
-
-The key insight is that a CHARACTER with `moveDir == 0` does **not** add 1 to
-the count but still allows force from active pushers behind it to propagate
-forward. This correctly handles all six chain scenarios below.
-
-### 4.3 Verified Scenarios
-
-All positions below are left-to-right. "→" means moveDir = +1. Box bodies are
-capital letters in brackets.
+This design allows the entire simulation to be paused cleanly without destroying body state. On `UnfreezeAll()`, bodies resume from their prior state.
 
 ---
 
-**Scenario 1 — A pushes B, B pushes C. C is pushed by 2.**
+## 8. Body Lifecycle and Purging
 
-```
-A(→) adjacent to B(→) adjacent to [C]   requiredPushers = 2
-```
+`PhysicsWorld` stores bodies as `vector<weak_ptr<IPhysicsBody>>`. This means:
+- Scenes do not need to call `Unregister()` when a body is destroyed; the expired weak pointer is cleaned up automatically.
+- Every `kPurgeInterval = 60` frames, `PurgeExpired()` removes all expired weak pointers from the list.
+- `Clear()` removes everything unconditionally and destroys owned `StaticBody` instances.
 
-`CountCharactersPushing([C], +1)`:
-1. B found adjacent to C; B→: count++ (1). Recurse into B.
-2. A found adjacent to B; A→: count++ (1). Recurse into A.
-3. Nothing behind A.
-4. **Total = 2 ≥ 2** → [C] moves right. ✅
+**Recommended scene pattern:** call `m_World.Clear()` on `OnExit` rather than calling `Unregister()` individually. Since the scene owns all cat and box shared pointers, letting `Clear()` release the weak references is sufficient.
 
 ---
 
-**Scenario 2 — A pushes [C], [C] is adjacent to [D]. Both move with 1 pusher.**
-
-```
-A(→) adjacent to [C] adjacent to [D]   requiredPushers = 1 each
-```
-
-`CountCharactersPushing([C], +1)` = 1 (A found, A→).
-`CountCharactersPushing([D], +1)`:
-1. [C] found adjacent to D; PUSHABLE_BOX → recurse into [C].
-2. A found adjacent to [C]; A→: count++ (1).
-3. **Total = 1 ≥ 1** → [D] moves right. ✅
-
----
-
-**Scenario 3 — A pushes passive B (no key), B is adjacent to [C]. C is pushed by 1.**
-
-```
-A(→) adjacent to B(0) adjacent to [C]   requiredPushers = 1
-```
-
-`CountCharactersPushing([C], +1)`:
-1. B found adjacent to C; B has moveDir=0 → **do not count B**, but still recurse.
-2. A found adjacent to B; A→: count++ (1).
-3. **Total = 1 ≥ 1** → [C] moves right. ✅
-
-> **This was the pre-fix failure point.** The old code used `continue` when
-> `moveDir != dir`, silently skipping both the count and the recursion. The
-> fix changes to an `if (moveDir == dir) ++count;` with an unconditional
-> `count += recurse(sp, …)` below it.
-
----
-
-**Scenario 4 — A pushes [C] from the left, B pushes [C] from the right. Forces cancel.**
-
-```
-A(→) | [C] | B(←)   requiredPushers = 1
-```
-
-`CountCharactersPushing([C], +1)` = 1 (A on left, A→).
-`CountCharactersPushing([C], -1)` = 1 (B on right, B←).
-`net = 1 − 1 = 0` → `|net| < 1` → [C] does not move. ✅
-
----
-
-**Scenario 5 — A pushes [C] while both are airborne.**
-
-```
-A(→) airborne adjacent to [C] airborne   requiredPushers = 1
-```
-
-The vertical-band check allows objects at the same Y level (no ground
-contact required). `CountCharactersPushing([C], +1)` = 1.
-`ResolveBody` handles the horizontal separation exactly as on the ground.
-[C] acquires a horizontal desired delta and is resolved normally. ✅
-
----
-
-**Scenario 6 — A pushes [C], but [C] is blocked by a wall or IsKinematic object.**
-
-```
-A(→) adjacent to [C] | wall(StaticBody)   requiredPushers = 1
-```
-
-`CountCharactersPushing([C], +1)` = 1 ≥ 1 → [C]'s desired delta.x = kPushSpeed.
-During `ResolveBody`, the wall is already marked `resolvedFlag = true` with
-delta = {0,0}. The horizontal pass detects overlap and clamps [C]'s resolved.x
-to zero. [C] does not move. The same result applies for any `IsKinematic()` body. ✅
-
----
-
-## 5. Complete Workflow Example
-
-This example traces a single frame where **PlayerCat A pushes PushableBox [C]**
-(requiredPushers = 1) and both are on the floor.
-
-### Frame start state
-
-| Body | Position | VelocityY | MoveDir | DesiredDelta |
-|------|----------|-----------|---------|--------------|
-| A (PlayerCat) | (100, −294) | 0 | 0 | (0, 0) |
-| [C] (PushableBox) | (155, −294) | 0 | — | (0, 0) |
-| Floor (StaticBody) | (0, −357) | — | — | (0, 0) |
-
-Player presses right key → scene sets `A->SetMoveDir(+1)` before `m_World.Update()`.
-
-### Step 1 — Input (scene, before Update)
-
-```
-A->SetMoveDir(+1)   // scene reads key, informs cat
-```
-
-### Step 2 — Phase 1: StepPhysicsUpdate
-
-**Pass A — PlayerCat:**
-```
-A::PhysicsUpdate():
-    m_VelocityY -= kGravity (0.75)  →  velocityY = -0.75  (was 0, now slightly downward)
-    m_IsPushing = false
-    m_Grounded is reset to false (will be restored by OnCollision)
-    vx = moveDir * kGroundMoveSpeed = +1 * 5.0 = +5.0
-    m_DesiredDelta = {+5.0, -0.75}
-```
-
-**Pass B — PushableBox:**
-```
-[C]::PhysicsUpdate():
-    m_VelocityY -= kGravity (0.5)   →  velocityY = -0.5
-    netRight = CountCharactersPushing([C], +1)
-        → A is adjacent (dxToTarget = 100-155 = -55; minDistX = 18+32 = 50;
-           -55 within 50+4=54 → adjacent; dir=+1, dxToTarget<0 → left side ✓)
-        → A->GetMoveDir() == +1 → count++ = 1; recurse into A → nothing behind A
-        → returns 1
-    netLeft  = CountCharactersPushing([C], -1) = 0
-    net = 1 - 0 = 1
-    deficit = max(0, 1 - 1) = 0    → m_CountText shows "0"
-    |net| = 1 ≥ requiredPushers (1) → vx = +kPushSpeed = +2.0
-    m_DesiredDelta = {+2.0, -0.5}
-    NotifyAdjacentPushers(+1):
-        A is on push side → A->NotifyPush() → A->m_IsPushing = true
-```
-
-### Step 3 — Resolve: StepResolveAndApply
-
-Snapshot infos: [Floor (kinematic), A (desired={+5,-0.75}), C (desired={+2,-0.5})]
-
-Floor is marked `resolvedFlag = true` immediately (kinematic).
-
-**Topological pass — resolve A:**
-- Floor is already resolved.
-- A's supportIdx = Floor (A is standing on floor).
-- effective = {+5,-0.75} + {floor.resolved.x=0} = {+5,-0.75}
-- ResolveBody(A):
-  - Horizontal: A moves to x=105. Check against [C] at x=155 (not yet resolved,
-    pre-move). Overlap = (18+32) - |105-155| = 50-50 = 0 → no overlap.
-  - Check against Floor: no horizontal overlap.
-  - Vertical: A moves to y=-294.75. Check against Floor top edge (-357+40=-317).
-    A bottom = -294.75-23 = -317.75; floor top = -317; overlap = -317-(-317.75) = 0.75 > 0
-    → push A up: resolved.y = (-317 + 23) - (-294) = -317+23+294 = 0 → wait,
-    resolved.y = (otherPos.y + (selfHalf.y + otherHalf.y) * sign) - selfPos.y
-               = (-357 + (23+40)*1) - (-294) = -357+63+294 = 0
-  - A.resolved = {+5, 0}   (horizontal fine, vertical blocked by floor → grounded)
-  - A.collidedV = Floor, normalV = {0,+1}
-
-**Topological pass — resolve [C]:**
-- [C]'s supportIdx = Floor.
-- effective = {+2,-0.5} + {0} = {+2,-0.5}
-- ResolveBody([C]):
-  - Horizontal: [C] moves to x=157. No wall adjacent. A is now at resolved
-    position x=105 (resolvedFlag=true → otherPos = 100+5 = 105).
-    Overlap = (32+18) - |157-105| = 50-52 = -2 → no overlap.
-  - Vertical: same floor clamping → resolved.y = 0.
-  - [C].resolved = {+2, 0}
-
-**Apply deltas:**
-```
-A  →  position = (100+5, -294+0) = (105, -294)
-[C] → position = (155+2, -294+0) = (157, -294)
-```
-
-### Step 4 — Callbacks: StepCollisionCallbacks
-
-```
-A.collidedV = Floor, normalV = {0,+1}
-    → A::OnCollision: normal.y > 0.5 → m_Grounded = true, m_VelocityY = 0
-[C].collidedV = Floor, normalV = {0,+1}
-    → [C]::OnCollision: normal.y > 0.5 → m_VelocityY = 0
-```
-
-### Step 5 — PostUpdate
-
-```
-A::PostUpdate() → UpdateAnimState()
-    m_IsPushing = true (set by NotifyAdjacentPushers above)
-    → CatAnimState::PUSH
-```
-
-**Frame end state:**
-
-| Body | Position | VelocityY | AnimState |
-|------|----------|-----------|-----------|
-| A | (105, −294) | 0 | PUSH |
-| [C] | (157, −294) | 0 | — |
-
-The box moved right 2 px; A moved right 5 px while staying flush against [C].
-On the next frame, AABB separation keeps them adjacent at the `minDistX` boundary.
-
----
-
-## 6. Walls — Design and Registration
-
-All solid, immovable walls in any scene must be registered as `StaticBody` objects
-via `PhysicsWorld::AddStaticBoundary()`. This includes:
-
-- **Boundary walls** — left and right screen edges (already implemented in
-  `TitleScene`, `MenuScene`, and `LocalPlayGameScene` via `SetupStaticBoundaries()`).
-- **In-level platform edges and side walls** — any wall sprite whose physics
-  surface should never move.
-
-```cpp
-// Pattern used in SetupStaticBoundaries() for left and right walls:
-constexpr float kWallHalfW = 50.f;
-constexpr float kWallHalfH = 400.f;
-
-// Left wall: center is 50 px to the left of the play area edge
-m_World.AddStaticBoundary({-(640.f + kWallHalfW), 0.f}, {kWallHalfW, kWallHalfH});
-
-// Right wall: symmetric
-m_World.AddStaticBoundary({ (640.f + kWallHalfW), 0.f}, {kWallHalfW, kWallHalfH});
-```
-
-The visual sprites `background_lwall.png` / `background_rwall.png` are purely
-decorative `Character` objects. Their physics counterpart is the invisible
-`StaticBody` AABB above. The `StaticBody` has `IsSolid() = true` and
-`IsKinematic() = true`, so all dynamic bodies (players, boxes) are resolved
-against it and can never pass through.
-
-**Chain-pushing interaction with walls (Scenario 6):** when a `PushableBox`
-has a `StaticBody` wall on the opposing side, the box correctly refuses to move.
-`CountCharactersPushing()` may still return a positive number (the pushers are
-present), but `ResolveBody` clamps the box's horizontal delta to zero because
-the wall's resolved position leaves no room. The box stays put. ✅
-
----
-
-## 7. Scene Registration Pattern
-
-```cpp
-// ── OnEnter ─────────────────────────────────────────────────────────────────
-void LevelOneScene::OnEnter() {
-    m_World.Clear();
-
-    // 1. Spawn player cats and register them.
-    for (auto& pb : m_Players) {
-        m_World.Register(pb.cat);
-        m_Ctx.Root.AddChild(pb.cat);
-    }
-
-    // 2. Spawn boxes: SetWorld first, then register.
-    for (auto& box : m_Boxes) {
-        box->SetWorld(&m_World);             // box needs world for CountCharactersPushing
-        m_World.Register(box);
-        m_Ctx.Root.AddChild(box);
-        if (box->GetTextObject()) {
-            m_Ctx.Root.AddChild(box->GetTextObject());
-        }
-    }
-
-    // 3. Register immovable geometry last.
-    SetupStaticBoundaries();                  // calls AddStaticBoundary internally
-}
-
-// ── Update ───────────────────────────────────────────────────────────────────
-Scene* LevelOneScene::Update() {
-    // Step 1: read input → set MoveDir / call Jump() on cats.
-    for (auto& pb : m_Players) {
-        // ... (key reading)
-        pb.cat->SetMoveDir(moveDir);
-        if (pb.cat->IsGrounded() && wantJump) pb.cat->Jump();
-    }
-
-    // Step 2: run unified physics pipeline.
-    m_World.Update();
-
-    // Step 3: read-only game logic (goal checks, timer, etc.)
-    m_ElapsedSeconds += deltaTime;
-    if (/* all players at goal */) {
-        SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, m_ElapsedSeconds);
-        return m_LevelExitScene;  // confirmation scene before returning to menu
-    }
-    return nullptr;
-}
-
-// ── OnExit ───────────────────────────────────────────────────────────────────
-void LevelOneScene::OnExit() {
-    for (auto& pb : m_Players) m_Ctx.Root.RemoveChild(pb.cat);
-    for (auto& box : m_Boxes) {
-        m_Ctx.Root.RemoveChild(box);
-        if (box->GetTextObject()) m_Ctx.Root.RemoveChild(box->GetTextObject());
-    }
-    m_World.Clear();
-}
-```
-
-**`LevelOneScene`** is the scene for the actual gameplay level.
-**`LevelExitScene`** is the confirmation dialog shown before exiting any level
-(analogous to `ExitConfirmScene` for the main menu). Neither is implemented yet;
-both are empty stubs.
-
----
-
-## 8. CharacterPhysicsSystem Constants
-
-`CharacterPhysicsSystem.hpp` is now a **constants-only header**. All runtime
-logic has moved to `PlayerCat::PhysicsUpdate()` and `PhysicsWorld`. The
-constants are duplicated as `static constexpr` members of `PlayerCat` for
-self-containment; the header exists only for backward-reference convenience.
-
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `kGroundMoveSpeed` | 5.0f | horizontal speed (px/frame) on ground |
-| `kRunOnPlayerSpeed` | 6.2f | horizontal speed when standing on another character |
-| `kJumpForce` | 11.0f | initial vertical velocity on jump |
-| `kGravity` | 0.75f (PlayerCat) / 0.5f (PushableBox) | velocityY decrement per frame |
-| `kScreenHalfW` | 640.0f | half of 1280×720 |
-| `kScreenHalfH` | 360.0f | half of 1280×720 |
-| `kHalfWidth` (PlayerCat) | 18.0f | collision box half-width (fixed to prevent jitter) |
-| `kHalfHeight` (PlayerCat) | 23.0f | collision box half-height |
-| `kPushSpeed` (PushableBox) | 2.0f | box horizontal speed when pushed |
-
----
-
-## 9. Implementation Status
-
-| Feature | Status |
-|---------|--------|
-| `IPhysicsBody` interface | ✅ |
-| `IPushable` interface | ✅ |
-| `StaticBody` | ✅ |
-| `PlayerCat` (CHARACTER) — full physics | ✅ |
-| `PushableBox` (PUSHABLE_BOX) — full physics | ✅ |
-| `PhysicsWorld::Register / Unregister / Clear` | ✅ |
-| `PhysicsWorld::AddStaticBoundary` | ✅ |
-| `PhysicsWorld::Update` — two-phase pipeline | ✅ |
-| `PhysicsWorld::StepPhysicsUpdate` (two-pass ordering) | ✅ |
-| `PhysicsWorld::StepResolveAndApply` (topological) | ✅ |
-| `PhysicsWorld::StepCollisionCallbacks` | ✅ |
-| `PhysicsWorld::DetectRiding` (stacking carry) | ✅ |
-| `PhysicsWorld::CountCharactersPushing` — all 6 chain scenarios | ✅ |
-| `PhysicsWorld::FreezeAll / UnfreezeAll` | ✅ |
-| `PhysicsWorld::GetBodiesOfType` | ✅ |
-| `PhysicsWorld::PurgeExpired` | ✅ |
-| `AddRope / RemoveRope / GetRopesOf` (structure) | ✅ |
-| `StepRopes` (rope force resolution) | ❌ TODO |
-| `PatrolEnemy` | ❌ TODO |
-| `MovingPlatform` | ❌ TODO |
-| `ConditionalPlatform` | ❌ TODO |
-| `Bullet` | ❌ TODO |
-| `LevelOneScene` (actual gameplay) | ❌ not yet implemented |
-| `LevelExitScene` (level-exit confirmation) | ❌ not yet implemented |
+## 9. Known Limitations and Future Work
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `kRunOnPlayerSpeed` | ⬜ defined, unused | Speed value for a cat running on top of another cat; not triggered anywhere in `PlayerCat::PhysicsUpdate()` |
+| `BodyType::PATROL_ENEMY` … `BULLET` | ⬜ enum entries only | No concrete class; `PhysicsWorld` skips unknown types silently |
+| `RopeConstraint` | ⬜ data structure only | `StepRopes()` not implemented |
+| `LevelExitScene` | ⬜ empty stub | Not yet routed in `SceneManager`; `LevelOneScene` ESC currently returns `SceneId::LevelSelect` |
+| Levels 2–10 | ⬜ not implemented | `LevelSelectScene::m_LevelSceneIds[1..9]` are `SceneId::None`; selecting them does nothing |
+| SE (Sound Effects) | ⬜ volume setting exists | `OptionMenuScene` stores `seVolume` but no SE system is connected |
+| `CooperativePushPower` | ⬜ computed, not consumed | `LocalPlayGameScene` updates this value in `GameContext` but no system reads it for gameplay purposes yet |
 </file>
 
 <file path="Image/Level_Cover/LevelOneScene/關卡敘述.txt">

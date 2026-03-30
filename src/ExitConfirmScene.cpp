@@ -1,17 +1,14 @@
 #include "ExitConfirmScene.hpp"
-#include "MenuScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
 ExitConfirmScene::ExitConfirmScene(GameContext& ctx,
-                                   MenuScene* menuScene,
                                    std::shared_ptr<Character> menuFrame,
                                    std::shared_ptr<Character> exitGameButton)
     : Scene(ctx)
     , m_MenuFrame(std::move(menuFrame))
     , m_ExitGameButton(std::move(exitGameButton))
-    , m_MenuScene(menuScene)
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
@@ -64,7 +61,7 @@ void ExitConfirmScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-Scene* ExitConfirmScene::Update() {
+SceneId ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::A) ||
         Util::Input::IsKeyDown(Util::Keycode::D)) {
         m_IsYesSelected = !m_IsYesSelected;
@@ -83,7 +80,7 @@ Scene* ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("ExitConfirmScene: cancelled, back to MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     const bool confirmByKeyboard = Util::Input::IsKeyDown(Util::Keycode::RETURN);
@@ -93,14 +90,14 @@ Scene* ExitConfirmScene::Update() {
     if ((confirmByKeyboard || confirmByMouseYes) && m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
         m_Ctx.ShouldQuit = true ;
-        return nullptr;
+        return SceneId::None;
     }
     if ((confirmByKeyboard || confirmByMouseNo) && !m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void ExitConfirmScene::UpdateChoiceFramePosition() const {

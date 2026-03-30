@@ -1,6 +1,5 @@
 #include "LocalPlayGameScene.hpp"
 #include "LocalPlayScene.hpp"
-#include "LevelSelectScene.hpp"
 #include "KeyboardConfigScene.hpp"
 #include "CatAssets.hpp"
 #include "Util/Input.hpp"
@@ -11,10 +10,8 @@
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx,
-                                       LocalPlayScene* localPlayScene)
-    : Scene(ctx)
-    , m_LocalPlayScene(localPlayScene) {}
+LocalPlayGameScene::LocalPlayGameScene(GameContext& ctx)
+    : Scene(ctx) {}
 
 void LocalPlayGameScene::SetupStaticBoundaries() {
     constexpr float kWallHalfW  = 50.f;
@@ -111,9 +108,9 @@ void LocalPlayGameScene::OnExit() {
     LOG_INFO("LocalPlayGameScene::OnExit");
 }
 
-Scene* LocalPlayGameScene::Update() {
+SceneId LocalPlayGameScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
-        return m_LocalPlayScene;
+        return SceneId::LocalPlay;
     }
 
     for (auto& pb : m_Players) {
@@ -161,7 +158,7 @@ Scene* LocalPlayGameScene::Update() {
 
             if (m_EnteredCount == m_Ctx.SelectedPlayerCount) {
                 LOG_INFO("LocalPlayGameScene: all players entered -> LevelSelectScene");
-                return m_LevelSelectScene;
+                return SceneId::LevelSelect;
             }
         }
     }
@@ -169,7 +166,7 @@ Scene* LocalPlayGameScene::Update() {
     m_World.Update();
     UpdateCooperativePower();
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void LocalPlayGameScene::SpawnPlayers(int count) {

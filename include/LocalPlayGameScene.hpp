@@ -8,20 +8,15 @@
 #include "PhysicsWorld.hpp"
 #include "KeyboardConfigScene.hpp"
 
-class LocalPlayScene;
-class LevelSelectScene;
 
 class LocalPlayGameScene : public Scene {
 public:
-    LocalPlayGameScene(GameContext& ctx,
-                       LocalPlayScene*      localPlayScene);
+    explicit LocalPlayGameScene(GameContext& ctx);
     ~LocalPlayGameScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetLevelSelectScene(LevelSelectScene* s) { m_LevelSelectScene = s; }
+    SceneId Update()  override;
 
 private:
     // One entry per active player.
@@ -40,8 +35,6 @@ private:
     std::shared_ptr<GameText> m_DoorCountText;
     int                       m_EnteredCount = 0;
 
-    LevelSelectScene*    m_LevelSelectScene = nullptr;
-    LocalPlayScene*      m_LocalPlayScene   = nullptr;
 
     PhysicsWorld               m_World;
     std::vector<PlayerBinding> m_Players;

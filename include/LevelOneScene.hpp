@@ -12,19 +12,14 @@
 #include "GameText.hpp"
 #include "PlayerKeyConfig.hpp"
 
-class LevelSelectScene;
-
 class LevelOneScene : public Scene {
 public:
-    LevelOneScene(GameContext& ctx,
-                  LevelSelectScene* levelSelectScene);
+    explicit LevelOneScene(GameContext& ctx);
     ~LevelOneScene() override = default;
 
     void OnEnter() override;
     void OnExit() override;
-    Scene* Update() override;
-
-    void SetLevelExitScene(Scene* s) { m_LevelExitScene = s; }
+    SceneId Update() override;
 
 private:
     struct PlayerBinding {
@@ -76,8 +71,6 @@ private:
     bool  m_DoorOpened    = false;
     float m_ElapsedSec    = 0.0f;
 
-    Scene*            m_LevelExitScene   = nullptr;
-    LevelSelectScene* m_LevelSelectScene = nullptr;
 
     // enter door
     void UpdateDoorEntryAndClear();

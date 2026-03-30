@@ -28,15 +28,21 @@ PhysicsWorld  (pipeline coordinator — PhysicsWorld.hpp / .cpp)
 ├── Register / Unregister / Clear
 ├── AddStaticBoundary(center, halfSize)  → creates & owns a StaticBody
 ├── Update()                             → runs the full per-frame pipeline
-├── CountCharactersPushing(target, dir)  → chain-push query
-├── GetBodiesOfType(type)
-├── FreezeAll / UnfreezeAll
+├── CountCharactersPushing(target, dir)  → recursive chain-push query
+├── GetBodiesOfType(type)                → returns all active bodies of given type
+├── FreezeAll / UnfreezeAll              → for game-pause without destroying state
 └── AddRope / RemoveRope / GetRopesOf    → structural wiring (step not yet implemented)
 
 CharacterPhysicsSystem  (constants header only — CharacterPhysicsSystem.hpp)
 └── compile-time float constants shared by PlayerCat and documentation
     (all runtime logic has been moved to PlayerCat::PhysicsUpdate and PhysicsWorld)
 ```
+
+### 1.1 Scene lifecycle trigger (post-refactor)
+
+- Scene transitions are now dispatched by `SceneManager` via `SceneId` (not scene pointers).
+- `SceneManager::GoTo(...)` is the single place that calls `OnExit()` on the old scene and `OnEnter()` on the new scene.
+- Physics cleanup timing remains unchanged: scenes still call `m_World.Clear()` in `OnExit()` and re-register in `OnEnter()`.
 
 ---
 
@@ -60,8 +66,9 @@ PhysicsWorld::Update()
 ├── [Resolve]  StepResolveAndApply()
 │   ├── Snapshot all active bodies into vector<BodyInfo>
 │   ├── DetectRiding() — record which body each dynamic body sits on top of
-│   ├── Mark kinematic / frozen bodies as immediately resolved (desired = {0,0}
-│   │   for StaticBody; no collision resolution needed)
+│   ├── Mark kinematic / frozen bodies as immediately resolved
+│   │   StaticBody: desired = {0,0}, resolved = {0,0}, resolvedFlag = true
+│   │   Frozen body: same (held in place, not moved by world)
 │   ├── Iterative topological resolution loop:
 │   │   for each unresolved body whose support IS already resolved:
 │   │     effective = desired + support's horizontal resolved delta (carry)
@@ -69,7 +76,7 @@ PhysicsWorld::Update()
 │   │         ResolveBody performs horizontal pass then vertical pass,
 │   │         pushing self out of any solid overlap and recording contact normals
 │   │   repeat until no progress (handles stacking chains of arbitrary depth)
-│   ├── Safety pass — resolve any remaining orphaned bodies without carry
+│   ├── Safety pass — resolve any remaining orphaned/cyclic bodies without carry
 │   └── ApplyResolvedDelta() on every body
 │
 ├── [Callbacks]  StepCollisionCallbacks()
@@ -94,501 +101,238 @@ otherwise, a box might read stale move directions from the previous frame.
 
 `PlayerCat` derives from both `AnimatedCharacter` and `IPhysicsBody`.
 
-```cpp
-class PlayerCat : public AnimatedCharacter, public IPhysicsBody {
-    // GetBodyType()        → CHARACTER
-    // GetPosition()        → m_Transform.translation
-    // SetPosition(pos)     → m_Transform.translation = pos
-    // GetHalfSize()        → {kHalfWidth=18, kHalfHeight=23}  (fixed, avoids jitter)
-    // IsSolid()            → true
-    // IsKinematic()        → false
-    // GetMoveDir()         → m_MoveDir (-1 / 0 / +1), set by scene or own input
-    // GetDesiredDelta()    → m_DesiredDelta = {moveDir * kGroundMoveSpeed, velocityY}
-    // ApplyResolvedDelta() → SetPosition(pos + delta)
-    // OnCollision()        → sets m_Grounded, clamps velocityY, sets m_IsPushing
-    // PhysicsUpdate()      → gravity, optional direct-input read, desired delta
-    // PostUpdate()         → UpdateAnimState()
-    // NotifyPush()         → m_IsPushing = true  (called by PushableBox)
-};
-```
+**Physics constants** (defined in `PlayerCat.hpp` and mirrored in `CharacterPhysicsSystem.hpp`):
 
-**Input sourcing:** if a cat has real key bindings and `m_InputEnabled == true`,
-`PhysicsUpdate()` reads `Util::Input` directly. For cats spawned in
-`LocalPlayGameScene` with `UNKNOWN` keys, the scene calls `SetMoveDir()` and
-`Jump()` externally before `m_World.Update()`.
+| Constant | Value | Usage |
+|----------|-------|-------|
+| `kGravity` | 0.75 | subtracted from `m_VelocityY` every `PhysicsUpdate` |
+| `kJumpForce` | 11.0 | `m_VelocityY` set to this value on `Jump()` |
+| `kGroundMoveSpeed` | 5.0 | horizontal velocity = `moveDir * kGroundMoveSpeed` |
+| `kRunOnPlayerSpeed` | 6.2 | **defined but not yet used** — reserved for a future mechanic where cats move faster when standing on another cat |
+| `kHalfWidth` | 18.0 | AABB half-size X |
+| `kHalfHeight` | 23.0 | AABB half-size Y |
 
----
+Note: `kGravity` and `kRunOnPlayerSpeed` appear in both `PlayerCat.hpp` and `CharacterPhysicsSystem.hpp` with identical values. This is a deliberate duplication for documentation convenience but represents a technical debt — if the values ever diverge, it could cause subtle bugs.
+
+**Per-frame flow in `PhysicsUpdate()`:**
+1. Snapshot `m_Grounded` into `m_PrevGrounded`; reset `m_Grounded = false` and `m_IsPushing = false`.
+2. Apply gravity: `m_VelocityY -= kGravity`.
+3. If `m_InputEnabled` and key bindings are not `UNKNOWN`, read keys directly; otherwise use `m_MoveDir` set by the scene.
+4. If `m_InputEnabled`, check jump key: `IsKeyDown(jumpKey) && m_PrevGrounded → Jump()`.
+5. Compute `m_DesiredDelta = {moveDir * kGroundMoveSpeed, m_VelocityY}`.
+6. Flip `m_Transform.scale.x` to face the movement direction.
+
+**`ApplyResolvedDelta`:** simply adds `delta` to `m_Transform.translation`.
+
+**`OnCollision`:**
+- `normal.y > +0.5` (floor contact): set `m_Grounded = true`, zero `m_VelocityY`.
+- `normal.y < -0.5` (ceiling contact): clamp `m_VelocityY` to 0 if currently rising.
+- `|normal.x| > 0.5` (wall contact) with non-zero `moveDir` in the blocked direction: set `m_IsPushing = true`.
 
 ### 3.2 PushableBox (PUSHABLE_BOX) — Fully Implemented
 
 `PushableBox` derives from `Character`, `IPhysicsBody`, and `IPushable`.
 
-```cpp
-class PushableBox : public Character, public IPhysicsBody, public IPushable {
-    // GetBodyType()         → PUSHABLE_BOX
-    // IsSolid()             → true
-    // IsKinematic()         → false
-    // GetRequiredPushers()  → m_RequiredPushers (set at construction)
-    // PhysicsUpdate()       → gravity + CountCharactersPushing query → desired delta
-    // ApplyResolvedDelta()  → move box + reposition m_CountText label
-    // OnCollision()         → floor/ceiling velocityY clamp
-};
-```
+**Physics constants:**
 
-`m_CountText` is an overlaid `GameText` showing how many more pushers are still
-needed (`std::max(0, requiredPushers - |net|)`). Both the box and its text object
-must be added to the renderer and registered with the world separately.
+| Constant | Value | Usage |
+|----------|-------|-------|
+| `kGravity` | 0.5 | boxes fall slower than cats |
+| `kPushSpeed` | 2.0 | horizontal velocity when net push force meets the threshold |
 
-`SetWorld(PhysicsWorld*)` must be called before the box is registered, so
-`PhysicsUpdate()` can reach `CountCharactersPushing()`.
+**Per-frame flow in `PhysicsUpdate()`:**
+1. Apply gravity: `m_VelocityY -= kGravity`.
+2. Query net push force: `netRight = CountCharactersPushing(this, +1)`, `netLeft = CountCharactersPushing(this, -1)`, `net = netRight - netLeft`.
+3. Compute deficit = `max(0, m_RequiredPushers - |net|)` and update `m_CountText` to display it.
+4. If `|net| >= m_RequiredPushers`: `vx = kPushSpeed * sign(net)`, else `vx = 0`.
+5. `m_DesiredDelta = {vx, m_VelocityY}`.
+6. Call `NotifyAdjacentPushers(activeDir)` to trigger the PUSH animation on contributing cats.
 
----
+**`ApplyResolvedDelta`:** adds `delta` to position; also repositions `m_CountText` to `{newPos.x + 10, newPos.y}` so the label tracks the box without scene intervention.
+
+**`NotifyAdjacentPushers(activeDir)`:** scans all CHARACTER bodies in the world. For each character within `(chHalf.x + myHalf.x) * 1.15` horizontally and `(chHalf.y + myHalf.y) * 0.90` vertically, whose `moveDir` matches `activeDir` and who is on the correct push side, calls `ch->NotifyPush()` to set `m_IsPushing = true`.
 
 ### 3.3 StaticBody (STATIC_BOUNDARY) — Fully Implemented
 
-`StaticBody` is the correct type for **all immovable solid geometry** — floor,
-ceiling, left/right boundary walls, and any in-level wall that should never move.
+`StaticBody` is a pure-collision object with no visual component. It always returns `IsSolid() = true` and `IsKinematic() = true`. `SetPosition` and `ApplyResolvedDelta` are no-ops. It is created and exclusively owned by `PhysicsWorld::AddStaticBoundary()`, which stores it in `m_OwnedStatics` and registers it. When `PhysicsWorld::Clear()` is called, all owned statics are destroyed with the world.
+
+The `BodyType` passed to `AddStaticBoundary` defaults to `STATIC_BOUNDARY`; passing other types (e.g., future `MOVING_PLATFORM`) is supported by the interface but no implementation exists yet.
+
+---
+
+## 4. Chain-Push Algorithm
+
+### 4.1 Problem Statement
+
+The cooperative push mechanic requires counting how many characters are
+collectively pushing on a box (or chain of boxes and characters). A single
+character on its own may not meet the threshold (`m_RequiredPushers`); a group
+pushing in the same direction can.
+
+The algorithm must handle three scenarios:
+
+| Scenario | Expected Behaviour |
+|----------|-------------------|
+| `[A(→) → Box]` | Box sees 1 pusher from A. |
+| `[A(→) → B(→) → Box]` | Box sees 2 pushers: A transmits through B. |
+| `[A(→) → B(0) → Box]` | Box sees 1 pusher: B is passive but transmits A's force. |
+| `[A(→) → Box ← B(←)]` | Box sees net 0 (1 right, 1 left). No movement. |
+
+### 4.2 Algorithm — `CountCharactersPushingImpl`
 
 ```cpp
-class StaticBody final : public IPhysicsBody {
-    // GetBodyType()        → STATIC_BOUNDARY (or any BodyType passed at construction)
-    // IsSolid()            → true   — blocks all dynamic bodies
-    // IsKinematic()        → true   — never moved by the resolver
-    // GetDesiredDelta()    → {0, 0} — stationary by definition
-    // ApplyResolvedDelta() → no-op
-    // SetPosition()        → no-op
+CountCharactersPushingImpl(target, dir, visited):
+    if target in visited: return 0
+    visited.push_back(target)
+
+    count = 0
+    for each active body sp adjacent to target:
+        // Adjacency criteria:
+        //   |cPos.y − tPos.y| < (tHalf.y + cHalf.y) * 0.9   (same vertical band)
+        //   |cPos.x − tPos.x| ≤ (tHalf.x + cHalf.x) + 4.0   (touching or nearly so)
+        //   sp is on the origin side of the push:
+        //       dir=+1: sp.x < target.x  (pusher is to the left)
+        //       dir=−1: sp.x > target.x  (pusher is to the right)
+
+        if sp is CHARACTER:
+            if sp->GetMoveDir() == dir: ++count    // active contribution
+            count += recurse(sp, dir, visited)     // always recurse (passive chain)
+
+        if sp is PUSHABLE_BOX:
+            count += recurse(sp, dir, visited)     // box transmits passively
+
+    return count
+```
+
+**Why unconditional recursion for CHARACTER?** A passive character (not pressing any key, `moveDir = 0`) sandwiched between an active pusher and the target box still physically transmits the upstream force. If recursion were conditional on `moveDir == dir`, this scenario would report 0 pushers instead of 1, breaking the mechanic.
+
+### 4.3 Scenario Verification
+
+| Chain | Active pushers counted | Net result |
+|-------|----------------------|------------|
+| `A(→) → Box` | A (+1) | 1 |
+| `A(→) → B(→) → Box` | A found via B recursion (+1), B direct (+1) | 2 |
+| `A(→) → B(0) → Box` | B recurses into A, A active (+1); B passive (0) | 1 |
+| `A(→) → C(box) ← B(←)` | netRight=1, netLeft=1; CountCharactersPushing returns independently | net=0, no move |
+
+---
+
+## 5. Collision Resolution Detail
+
+### 5.1 AABB Overlap Test
+
+```cpp
+// Returns true if two bodies overlap (touching edges are NOT overlap)
+bool AabbOverlaps(const IPhysicsBody* a, const IPhysicsBody* b) {
+    glm::vec2 delta = a->GetPosition() - b->GetPosition();
+    glm::vec2 sum   = a->GetHalfSize() + b->GetHalfSize();
+    return abs(delta.x) < sum.x && abs(delta.y) < sum.y;
+}
+```
+
+### 5.2 Riding Detection
+
+Before any body moves, `DetectRiding()` scans for stacking relationships. Body A "rides" body B if:
+- A is not kinematic (kinematic bodies define their own path).
+- A's bottom edge (`aPos.y - aHalf.y`) is within `kRidingTolerance = 5.0` pixels of B's top edge (`bPos.y + bHalf.y`).
+- A and B share at least 85% of their combined horizontal half-width overlap.
+
+If A rides B, `A.supportIdx = B's index in the snapshot`. During the topological loop, A's effective delta inherits B's horizontal resolved delta, producing automatic platform-following and stacking without any special-case code in the scene.
+
+### 5.3 Topological Resolution Loop
+
+```
+Repeat until no progress:
+    for each unresolved body i:
+        if i has a support j AND j is not yet resolved: skip (defer to next pass)
+        effective.x = i.desired.x + (j is non-kinematic ? j.resolved.x : 0)
+        effective.y = i.desired.y
+        i.resolved = ResolveBody(i, effective, infos)
+        i.resolvedFlag = true
+```
+
+This loop automatically handles stacking chains of any depth. A body on top of a body on top of a platform resolves in three passes: platform first (kinematic, resolved immediately), middle layer second, top layer last, each inheriting the horizontal delta of the one below.
+
+### 5.4 ResolveBody — Horizontal-then-Vertical Separation
+
+```
+Horizontal pass:
+    testPos = selfPos + {resolved.x, 0}
+    for each solid body j (using j's resolved position if already finalised):
+        overlap = (selfHalf + jHalf) - |testPos - jPos|
+        if overlap.x > 0 AND overlap.y > 0:   // full AABB overlap
+            sign = sign(testPos.x - jPos.x)
+            resolved.x = (jPos.x + (selfHalf.x + jHalf.x) * sign) - selfPos.x
+            record collidedH = j, normalH = {sign, 0}
+
+Vertical pass (using resolved horizontal position):
+    testPos = selfPos + {resolved.x, resolved.y}
+    for each solid body j:
+        if overlap.x > 0 AND overlap.y > 0:
+            sign = sign(testPos.y - jPos.y)
+            resolved.y = (jPos.y + (selfHalf.y + jHalf.y) * sign) - selfPos.y
+            record collidedV = j, normalV = {0, sign}
+```
+
+The horizontal pass runs first to correctly handle corner cases. Solving Y after X means a body sliding diagonally along a wall resolves its horizontal position first, then checks vertically with the corrected X — this prevents false ceiling hits when a body grazes a wall corner.
+
+When another body has already been resolved (`infos[j].resolvedFlag == true`), its position is advanced by `j.resolved` before overlap-testing. This ensures that a body resolving against a moving platform or a just-resolved box sees that object's final-frame position, not its pre-move position.
+
+---
+
+## 6. Rope Constraint System (Structural Wiring — Not Yet Active)
+
+`PhysicsWorld` stores `RopeConstraint` records but does not step them:
+
+```cpp
+struct RopeConstraint {
+    IPhysicsBody* bodyA   = nullptr;
+    IPhysicsBody* bodyB   = nullptr;
+    float         maxLen  = 200.f;
+    float         friction = 0.5f;
+    // TODO: implement force resolution in StepRopes()
 };
 ```
 
-`PhysicsWorld::AddStaticBoundary(center, halfSize)` creates, owns, and
-immediately registers a `StaticBody`. The returned raw pointer is only for
-identification; ownership stays with `PhysicsWorld::m_OwnedStatics`.
-
-**Wall design rule:** all visual wall sprites (e.g. `background_lwall.png`,
-`background_rwall.png`) are purely decorative. Their physics counterpart must be
-a `StaticBody` registered via `AddStaticBoundary()`. The AABB should match the
-visible surface of the wall, not the entire sprite bounding box.
+`AddRope()`, `RemoveRope()`, and `GetRopesOf()` exist for future use. The
+`Update()` pipeline does not call any rope-stepping function. When implemented,
+`StepRopes()` would run after `StepPhysicsUpdate()` and before
+`StepResolveAndApply()`, adding constraint forces to bodies' desired deltas.
 
 ---
 
-### 3.4 Future Body Types (Not Yet Implemented)
+## 7. Freeze / Pause System
 
-The `BodyType` enum reserves values for `PATROL_ENEMY`, `MOVING_PLATFORM`,
-`CONDITIONAL_PLATFORM`, `ROPE_ENDPOINT`, and `BULLET`. These are not required
-for the current scope; their implementation can be deferred until the respective
-level scenes are built. The rope constraint struct (`RopeConstraint`) and
-`AddRope`/`RemoveRope` API already exist in `PhysicsWorld` for future use.
+`IPhysicsBody` exposes `Freeze()`, `Unfreeze()`, and `IsFrozen()`. `PhysicsWorld` exposes `FreezeAll()` and `UnfreezeAll()` as convenience wrappers.
 
----
+A frozen body:
+- Has its `desired` delta overridden to `{0, 0}` in `StepResolveAndApply()` — it does not move regardless of velocity.
+- Is marked as `resolvedFlag = true` immediately (no collision resolution performed against it as a resolver, though solid frozen bodies still block other bodies normally).
+- Is skipped in `StepPhysicsUpdate()` (Phase 1 and PostUpdate) — its state does not evolve.
 
-## 4. Chain Pushing Algorithm
-
-### 4.1 API
-
-```cpp
-// PhysicsWorld public method
-int CountCharactersPushing(const IPhysicsBody* target, int dir) const;
-//   dir: +1 = querying right-side pushers, -1 = querying left-side pushers
-//   Returns the net number of CHARACTER bodies directly or transitively
-//   contributing force toward 'target' from the 'dir' origin side.
-```
-
-`PushableBox::PhysicsUpdate()` calls this twice:
-
-```cpp
-int netRight = m_World->CountCharactersPushing(this, +1);
-int netLeft  = m_World->CountCharactersPushing(this, -1);
-const int net = netRight - netLeft;
-if (std::abs(net) >= m_RequiredPushers)
-    vx = (net > 0) ? kPushSpeed : -kPushSpeed;
-```
-
-### 4.2 Recursive Traversal — `CountCharactersPushingImpl`
-
-The algorithm walks the adjacency graph recursively, using a `visited` set to
-prevent infinite loops.
-
-**Proximity tests** (both must pass for a body to be considered adjacent):
-
-```
-vertical band  : |cPos.y - tPos.y| < (tHalf.y + cHalf.y) * 0.9f
-horizontal gap : |dxToTarget|      ≤ tHalf.x + cHalf.x + 4.0f (touch tolerance)
-direction side : dir=+1 → cPos.x < tPos.x   (pusher is to the left)
-                 dir=-1 → cPos.x > tPos.x   (pusher is to the right)
-```
-
-**Per-neighbor logic:**
-
-```
-CHARACTER body adjacent to target:
-    if moveDir == dir → ++count           (actively pushing: counts directly)
-    always recurse(sp, dir, visited)      (passive characters still transmit)
-
-PUSHABLE_BOX body adjacent to target:
-    recurse(sp, dir, visited)             (box transmits passively, never counts itself)
-```
-
-The key insight is that a CHARACTER with `moveDir == 0` does **not** add 1 to
-the count but still allows force from active pushers behind it to propagate
-forward. This correctly handles all six chain scenarios below.
-
-### 4.3 Verified Scenarios
-
-All positions below are left-to-right. "→" means moveDir = +1. Box bodies are
-capital letters in brackets.
+This design allows the entire simulation to be paused cleanly without destroying body state. On `UnfreezeAll()`, bodies resume from their prior state.
 
 ---
 
-**Scenario 1 — A pushes B, B pushes C. C is pushed by 2.**
+## 8. Body Lifecycle and Purging
 
-```
-A(→) adjacent to B(→) adjacent to [C]   requiredPushers = 2
-```
+`PhysicsWorld` stores bodies as `vector<weak_ptr<IPhysicsBody>>`. This means:
+- Scenes do not need to call `Unregister()` when a body is destroyed; the expired weak pointer is cleaned up automatically.
+- Every `kPurgeInterval = 60` frames, `PurgeExpired()` removes all expired weak pointers from the list.
+- `Clear()` removes everything unconditionally and destroys owned `StaticBody` instances.
 
-`CountCharactersPushing([C], +1)`:
-1. B found adjacent to C; B→: count++ (1). Recurse into B.
-2. A found adjacent to B; A→: count++ (1). Recurse into A.
-3. Nothing behind A.
-4. **Total = 2 ≥ 2** → [C] moves right. ✅
+**Recommended scene pattern:** call `m_World.Clear()` on `OnExit` rather than calling `Unregister()` individually. Since the scene owns all cat and box shared pointers, letting `Clear()` release the weak references is sufficient.
 
 ---
 
-**Scenario 2 — A pushes [C], [C] is adjacent to [D]. Both move with 1 pusher.**
-
-```
-A(→) adjacent to [C] adjacent to [D]   requiredPushers = 1 each
-```
-
-`CountCharactersPushing([C], +1)` = 1 (A found, A→).
-`CountCharactersPushing([D], +1)`:
-1. [C] found adjacent to D; PUSHABLE_BOX → recurse into [C].
-2. A found adjacent to [C]; A→: count++ (1).
-3. **Total = 1 ≥ 1** → [D] moves right. ✅
-
----
-
-**Scenario 3 — A pushes passive B (no key), B is adjacent to [C]. C is pushed by 1.**
-
-```
-A(→) adjacent to B(0) adjacent to [C]   requiredPushers = 1
-```
-
-`CountCharactersPushing([C], +1)`:
-1. B found adjacent to C; B has moveDir=0 → **do not count B**, but still recurse.
-2. A found adjacent to B; A→: count++ (1).
-3. **Total = 1 ≥ 1** → [C] moves right. ✅
-
-> **This was the pre-fix failure point.** The old code used `continue` when
-> `moveDir != dir`, silently skipping both the count and the recursion. The
-> fix changes to an `if (moveDir == dir) ++count;` with an unconditional
-> `count += recurse(sp, …)` below it.
-
----
-
-**Scenario 4 — A pushes [C] from the left, B pushes [C] from the right. Forces cancel.**
-
-```
-A(→) | [C] | B(←)   requiredPushers = 1
-```
-
-`CountCharactersPushing([C], +1)` = 1 (A on left, A→).
-`CountCharactersPushing([C], -1)` = 1 (B on right, B←).
-`net = 1 − 1 = 0` → `|net| < 1` → [C] does not move. ✅
-
----
-
-**Scenario 5 — A pushes [C] while both are airborne.**
-
-```
-A(→) airborne adjacent to [C] airborne   requiredPushers = 1
-```
-
-The vertical-band check allows objects at the same Y level (no ground
-contact required). `CountCharactersPushing([C], +1)` = 1.
-`ResolveBody` handles the horizontal separation exactly as on the ground.
-[C] acquires a horizontal desired delta and is resolved normally. ✅
-
----
-
-**Scenario 6 — A pushes [C], but [C] is blocked by a wall or IsKinematic object.**
-
-```
-A(→) adjacent to [C] | wall(StaticBody)   requiredPushers = 1
-```
-
-`CountCharactersPushing([C], +1)` = 1 ≥ 1 → [C]'s desired delta.x = kPushSpeed.
-During `ResolveBody`, the wall is already marked `resolvedFlag = true` with
-delta = {0,0}. The horizontal pass detects overlap and clamps [C]'s resolved.x
-to zero. [C] does not move. The same result applies for any `IsKinematic()` body. ✅
-
----
-
-## 5. Complete Workflow Example
-
-This example traces a single frame where **PlayerCat A pushes PushableBox [C]**
-(requiredPushers = 1) and both are on the floor.
-
-### Frame start state
-
-| Body | Position | VelocityY | MoveDir | DesiredDelta |
-|------|----------|-----------|---------|--------------|
-| A (PlayerCat) | (100, −294) | 0 | 0 | (0, 0) |
-| [C] (PushableBox) | (155, −294) | 0 | — | (0, 0) |
-| Floor (StaticBody) | (0, −357) | — | — | (0, 0) |
-
-Player presses right key → scene sets `A->SetMoveDir(+1)` before `m_World.Update()`.
-
-### Step 1 — Input (scene, before Update)
-
-```
-A->SetMoveDir(+1)   // scene reads key, informs cat
-```
-
-### Step 2 — Phase 1: StepPhysicsUpdate
-
-**Pass A — PlayerCat:**
-```
-A::PhysicsUpdate():
-    m_VelocityY -= kGravity (0.75)  →  velocityY = -0.75  (was 0, now slightly downward)
-    m_IsPushing = false
-    m_Grounded is reset to false (will be restored by OnCollision)
-    vx = moveDir * kGroundMoveSpeed = +1 * 5.0 = +5.0
-    m_DesiredDelta = {+5.0, -0.75}
-```
-
-**Pass B — PushableBox:**
-```
-[C]::PhysicsUpdate():
-    m_VelocityY -= kGravity (0.5)   →  velocityY = -0.5
-    netRight = CountCharactersPushing([C], +1)
-        → A is adjacent (dxToTarget = 100-155 = -55; minDistX = 18+32 = 50;
-           -55 within 50+4=54 → adjacent; dir=+1, dxToTarget<0 → left side ✓)
-        → A->GetMoveDir() == +1 → count++ = 1; recurse into A → nothing behind A
-        → returns 1
-    netLeft  = CountCharactersPushing([C], -1) = 0
-    net = 1 - 0 = 1
-    deficit = max(0, 1 - 1) = 0    → m_CountText shows "0"
-    |net| = 1 ≥ requiredPushers (1) → vx = +kPushSpeed = +2.0
-    m_DesiredDelta = {+2.0, -0.5}
-    NotifyAdjacentPushers(+1):
-        A is on push side → A->NotifyPush() → A->m_IsPushing = true
-```
-
-### Step 3 — Resolve: StepResolveAndApply
-
-Snapshot infos: [Floor (kinematic), A (desired={+5,-0.75}), C (desired={+2,-0.5})]
-
-Floor is marked `resolvedFlag = true` immediately (kinematic).
-
-**Topological pass — resolve A:**
-- Floor is already resolved.
-- A's supportIdx = Floor (A is standing on floor).
-- effective = {+5,-0.75} + {floor.resolved.x=0} = {+5,-0.75}
-- ResolveBody(A):
-  - Horizontal: A moves to x=105. Check against [C] at x=155 (not yet resolved,
-    pre-move). Overlap = (18+32) - |105-155| = 50-50 = 0 → no overlap.
-  - Check against Floor: no horizontal overlap.
-  - Vertical: A moves to y=-294.75. Check against Floor top edge (-357+40=-317).
-    A bottom = -294.75-23 = -317.75; floor top = -317; overlap = -317-(-317.75) = 0.75 > 0
-    → push A up: resolved.y = (-317 + 23) - (-294) = -317+23+294 = 0 → wait,
-    resolved.y = (otherPos.y + (selfHalf.y + otherHalf.y) * sign) - selfPos.y
-               = (-357 + (23+40)*1) - (-294) = -357+63+294 = 0
-  - A.resolved = {+5, 0}   (horizontal fine, vertical blocked by floor → grounded)
-  - A.collidedV = Floor, normalV = {0,+1}
-
-**Topological pass — resolve [C]:**
-- [C]'s supportIdx = Floor.
-- effective = {+2,-0.5} + {0} = {+2,-0.5}
-- ResolveBody([C]):
-  - Horizontal: [C] moves to x=157. No wall adjacent. A is now at resolved
-    position x=105 (resolvedFlag=true → otherPos = 100+5 = 105).
-    Overlap = (32+18) - |157-105| = 50-52 = -2 → no overlap.
-  - Vertical: same floor clamping → resolved.y = 0.
-  - [C].resolved = {+2, 0}
-
-**Apply deltas:**
-```
-A  →  position = (100+5, -294+0) = (105, -294)
-[C] → position = (155+2, -294+0) = (157, -294)
-```
-
-### Step 4 — Callbacks: StepCollisionCallbacks
-
-```
-A.collidedV = Floor, normalV = {0,+1}
-    → A::OnCollision: normal.y > 0.5 → m_Grounded = true, m_VelocityY = 0
-[C].collidedV = Floor, normalV = {0,+1}
-    → [C]::OnCollision: normal.y > 0.5 → m_VelocityY = 0
-```
-
-### Step 5 — PostUpdate
-
-```
-A::PostUpdate() → UpdateAnimState()
-    m_IsPushing = true (set by NotifyAdjacentPushers above)
-    → CatAnimState::PUSH
-```
-
-**Frame end state:**
-
-| Body | Position | VelocityY | AnimState |
-|------|----------|-----------|-----------|
-| A | (105, −294) | 0 | PUSH |
-| [C] | (157, −294) | 0 | — |
-
-The box moved right 2 px; A moved right 5 px while staying flush against [C].
-On the next frame, AABB separation keeps them adjacent at the `minDistX` boundary.
-
----
-
-## 6. Walls — Design and Registration
-
-All solid, immovable walls in any scene must be registered as `StaticBody` objects
-via `PhysicsWorld::AddStaticBoundary()`. This includes:
-
-- **Boundary walls** — left and right screen edges (already implemented in
-  `TitleScene`, `MenuScene`, and `LocalPlayGameScene` via `SetupStaticBoundaries()`).
-- **In-level platform edges and side walls** — any wall sprite whose physics
-  surface should never move.
-
-```cpp
-// Pattern used in SetupStaticBoundaries() for left and right walls:
-constexpr float kWallHalfW = 50.f;
-constexpr float kWallHalfH = 400.f;
-
-// Left wall: center is 50 px to the left of the play area edge
-m_World.AddStaticBoundary({-(640.f + kWallHalfW), 0.f}, {kWallHalfW, kWallHalfH});
-
-// Right wall: symmetric
-m_World.AddStaticBoundary({ (640.f + kWallHalfW), 0.f}, {kWallHalfW, kWallHalfH});
-```
-
-The visual sprites `background_lwall.png` / `background_rwall.png` are purely
-decorative `Character` objects. Their physics counterpart is the invisible
-`StaticBody` AABB above. The `StaticBody` has `IsSolid() = true` and
-`IsKinematic() = true`, so all dynamic bodies (players, boxes) are resolved
-against it and can never pass through.
-
-**Chain-pushing interaction with walls (Scenario 6):** when a `PushableBox`
-has a `StaticBody` wall on the opposing side, the box correctly refuses to move.
-`CountCharactersPushing()` may still return a positive number (the pushers are
-present), but `ResolveBody` clamps the box's horizontal delta to zero because
-the wall's resolved position leaves no room. The box stays put. ✅
-
----
-
-## 7. Scene Registration Pattern
-
-```cpp
-// ── OnEnter ─────────────────────────────────────────────────────────────────
-void LevelOneScene::OnEnter() {
-    m_World.Clear();
-
-    // 1. Spawn player cats and register them.
-    for (auto& pb : m_Players) {
-        m_World.Register(pb.cat);
-        m_Ctx.Root.AddChild(pb.cat);
-    }
-
-    // 2. Spawn boxes: SetWorld first, then register.
-    for (auto& box : m_Boxes) {
-        box->SetWorld(&m_World);             // box needs world for CountCharactersPushing
-        m_World.Register(box);
-        m_Ctx.Root.AddChild(box);
-        if (box->GetTextObject()) {
-            m_Ctx.Root.AddChild(box->GetTextObject());
-        }
-    }
-
-    // 3. Register immovable geometry last.
-    SetupStaticBoundaries();                  // calls AddStaticBoundary internally
-}
-
-// ── Update ───────────────────────────────────────────────────────────────────
-Scene* LevelOneScene::Update() {
-    // Step 1: read input → set MoveDir / call Jump() on cats.
-    for (auto& pb : m_Players) {
-        // ... (key reading)
-        pb.cat->SetMoveDir(moveDir);
-        if (pb.cat->IsGrounded() && wantJump) pb.cat->Jump();
-    }
-
-    // Step 2: run unified physics pipeline.
-    m_World.Update();
-
-    // Step 3: read-only game logic (goal checks, timer, etc.)
-    m_ElapsedSeconds += deltaTime;
-    if (/* all players at goal */) {
-        SaveManager::UpdateBestTime(0, m_Ctx.SelectedPlayerCount, m_ElapsedSeconds);
-        return m_LevelExitScene;  // confirmation scene before returning to menu
-    }
-    return nullptr;
-}
-
-// ── OnExit ───────────────────────────────────────────────────────────────────
-void LevelOneScene::OnExit() {
-    for (auto& pb : m_Players) m_Ctx.Root.RemoveChild(pb.cat);
-    for (auto& box : m_Boxes) {
-        m_Ctx.Root.RemoveChild(box);
-        if (box->GetTextObject()) m_Ctx.Root.RemoveChild(box->GetTextObject());
-    }
-    m_World.Clear();
-}
-```
-
-**`LevelOneScene`** is the scene for the actual gameplay level.
-**`LevelExitScene`** is the confirmation dialog shown before exiting any level
-(analogous to `ExitConfirmScene` for the main menu). Neither is implemented yet;
-both are empty stubs.
-
----
-
-## 8. CharacterPhysicsSystem Constants
-
-`CharacterPhysicsSystem.hpp` is now a **constants-only header**. All runtime
-logic has moved to `PlayerCat::PhysicsUpdate()` and `PhysicsWorld`. The
-constants are duplicated as `static constexpr` members of `PlayerCat` for
-self-containment; the header exists only for backward-reference convenience.
-
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `kGroundMoveSpeed` | 5.0f | horizontal speed (px/frame) on ground |
-| `kRunOnPlayerSpeed` | 6.2f | horizontal speed when standing on another character |
-| `kJumpForce` | 11.0f | initial vertical velocity on jump |
-| `kGravity` | 0.75f (PlayerCat) / 0.5f (PushableBox) | velocityY decrement per frame |
-| `kScreenHalfW` | 640.0f | half of 1280×720 |
-| `kScreenHalfH` | 360.0f | half of 1280×720 |
-| `kHalfWidth` (PlayerCat) | 18.0f | collision box half-width (fixed to prevent jitter) |
-| `kHalfHeight` (PlayerCat) | 23.0f | collision box half-height |
-| `kPushSpeed` (PushableBox) | 2.0f | box horizontal speed when pushed |
-
----
-
-## 9. Implementation Status
-
-| Feature | Status |
-|---------|--------|
-| `IPhysicsBody` interface | ✅ |
-| `IPushable` interface | ✅ |
-| `StaticBody` | ✅ |
-| `PlayerCat` (CHARACTER) — full physics | ✅ |
-| `PushableBox` (PUSHABLE_BOX) — full physics | ✅ |
-| `PhysicsWorld::Register / Unregister / Clear` | ✅ |
-| `PhysicsWorld::AddStaticBoundary` | ✅ |
-| `PhysicsWorld::Update` — two-phase pipeline | ✅ |
-| `PhysicsWorld::StepPhysicsUpdate` (two-pass ordering) | ✅ |
-| `PhysicsWorld::StepResolveAndApply` (topological) | ✅ |
-| `PhysicsWorld::StepCollisionCallbacks` | ✅ |
-| `PhysicsWorld::DetectRiding` (stacking carry) | ✅ |
-| `PhysicsWorld::CountCharactersPushing` — all 6 chain scenarios | ✅ |
-| `PhysicsWorld::FreezeAll / UnfreezeAll` | ✅ |
-| `PhysicsWorld::GetBodiesOfType` | ✅ |
-| `PhysicsWorld::PurgeExpired` | ✅ |
-| `AddRope / RemoveRope / GetRopesOf` (structure) | ✅ |
-| `StepRopes` (rope force resolution) | ❌ TODO |
-| `PatrolEnemy` | ❌ TODO |
-| `MovingPlatform` | ❌ TODO |
-| `ConditionalPlatform` | ❌ TODO |
-| `Bullet` | ❌ TODO |
-| `LevelOneScene` (actual gameplay) | ❌ not yet implemented |
-| `LevelExitScene` (level-exit confirmation) | ❌ not yet implemented |
+## 9. Known Limitations and Future Work
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `kRunOnPlayerSpeed` | ⬜ defined, unused | Speed value for a cat running on top of another cat; not triggered anywhere in `PlayerCat::PhysicsUpdate()` |
+| `BodyType::PATROL_ENEMY` … `BULLET` | ⬜ enum entries only | No concrete class; `PhysicsWorld` skips unknown types silently |
+| `RopeConstraint` | ⬜ data structure only | `StepRopes()` not implemented |
+| `LevelExitScene` | ⬜ empty stub | Not yet routed in `SceneManager`; `LevelOneScene` ESC currently returns `SceneId::LevelSelect` |
+| Levels 2–10 | ⬜ not implemented | `LevelSelectScene::m_LevelSceneIds[1..9]` are `SceneId::None`; selecting them does nothing |
+| SE (Sound Effects) | ⬜ volume setting exists | `OptionMenuScene` stores `seVolume` but no SE system is connected |
+| `CooperativePushPower` | ⬜ computed, not consumed | `LocalPlayGameScene` updates this value in `GameContext` but no system reads it for gameplay purposes yet |

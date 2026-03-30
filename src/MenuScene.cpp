@@ -1,7 +1,4 @@
 #include "MenuScene.hpp"
-#include "ExitConfirmScene.hpp"
-#include "OptionMenuScene.hpp"
-#include "LocalPlayScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -9,17 +6,8 @@
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-MenuScene::MenuScene(GameContext&      ctx,
-                     Scene*            titleScene,
-                     ExitConfirmScene* exitConfirmScene,
-                     OptionMenuScene*  optionScene,
-                     LocalPlayScene*   localPlayScene)
-    : Scene(ctx)
-    , m_TitleScene(titleScene)
-    , m_ExitConfirmScene(exitConfirmScene)
-    , m_OptionScene(optionScene)
-    , m_LocalPlayScene(localPlayScene)
-{
+MenuScene::MenuScene(GameContext& ctx)
+    : Scene(ctx) {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
     m_MenuFrame = std::make_shared<Character>(
@@ -136,14 +124,14 @@ void MenuScene::OnExit() {
     m_World.Clear();
 }
 
-Scene* MenuScene::Update() {
+SceneId MenuScene::Update() {
     m_World.Update();
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
     if (ip::IsKeyDown(k::ESCAPE) || m_ExitGameButton->IsLeftClicked()) {
-        return m_TitleScene;
+        return SceneId::Title;
     }
 
     if (ip::IsKeyDown(k::A)) {
@@ -151,7 +139,7 @@ Scene* MenuScene::Update() {
         m_SelectedIndex = (m_SelectedIndex + 2) % 3;
         m_LeftTriButton->Press(75.f);
         ShowCurrentOption();
-        return nullptr;
+        return SceneId::None;
     }
 
     if (ip::IsKeyDown(k::D)) {
@@ -159,19 +147,19 @@ Scene* MenuScene::Update() {
         m_SelectedIndex = (m_SelectedIndex + 1) % 3;
         m_RightTriButton->Press(75.f);
         ShowCurrentOption();
-        return nullptr;
+        return SceneId::None;
     }
 
     if (ip::IsKeyDown(k::RETURN)) {
         switch (m_SelectedIndex) {
-        case 0: if (m_ExitConfirmScene != nullptr) return m_ExitConfirmScene; break;
-        case 1: if (m_OptionScene      != nullptr) return m_OptionScene;      break;
-        case 2: if (m_LocalPlayScene   != nullptr) return m_LocalPlayScene;   break;
+        case 0: return SceneId::ExitConfirm;
+        case 1: return SceneId::OptionMenu;
+        case 2: return SceneId::LocalPlay;
         default: break;
         }
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void MenuScene::ShowCurrentOption() const {

@@ -3,7 +3,6 @@
 #include <cmath>
 #include "CatAssets.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "LevelSelectScene.hpp"
 #include "SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -13,11 +12,8 @@
 using ip = Util::Input;
 using k  = Util::Keycode;
 
-LevelOneScene::LevelOneScene(GameContext& ctx,
-                             LevelSelectScene* levelSelectScene)
-    : Scene(ctx)
-    , m_LevelSelectScene(levelSelectScene)
-{
+LevelOneScene::LevelOneScene(GameContext& ctx)
+    : Scene(ctx) {
     m_FloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelOneScene/Floor.png");
     m_LeftWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_lwall.png");
     m_RightWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_rwall.png");
@@ -368,9 +364,9 @@ void LevelOneScene::UpdateDoorEntryAndClear() {
     }
 }
 
-Scene* LevelOneScene::Update() {
+SceneId LevelOneScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
-        return m_LevelExitScene;
+        return SceneId::LevelSelect;
     }
 
     HandlePlayerInput();
@@ -384,8 +380,8 @@ Scene* LevelOneScene::Update() {
     TryOpenDoorAndClear();
     UpdateDoorEntryAndClear();
     if (m_ClearDone) {
-        return m_LevelSelectScene;
+        return SceneId::LevelSelect;
     }
 
-    return nullptr;
+    return SceneId::None;
 }

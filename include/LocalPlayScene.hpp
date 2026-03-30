@@ -11,14 +11,11 @@
 
 #include "UITriangleButton.hpp"
 
-class MenuScene;
 class KeyboardConfigScene;
-class LocalPlayGameScene;
 
 class LocalPlayScene : public Scene {
 public:
     LocalPlayScene(GameContext& ctx,
-                   MenuScene* menuScene,
                    std::shared_ptr<Character>          menuFrame,
                    std::shared_ptr<Character>          exitGameButton,
                    std::shared_ptr<UITriangleButton> leftTriButton,
@@ -29,10 +26,7 @@ public:
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
-    void SetGameScene(LocalPlayGameScene* s) { m_GameScene = s; }
+    SceneId Update()  override;
 
     [[nodiscard]]int GetPlayerCount() const { return m_PlayerCount; }
 
@@ -51,9 +45,7 @@ private:
 
     int m_PlayerCount = MIN_PLAYERS;
 
-    MenuScene*           m_MenuScene     = nullptr;
     KeyboardConfigScene* m_KbConfigScene = nullptr;
-    LocalPlayGameScene*  m_GameScene     = nullptr;
 
     static const Util::Color k_Black;
     static const Util::Color k_Red;

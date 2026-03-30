@@ -33,50 +33,6 @@ file(GLOB_RECURSE SRC_FILES src/*.cpp)
 file(GLOB_RECURSE HEADER_FILES include/*.hpp)
 
 add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
-        include/GameText.hpp
-        include/PlayerCat.hpp
-        src/PlayerCat.cpp
-        src/GameText.cpp
-        include/UITriangleButton.hpp
-        src/UITriangleButton.cpp
-        include/Scene.hpp
-        include/GameContext.hpp
-        include/Titlescene.hpp
-        src/Titlescene.cpp
-        include/Menuscene.hpp
-        src/Menuscene.cpp
-        include/Exitconfirmscene.hpp
-        src/Exitconfirmscene.cpp
-        include/OptionMenuScene.hpp
-        src/OptionMenuScene.cpp
-        include/KeyboardConfigScene.hpp
-        src/KeyboardConfigScene.cpp
-        include/LocalPlayScene.hpp
-        src/LocalPlayScene.cpp
-        include/LocalPlayGameScene.hpp
-        src/LocalPlayGameScene.cpp
-        include/CharacterPhysicsSystem.hpp
-        src/CharacterPhysicsSystem.cpp
-        include/IPhysicsBody.hpp
-        include/PhysicsWorld.hpp
-        src/PhysicsWorld.cpp
-        include/BGMPlayer.hpp
-        src/BGMPlayer.cpp
-        include/CatAssets.hpp
-        include/Savemanager.hpp
-        src/Savemanager.cpp
-        include/LevelSelectScene.hpp
-        src/LevelSelectScene.cpp
-        include/LevelOneScene.hpp
-        src/LevelOneScene.cpp
-        include/PushableBox.hpp
-        include/LevelExitScene.hpp
-        src/LevelExitScene.cpp
-        src/PushableBox.cpp
-        include/IPushable.hpp
-        include/StaticBody.hpp
-        src/StaticBody.cpp
-        include/PlayerKeyConfig.hpp
 )
 
 if(MSVC)

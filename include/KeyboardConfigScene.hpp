@@ -14,20 +14,15 @@
 #include "PlayerKeyConfig.hpp"
 #include "Util/Keycode.hpp"
 
-class OptionMenuScene;
-
 class KeyboardConfigScene : public Scene {
 public:
     KeyboardConfigScene(GameContext& ctx,
-                        OptionMenuScene* optionScene,
                         std::shared_ptr<Character> exitGameButton);
     ~KeyboardConfigScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetOptionScene(OptionMenuScene* s) { m_OptionScene = s; }
+    SceneId Update()  override;
 
     static const PlayerKeyConfig k_Default1P;
     static const PlayerKeyConfig k_Default2P;
@@ -66,7 +61,6 @@ private:
     std::shared_ptr<GameText> m_CancelText;
     std::shared_ptr<GameText> m_DefaultText;
 
-    OptionMenuScene* m_OptionScene = nullptr;
 
     std::array<PlayerKeyConfig, MAX_PLAYERS> m_Applied;
     PlayerKeyConfig m_Pending;

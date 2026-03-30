@@ -3,16 +3,12 @@
 //
 
 #include "LevelSelectScene.hpp"
-#include "LocalPlayGameScene.hpp"
 #include "AppUtil.hpp"
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 
-LevelSelectScene::LevelSelectScene(GameContext& ctx,
-                                   LocalPlayGameScene* localPlayGameScene)
-    : Scene(ctx)
-    , m_LocalPlayGameScene(localPlayGameScene)
-{
+LevelSelectScene::LevelSelectScene(GameContext& ctx)
+    : Scene(ctx) {
     m_SelectorFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/level_select_frame.png");
     m_SelectorFrame->SetZIndex(32);
@@ -100,12 +96,12 @@ void LevelSelectScene::OnExit() {
     }
 }
 
-Scene* LevelSelectScene::Update() {
+SceneId LevelSelectScene::Update() {
     using ip = Util::Input ;
     using k  = Util::Keycode;
     if (ip::IsKeyDown(k::ESCAPE)) {
         LOG_INFO("LevelSelectScene: ESC → LocalPlayGameScene");
-        return m_LocalPlayGameScene;
+        return SceneId::LocalPlayGame;
     }
 
     int  newIdx     = m_SelectedIdx;
@@ -159,14 +155,14 @@ Scene* LevelSelectScene::Update() {
     }
 
     if (confirmed) {
-        if (m_LevelScenes[m_SelectedIdx] != nullptr) {
+        if (m_LevelSceneIds[m_SelectedIdx] != SceneId::None) {
             LOG_INFO("LevelSelectScene: entering Level {}",m_SelectedIdx+1);
-            return m_LevelScenes[m_SelectedIdx];
+            return m_LevelSceneIds[m_SelectedIdx];
         }
         LOG_INFO("LevelSelectScene: Level {} not implemented yet", m_SelectedIdx+1);
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void LevelSelectScene::UpdateSelectorPos() const {

@@ -13,22 +13,15 @@
 #include "GameText.hpp"
 #include "UITriangleButton.hpp"
 
-class MenuScene;
-class KeyboardConfigScene;
-
 class OptionMenuScene : public Scene {
 public:
     OptionMenuScene(GameContext& ctx,
-                    MenuScene* menuScene,
                     std::shared_ptr<Character> exitGameButton);
     ~OptionMenuScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
-
-    void SetMenuScene(MenuScene* s) { m_MenuScene = s; }
-    void SetKeyboardConfigScene(KeyboardConfigScene* s) { m_KeyboardConfigScene = s; }
+    SceneId Update()  override;
 
     struct Settings {
         int  bgColorIndex = 0;
@@ -73,8 +66,6 @@ private:
     std::shared_ptr<GameText> m_OkText;
     std::shared_ptr<GameText> m_CancelText;
 
-    MenuScene* m_MenuScene = nullptr;
-    KeyboardConfigScene* m_KeyboardConfigScene = nullptr;
 
     static const std::vector<std::string> s_BgColorOptions;
     static const std::vector<std::string> s_BgColorPaths;

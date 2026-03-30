@@ -6,9 +6,7 @@
 #include "BGMPlayer.hpp"
 #include "AppUtil.hpp"
 
-#include "MenuScene.hpp"
 #include "OptionMenuScene.hpp"
-#include "KeyboardConfigScene.hpp"
 
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -29,11 +27,9 @@ const vector<string> OptionMenuScene::s_BgColorPaths = {
 };
 
 OptionMenuScene::OptionMenuScene(GameContext& ctx,
-                                 MenuScene* menuScene,
                                  shared_ptr<Character> exitGameButton)
     : Scene(ctx)
     , m_ExitGameButton(std::move(exitGameButton))
-    , m_MenuScene(menuScene)
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
 
@@ -237,7 +233,7 @@ void OptionMenuScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-Scene* OptionMenuScene::Update() {
+SceneId OptionMenuScene::Update() {
     m_BgColorLeftBtn->UpdateButton();
     m_BgColorRightBtn->UpdateButton();
     m_BgmVolumeLeftBtn->UpdateButton();
@@ -253,11 +249,11 @@ Scene* OptionMenuScene::Update() {
     {
         m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
         m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     if (m_KbConfigOpen->IsLeftClicked()) {
-        return m_KeyboardConfigScene;
+        return SceneId::KeyboardConfig;
     }
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;
@@ -273,7 +269,7 @@ Scene* OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
         }
-        return m_MenuScene;
+        return SceneId::Menu;
     }
 
     if (Util::Input::IsKeyDown(Util::Keycode::W) || Util::Input::IsKeyDown(Util::Keycode::UP)) {
@@ -328,7 +324,7 @@ Scene* OptionMenuScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         switch (m_SelectedRow) {
         case 0:
-            return m_KeyboardConfigScene;
+            return SceneId::KeyboardConfig;
         case 5:
             m_Applied = m_Pending;
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
@@ -343,17 +339,17 @@ Scene* OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
             }
-            return m_MenuScene;
+            return SceneId::Menu;
         case 6:
             m_Ctx.BGMPlayer->SetVolume(m_Applied.bgmVolume * 6);
             m_Ctx.Background->SetImage(s_BgColorPaths[m_Applied.bgColorIndex]);
-            return m_MenuScene;
+            return SceneId::Menu;
         default:
             break;
         }
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void OptionMenuScene::DecrementRow() {

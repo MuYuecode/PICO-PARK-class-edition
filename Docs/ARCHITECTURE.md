@@ -49,22 +49,22 @@ App::State:  START ──→ UPDATE ──→ END
 |--------|------|-------|
 | `m_Ctx` | `unique_ptr<GameContext>` | cross-scene shared data |
 | `m_Root` | `Util::Renderer` | global render root |
-| `m_TitleScene` … `m_LevelSelectScene` | `unique_ptr<Scene>` | sole owners of each scene |
-| `m_CurrentScene` | `Scene*` (non-owning) | active scene |
+| `m_SceneManager` | `unique_ptr<SceneManager>` | sole owner of scene registry and transition pipeline |
 
-> **Adding a new scene:** declare `unique_ptr<Scene> m_XxxScene` in `App.hpp`, construct in `AppStart.cpp`, wire pointers via setters, then `std::move` into the member.
+> **Adding a new scene:** construct it in `AppStart.cpp`, `Register(SceneId::Xxx, std::move(scene))`, then route to it by returning `SceneId::Xxx` from `Scene::Update()`.
 
-### TransitionTo
+### Transition Pipeline
 
 ```cpp
-void App::TransitionTo(Scene* next) {
-    if (m_CurrentScene) m_CurrentScene->OnExit();
-    m_CurrentScene = next;
-    if (m_CurrentScene) m_CurrentScene->OnEnter();
+SceneId SceneManager::UpdateCurrent() {
+    if (!m_Current) return SceneId::None;
+    const SceneId next = m_Current->Update();
+    if (next != SceneId::None && next != m_CurrentId) GoTo(next);
+    return next;
 }
 ```
 
-Called by `App::Update()` when `m_CurrentScene->Update()` returns a non-null, different pointer.  
+Called by `App::Update()` once per frame; `SceneManager` is the only component allowed to switch scenes.
 `GameContext::ShouldQuit = true` → `App::Update()` sets state to `END`.
 
 ---
@@ -78,20 +78,23 @@ struct GameContext {
     Util::Renderer& Root;           // borrowed from App, not owned
 
     // Permanent render-tree objects (added in AppStart, never removed)
-    shared_ptr<Character>  Background;  // hot-swappable bg image
-    shared_ptr<Character>  Floor;
-    shared_ptr<BGMPlayer>  BGMPlayer;
-    shared_ptr<Character>  Header;
-    shared_ptr<Character>  Door;        // switched open/close by LocalPlayGameScene
-    shared_ptr<PushableBox> TestBox;    // demo box on title screen
+    shared_ptr<Character>   Background;  // hot-swappable bg image
+    shared_ptr<Character>   Floor;
+    shared_ptr<BGMPlayer>   BGMPlayer;
+    shared_ptr<Character>   Header;
+    shared_ptr<Character>   Door;        // switched open/close by gameplay scenes
+    shared_ptr<PushableBox> TestBox;     // demo box on title/menu screen
 
     // 8 decoration cats shared between title screen and gameplay
     vector<shared_ptr<PlayerCat>> StartupCats;
 
     // Runtime game data
-    int  SelectedPlayerCount  = 2;
-    int  CooperativePushPower = 1;
+    int  SelectedPlayerCount  = 2;   // written by LocalPlayScene; read by all level scenes
+    int  CooperativePushPower = 1;   // written by LocalPlayGameScene; for future use
     bool ShouldQuit           = false;
+
+    // Per-player key bindings, applied by KeyboardConfigScene and read by level scenes
+    std::array<PlayerKeyConfig, 8> AppliedKeyConfigs{};
 
     // index 0–7: blue, red, yellow, green, purple, pink, orange, gray
     static constexpr array<const char*, 8> kCatColorOrder = { … };
@@ -101,7 +104,8 @@ struct GameContext {
 **Rules:**
 - Permanent objects are added to the render tree once in `AppStart`; scenes must not remove them (`LevelSelectScene` hides `Header` via `SetVisible`, not `RemoveChild`).
 - Cross-scene game state (`SelectedPlayerCount`, `CooperativePushPower`) lives here; scenes must not read each other's members directly.
-- `TestBox` is a `PushableBox` used for the title-screen physics demo. It is registered into `TitleScene`'s local `PhysicsWorld` during `TitleScene::OnEnter()`, and un-registered when `m_World.Clear()` is called on exit.
+- `TestBox` is a `PushableBox` used for the title-screen physics demo. It is registered into `TitleScene`'s local `PhysicsWorld` during `TitleScene::OnEnter()`, and unregistered when `m_World.Clear()` is called on exit.
+- `AppliedKeyConfigs` is written by `KeyboardConfigScene::SyncAppliedToContext()` (called on construction and on every `CommitPending()`). Level scenes read this array to bind player keys at spawn time.
 
 ---
 
@@ -114,7 +118,7 @@ class Scene {
 public:
     virtual void   OnEnter() = 0;  // AddChild + reset state
     virtual void   OnExit()  = 0;  // RemoveChild (must pair with OnEnter)
-    virtual Scene* Update()  = 0;  // per-frame logic; return next scene or nullptr
+    virtual SceneId Update() = 0;  // per-frame logic; return next SceneId or SceneId::None
 protected:
     GameContext& m_Ctx;
 };
@@ -127,22 +131,22 @@ protected:
 | Scene | Role | Physics | Destinations |
 |-------|------|---------|-------------|
 | `TitleScene` | title screen, flashing prompt, 8 cats + TestBox | `PhysicsWorld` (floor + walls; cats + TestBox) | MenuScene |
-| `MenuScene` | main menu (EXIT / OPTION / LOCAL PLAY) | `PhysicsWorld` (floor + walls; startup cats) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
+| `MenuScene` | main menu (EXIT GAME / OPTION / LOCAL PLAY), 3 options via A/D | `PhysicsWorld` (floor + walls; startup cats) | TitleScene, ExitConfirmScene, OptionMenuScene, LocalPlayScene |
 | `ExitConfirmScene` | YES/NO quit dialog | none | MenuScene (or ShouldQuit) |
 | `OptionMenuScene` | bg color, volume, disp number; saves on OK | none | MenuScene, KeyboardConfigScene |
 | `KeyboardConfigScene` | key binding (1P–8P); saves on CommitPending | none | OptionMenuScene |
-| `LocalPlayScene` | select player count (2–8) | none | MenuScene, LocalPlayGameScene |
-| `LocalPlayGameScene` | multi-player physics, door entry | `PhysicsWorld` (floor + ceiling + walls; player cats) | LocalPlayScene, LevelSelectScene |
-| `LevelSelectScene` | 10-level grid, crown marks, best times | none | LocalPlayGameScene (ESC), LevelNScene (ENTER) |
-| `LevelOneScene` | actual gameplay level | `PhysicsWorld` (to be implemented) | **not yet implemented** |
-| `LevelExitScene` | confirmation before exiting a level | none | **not yet implemented** |
+| `LocalPlayScene` | select player count (2–8); blocks entry if insufficient key configs | none | MenuScene, LocalPlayGameScene |
+| `LocalPlayGameScene` | title-screen physics demo with open door; players enter to proceed | `PhysicsWorld` (floor + ceiling + walls; player cats) | LocalPlayScene (ESC), LevelSelectScene (all players entered) |
+| `LevelSelectScene` | 10-level grid, crown marks, best times per player count | none | LocalPlayGameScene (ESC), LevelNScene (ENTER/click) |
+| `LevelOneScene` | cooperative level: pick up key, push boxes, open door, enter ✅ fully implemented | `PhysicsWorld` (floor + ceiling + walls; player cats + 2 PushableBoxes) | LevelSelectScene (clear), LevelSelectScene (ESC) |
+| `LevelExitScene` | confirmation before exiting a level | none | ⬜ **empty stub — not yet implemented** |
 
-`LevelOneScene` is the scene where the actual cooperative level takes place. `LevelExitScene` is a confirmation dialog (analogous to `ExitConfirmScene`) that appears when players try to exit mid-level. Both are currently empty stubs with no implementation.
+`LevelExitScene` remains an empty stub (both `.hpp` and `.cpp` are blank). The current SceneId routing does not pass through it.
 
 ### 4.3 PhysicsWorld Lifecycle in Scenes
 
 Scenes that own a `PhysicsWorld` member (`TitleScene`, `MenuScene`,
-`LocalPlayGameScene`) follow a strict pattern:
+`LocalPlayGameScene`, `LevelOneScene`) follow a strict pattern:
 
 ```
 OnEnter:
@@ -183,11 +187,13 @@ GetBlueCatRunImg()   → LocalPlayScene
 
 Borrowers call `AddChild`/`RemoveChild` in `OnEnter`/`OnExit` and restore position/scale on exit.
 
-### 4.5 Scene Pointer Rules
+### 4.5 Scene Transition Rules
 
-- `App` owns scenes via `unique_ptr` (sole owner).
-- Inter-scene references use **raw non-owning pointers**; never `delete`.
-- Circular references (A↔B) resolved via `SetXxx(ptr)` setters after both are constructed in `AppStart`.
+- `App` owns exactly one `SceneManager` instance.
+- `SceneManager` owns all scenes via `unique_ptr`.
+- Scene classes do not hold pointers to other scenes.
+- Scene transitions are expressed only by `SceneId` return values from `Update()`.
+- `SceneManager::GoTo` is the single place that calls `OnExit()` and `OnEnter()`.
 
 ---
 
@@ -230,23 +236,27 @@ Util::GameObject         (PTSD base: m_Drawable, m_Transform, m_ZIndex)
 | `GetSize()` | pixel dimensions (used for alignment math) |
 | `IsMouseHovering()` / `IsLeftClicked()` | AABB hit-test via `AppUtil` |
 
+Default color: orange `(255, 140, 0, 255)`. Font: `TerminusTTFWindows-Bold-4.49.3.ttf`.
+
 ### 5.5 ZIndex Convention
 
 | Range | Usage |
 |------|-------|
 | `-10` | background |
 | `0` | floor, header, title-scene subtitle/prompt text |
+| `4–4.1` | LevelOneScene floor, ceiling, wall sprites |
 | `5` | door |
 | `10` | menu frame, blue cat image |
 | `15` | triangle buttons, `PushableBox` body, startup cats (`15.0 + i*0.01`) |
 | `16` | `PushableBox` counter text |
-| `20` | Option menu frame, ExitConfirm choice frame |
-| `20` | LocalPlay gameplay cats |
+| `18` | LevelOneScene key sprite |
+| `20` | Option menu frame, ExitConfirm choice frame; gameplay cats (`20.0 + i*0.01`) |
 | `25` | ExitConfirm texts, KeyboardConfig frame |
 | `30` | ExitGameButton, Option/Keyboard choice frame, door count text |
 | `32` | LevelSelect selector frame |
 | `35` | Option/Keyboard UI texts & buttons, level covers, LevelSelect title/best-time text |
 | `36` | LevelSelect crown marks |
+| `40` | LevelOneScene timer text |
 | `100` | GameText default (when not explicitly overridden) |
 
 ---
@@ -274,7 +284,7 @@ Normal ──Press(ms)──→ Pressed ──timer expires──→ Normal
 **Source:** PTSD `Util/Input.hpp`
 
 | Function | Semantics |
-|----------|-----------|
+|----------|----|
 | `IsKeyDown(key)` | pressed **this frame only** |
 | `IsKeyPressed(key)` | held down (true every frame) |
 | `GetCursorPosition()` | mouse in screen space (Y-up) |
@@ -294,42 +304,47 @@ Normal ──Press(ms)──→ Pressed ──timer expires──→ Normal
 
 ## 8. Settings System
 
-### PlayerKeyConfig (`KeyboardConfigScene.hpp`)
+### PlayerKeyConfig (`PlayerKeyConfig.hpp`)
 
 ```cpp
+// Defined in its own header PlayerKeyConfig.hpp
 struct PlayerKeyConfig {
     Util::Keycode up, down, left, right, jump, cancel, shot;
-    Util::Keycode menu;     // 1P only
+    Util::Keycode menu;     // 1P only (rows marked non-selectable for 2P–8P)
     Util::Keycode subMenu;  // 1P only
+    vector<Keycode> AllKeys() const;  // returns all non-UNKNOWN keys
 };
 ```
 
-**Defaults:**
+> Note: `PlayerKeyConfig` is declared in `PlayerKeyConfig.hpp`, **not** inside `KeyboardConfigScene.hpp`. `KeyboardConfigScene.hpp` includes `PlayerKeyConfig.hpp`.
+
+**Defaults (defined in `KeyboardConfigScene.cpp`):**
 - `k_Default1P`: W/S/A/D move, W jump, ESC cancel, SPACE shot, ENTER menu, TAB submenu
-- `k_Default2P`: arrow keys move, UP jump, AC_BACK cancel, R_CTRL shot
+- `k_Default2P`: arrow keys move, UP jump, AC_BACK cancel, R_CTRL shot, UNKNOWN for menu/submenu
 - 3P–8P: all `UNKNOWN` (must be configured manually)
 
 ### KeyboardConfigScene
 
-- Constructor loads `settings.json` via `SaveManager::LoadKeyConfigs()`.
+- Constructor loads `settings.json` via `SaveManager::LoadKeyConfigs()` and calls `SyncAppliedToContext()`.
 - `m_Applied[8]` = committed configs; `m_Pending` = in-edit buffer.
-- `CommitPending()` writes `m_Applied[m_CurrentPlayer]` and calls `SaveManager::SaveKeyConfigs()`.
-- `GetAppliedConfig(i)` → used by `LocalPlayGameScene::SpawnPlayers()`.
-- `GetConfiguredPlayerCount()` → returns count of players with ≥4 non-UNKNOWN keys; used by `LocalPlayScene` to block entry.
-- `menu` and `subMenu` rows are **not selectable** for players other than 1P.
+- `CommitPending()` writes `m_Applied[m_CurrentPlayer]`, calls `SaveManager::SaveKeyConfigs()`, then `SyncAppliedToContext()` to push the new bindings into `m_Ctx.AppliedKeyConfigs`.
+- `GetAppliedConfig(i)` → used as a fallback reference; level scenes read `m_Ctx.AppliedKeyConfigs` directly.
+- `GetConfiguredPlayerCount()` → returns count of players with `AllKeys().size() >= 4`; used by `LocalPlayScene` to block entry.
+- `menu` and `subMenu` rows are **not selectable** for players other than 1P (index 0).
 
 ### OptionMenuScene::Settings
 
 ```cpp
 struct Settings {
-    int  bgColorIndex = 0;   // WHITE / CREAM / DARK
-    int  bgmVolume    = 10;  // 0–20, multiplied by 6 when passed to BGMPlayer
+    int  bgColorIndex = 0;   // 0=WHITE / 1=CREAM / 2=DARK
+    int  bgmVolume    = 10;  // 0–20, multiplied by 6 when passed to BGMPlayer::SetVolume
     int  seVolume     = 10;  // 0–20 (SE system not yet implemented)
     bool dispNumber   = false;
 };
 ```
 
 - `m_Applied` = live values; `m_Pending` = in-edit buffer; OK commits and persists, CANCEL discards.
+- Background color change and volume adjustment are previewed **live** during editing; CANCEL restores `m_Applied` values.
 
 ---
 
@@ -356,7 +371,7 @@ Pure-static utility class. Uses **nlohmann/json** (bundled with PTSD).
   "keyConfigs": [
     { "up": 26, "down": 22, "left": 4, "right": 7,
       "jump": 26, "cancel": 41, "shot": 44, "menu": 40, "subMenu": 43 },
-    …
+    ...
   ]
 }
 ```
@@ -369,12 +384,13 @@ Keys stored as `int` (SDL_Scancode; `UNKNOWN = 0`).
 {
   "levels": [
     { "levelId": 1, "completed": true,
-      "bestTimes": { "2": 45.3, "3": -1.0, … "8": -1.0 } }
+      "bestTimes": { "2": 45.3, "3": -1.0, ... "8": -1.0 } }
   ]
 }
 ```
 
-`bestTimes` key is player count (2–8); `-1.0` = not yet cleared.
+`bestTimes` key is the player count (2–8) as a string; `-1.0` = not yet cleared.
+`bestTimes` is stored as `array<float, 9>` in `LevelSaveData`; indices 0–1 are unused (2P is minimum).
 
 ### Read-Modify-Write Strategy
 
@@ -424,7 +440,8 @@ resources/
 │   │   └── {color}_cat_push_1–3.png    (3 frames, 120ms, looping)
 │   └── Level_Cover/
 │       ├── LevelOne–LevelFour.png  Crown.png  02.png  ExitFrame.png  Key.png
-│       └── LevelOneScene/  Box.png  Frame.png  LevelOneScene.png
+│       ├── Background_lwall.png  background_rwall.png  Ceiling.png
+│       └── LevelOneScene/  Box.png  Floor.png  Frame.png  LevelOneScene.png
 └── Save/         settings.json  save_data.json
 ```
 
@@ -437,7 +454,7 @@ blue · red · yellow · green · purple · pink · orange · gray
 |----------|-------|
 | `BuildFramePath(color, action, frameNum)` | single frame path |
 | `BuildFramePaths(color, action, n)` | frames 1..n |
-| `BuildFullAnimPaths(color)` | complete `CatAnimPaths` struct |
+| `BuildFullAnimPaths(color)` | complete `CatAnimPaths` struct (stand×8, run×9, jump×2, land×1, push×3) |
 
 ---
 
@@ -446,53 +463,59 @@ blue · red · yellow · green · purple · pink · orange · gray
 ```
 AppStart
     ↓
-TitleScene ──ENTER──→ MenuScene ──A/D──→ ExitConfirmScene ──YES──→ ShouldQuit
-                          │                    │
-                          │               ESC/NO──→ MenuScene
+TitleScene ──ENTER──→ MenuScene ──A/D cycles: EXIT GAME / OPTION / LOCAL PLAY──→
                           │
-                          ├──→ OptionMenuScene ──row0/mouse──→ KeyboardConfigScene
-                          │         │                                   │
-                          │    OK/ESC/CANCEL ←────────────────────────-┘
+                          ├──ENTER on EXIT GAME──→ ExitConfirmScene ──YES──→ ShouldQuit
+                          │                              │
+                          │                         ESC/NO──→ MenuScene
                           │
-                          └──→ LocalPlayScene ──ENTER(count≤configured)──→ LocalPlayGameScene
-                                   │                                              │
-                              ESC/X←──────────────────────  all entered──→ LevelSelectScene
-                              → MenuScene                                         │
-                                                               ENTER/click──→ LevelOneScene (TODO)
-                                                               ESC──────────→ LocalPlayGameScene
+                          ├──ENTER on OPTION──→ OptionMenuScene ──row0 OPEN──→ KeyboardConfigScene
+                          │       │                                                    │
+                          │  OK/CANCEL/ESC ←───────────────────────────────────────-──┘
+                          │
+                          └──ENTER on LOCAL PLAY──→ LocalPlayScene ──ENTER(count≤configured)──→ LocalPlayGameScene
+                                   │                                        │
+                              ESC/X──→ MenuScene          all entered door──→ LevelSelectScene
+                                                                              │
+                                                           ENTER/click──→ LevelOneScene ──clear──→ LevelSelectScene
+                                                           ESC──────────→ LocalPlayGameScene
+                                                                         LevelOneScene ──ESC──→ LevelSelectScene
 
-LevelOneScene (TODO) ──completion──→ LevelExitScene (TODO) ──confirm──→ LevelSelectScene
-                      ──ESC / abort──→ LevelExitScene (TODO)
+LevelExitScene ⬜ empty stub — currently not part of the SceneId routing path
 ```
 
 ---
 
 ## 12. Extension Guide
 
-### Add a Level Scene (e.g. `LevelOneScene`)
+### Add a Level Scene (e.g. `LevelTwoScene`)
 
-`LevelOneScene` and `LevelExitScene` are declared but contain no implementation
-yet. When ready:
+`LevelOneScene` is a complete reference implementation. To add a new level:
 
-1. Implement `LevelOneScene` in `include/LevelOneScene.hpp` + `src/LevelOneScene.cpp`,
-   inheriting `Scene`. Give it a `PhysicsWorld m_World` member.
-2. In `OnEnter`: clear the world, spawn cats + boxes (with `box->SetWorld(&m_World)`),
-   call `SetupStaticBoundaries()` which uses `m_World.AddStaticBoundary()` for
-   floor, ceiling, and all wall geometry.
-3. In `Update`: read input → `SetMoveDir`/`Jump` on cats → `m_World.Update()`.
-4. On completion: call `SaveManager::UpdateBestTime(levelIdx, playerCount, elapsed)`,
-   then transition to `LevelExitScene` (the level-exit confirmation).
-5. Implement `LevelExitScene` similarly to `ExitConfirmScene` (YES/NO pattern).
-6. In `AppStart.cpp`, construct both scenes, wire them via `LevelSelectScene`'s
-   currently-commented-out `m_LevelScenes[0]` slot.
+1. Create `include/LevelTwoScene.hpp` + `src/LevelTwoScene.cpp` following `LevelOneScene` as a template. Inherit `Scene`. Add `PhysicsWorld m_World`.
+2. In `OnEnter`: clear the world, hide `m_Ctx.Header` and `m_Ctx.Floor`, spawn cats using `CatAssets::BuildFullAnimPaths`, create PushableBoxes with `box->SetWorld(&m_World)`, call `m_World.Register(...)`, then `SetupStaticBoundaries()` using `m_World.AddStaticBoundary()`.
+3. In `Update`: call `HandlePlayerInput()` (or inline), then `m_World.Update()`, then game-specific logic (timer, key/door, etc.).
+4. On completion: call `SaveManager::UpdateBestTime(levelIdx, m_Ctx.SelectedPlayerCount, elapsed)`, then return `SceneId::LevelSelect`.
+5. Implement `LevelExitScene` (currently an empty stub) similarly to `ExitConfirmScene` (YES/NO pattern); wire it as the ESC destination.
+6. In `AppStart.cpp`, construct and register the new scene in `SceneManager`, then call `levelSelectScene->SetLevelSceneId(1, SceneId::Level02)` (index 1 for level 2).
+
+### LevelOneScene Mechanics (Reference)
+
+`LevelOneScene` (index 0, `kLevelIndex = 0`) implements the following mechanics:
+
+- **Room bounds**: left −624, right +624, top +337, floor −337 (all in world units).
+- **Two PushableBoxes**: BoxA/BoxB thresholds are initialized from `m_Ctx.SelectedPlayerCount` in the `LevelOneScene` constructor (scene-creation time in `AppStart.cpp`) and are fixed afterward; they are not recomputed on each `OnEnter()`.
+- **Key pickup**: AABB overlap between any player and the key sprite (`kKeyHalf = {20, 26}`) makes that player the carrier. Key follows at offset `(−28, +28)` from the carrier.
+- **Door mechanic**: When the key carrier touches the door (`kDoorHalf = {31, 34}` at position `(420, kRoomFloorY + kDoorHalf.y)`), the door opens and the key becomes invisible.
+- **Door entry**: Players press the `up` key while overlapping the (open) door to enter. The last player to enter triggers `SaveManager::UpdateBestTime`.
+- **Timer**: Counts seconds from `OnEnter` using `Util::Time::GetDeltaTimeMs()`; displayed as `TIME mm:ss.cs`.
 
 ### Add Wall Geometry in a Level
 
 All in-level walls that should block movement must be registered as `StaticBody`
 objects via `m_World.AddStaticBoundary(center, halfSize)`. The visual wall
 sprite (`Character`) is added to the renderer separately; it is purely decorative.
-The `StaticBody` has `IsSolid() = true` and `IsKinematic() = true`, so all
-dynamic bodies (cats, boxes) are resolved against it via AABB separation.
+The `StaticBody` has `IsSolid() = true` and `IsKinematic() = true`.
 
 ```cpp
 // Example: a narrow vertical wall at x = 200, spanning y = -200 to +200
@@ -517,8 +540,7 @@ if (box->GetTextObject()) {
 }
 ```
 
-On `OnExit`, remove both the box and its text from `m_Ctx.Root`, then call
-`m_World.Clear()`.
+On `OnExit`, remove both the box and its text from `m_Ctx.Root`, then call `m_World.Clear()`.
 
 ### Add a Global Setting
 
@@ -529,6 +551,6 @@ On `OnExit`, remove both the box and its text from `m_Ctx.Root`, then call
 
 ### Add a Cat Color
 
-1. Create `resources/Image/Character/{color}_cat/` with all animation frames.
-2. Append the color string to `GameContext::kCatColorOrder`.
-3. Adjust `LocalPlayScene::MAX_PLAYERS` if supporting more than 8 players.
+1. Create `resources/Image/Character/{color}_cat/` with all animation frames (stand×8, run×9, jump×2, land×1, push×3).
+2. Append the color string to `GameContext::kCatColorOrder` (currently 8 entries).
+3. Adjust `LocalPlayScene::MAX_PLAYERS` and `GameContext::kCatColorOrder` array size if supporting more than 8 players.

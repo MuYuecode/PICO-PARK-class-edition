@@ -3,17 +3,7 @@
 
 #include "Util/Renderer.hpp"
 #include "GameContext.hpp"
-#include "Scene.hpp"
-
-class TitleScene;
-class MenuScene;
-class ExitConfirmScene;
-class OptionMenuScene;
-class KeyboardConfigScene;
-class LocalPlayScene;
-class LocalPlayGameScene;
-class LevelSelectScene;
-class LevelOneScene;
+#include "SceneManager.hpp"
 
 class App {
 public:
@@ -26,24 +16,11 @@ public:
     void End();
 
 private:
-    void TransitionTo(Scene* next);
-
     State          m_CurrentState = State::START;
     Util::Renderer m_Root;
 
     std::unique_ptr<GameContext> m_Ctx;
-
-    std::unique_ptr<Scene> m_TitleScene;
-    std::unique_ptr<Scene> m_MenuScene;
-    std::unique_ptr<Scene> m_ExitConfirmScene;
-    std::unique_ptr<Scene> m_OptionMenuScene;
-    std::unique_ptr<Scene> m_KeyboardConfigScene;
-    std::unique_ptr<Scene> m_LocalPlayScene;
-    std::unique_ptr<Scene> m_LocalPlayGameScene;
-    std::unique_ptr<Scene> m_LevelSelectScene;
-    std::array<std::unique_ptr<Scene>, 10> m_LevelXScenes; // 10 is num of level
-
-    Scene* m_CurrentScene = nullptr;
+    std::unique_ptr<SceneManager> m_SceneManager;
 };
 
 #endif // APP_HPP

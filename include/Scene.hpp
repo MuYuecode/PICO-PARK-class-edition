@@ -6,6 +6,7 @@
 #define PICOPART_SCENE_HPP
 
 #include "GameContext.hpp"
+#include "SceneId.hpp"
 class Scene {
 public:
     explicit Scene(GameContext& ctx) : m_Ctx(ctx) {}
@@ -19,7 +20,7 @@ public:
 
     virtual void OnEnter() = 0;
     virtual void OnExit()  = 0;
-    virtual Scene* Update() = 0;
+    virtual SceneId Update() = 0;
 
 protected:
     GameContext& m_Ctx;

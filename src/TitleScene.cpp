@@ -1,13 +1,12 @@
 #include "TitleScene.hpp"
-#include "MenuScene.hpp"
 
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 #include "Util/Time.hpp"
 
-TitleScene::TitleScene(GameContext& ctx, MenuScene* menuScene)
-    : Scene(ctx), m_MenuScene(menuScene)
+TitleScene::TitleScene(GameContext& ctx)
+    : Scene(ctx)
 {
     const Util::Color orange(254, 133, 78, 255);
 
@@ -95,7 +94,7 @@ void TitleScene::OnExit() {
     m_World.Clear();
 }
 
-Scene* TitleScene::Update() {
+SceneId TitleScene::Update() {
     m_FlashTimer += Util::Time::GetDeltaTimeMs();
     if (m_FlashTimer >= 1000.f) {
         m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
@@ -133,7 +132,7 @@ Scene* TitleScene::Update() {
 
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         LOG_INFO("TitleScene: ENTER pressed -> MenuScene");
-        return m_MenuScene;
+        return SceneId::Menu;
     }
-    return nullptr;
+    return SceneId::None;
 }

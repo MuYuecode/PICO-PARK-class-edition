@@ -12,6 +12,7 @@
 #include "LocalPlayGameScene.hpp"
 #include "LevelSelectScene.hpp"
 #include "LevelOneScene.hpp"
+#include "SceneId.hpp"
 
 #include "Util/Logger.hpp"
 #include <array>
@@ -23,6 +24,7 @@ void App::Start() {
     LOG_TRACE("Start");
 
     m_Ctx = make_unique<GameContext>(m_Root);
+    m_SceneManager = make_unique<SceneManager>(*m_Ctx);
 
     m_Ctx->Background = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/white_background.png");
@@ -125,30 +127,25 @@ void App::Start() {
         cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
     }
 
-    auto titleScene = make_unique<TitleScene>(*m_Ctx, nullptr);
+    auto titleScene = make_unique<TitleScene>(*m_Ctx);
 
-    auto menuScene = make_unique<MenuScene>(
-        *m_Ctx, titleScene.get(), nullptr, nullptr, nullptr);
+    auto menuScene = make_unique<MenuScene>(*m_Ctx);
 
     auto exitConfirmScene = make_unique<ExitConfirmScene>(
         *m_Ctx,
-        menuScene.get(),
         menuScene->GetMenuFrame(),
         menuScene->GetExitGameButton());
 
     auto optionMenuScene = make_unique<OptionMenuScene>(
         *m_Ctx,
-        menuScene.get(),
         menuScene->GetExitGameButton());
 
     auto kbConfigScene = make_unique<KeyboardConfigScene>(
         *m_Ctx,
-        optionMenuScene.get(),
         menuScene->GetExitGameButton());
 
     auto localPlayScene = make_unique<LocalPlayScene>(
         *m_Ctx,
-        menuScene.get(),
         menuScene->GetMenuFrame(),
         menuScene->GetExitGameButton(),
         menuScene->GetLeftTriButton(),
@@ -156,43 +153,23 @@ void App::Start() {
         menuScene->GetBlueCatRunImg(),
         kbConfigScene.get());
 
-    auto localPlayGameScene = make_unique<LocalPlayGameScene>(
-        *m_Ctx,
-        localPlayScene.get());
+    auto localPlayGameScene = make_unique<LocalPlayGameScene>(*m_Ctx);
 
-    auto levelSelectScene = make_unique<LevelSelectScene>(
-        *m_Ctx,
-        localPlayGameScene.get());
+    auto levelSelectScene = make_unique<LevelSelectScene>(*m_Ctx);
+    levelSelectScene->SetLevelSceneId(0, SceneId::Level01);
 
-    auto levelOneScene = make_unique<LevelOneScene>(
-        *m_Ctx,
-        levelSelectScene.get());
+    auto levelOneScene = make_unique<LevelOneScene>(*m_Ctx);
 
-    titleScene->SetMenuScene(menuScene.get());
-    menuScene->SetExitConfirmScene(exitConfirmScene.get());
-    menuScene->SetOptionScene(optionMenuScene.get());
-    menuScene->SetLocalPlayScene(localPlayScene.get());
-    optionMenuScene->SetKeyboardConfigScene(kbConfigScene.get());
-    localPlayScene->SetGameScene(localPlayGameScene.get());
-    localPlayGameScene->SetLevelSelectScene(levelSelectScene.get());
+    m_SceneManager->Register(SceneId::Title, std::move(titleScene));
+    m_SceneManager->Register(SceneId::Menu, std::move(menuScene));
+    m_SceneManager->Register(SceneId::ExitConfirm, std::move(exitConfirmScene));
+    m_SceneManager->Register(SceneId::OptionMenu, std::move(optionMenuScene));
+    m_SceneManager->Register(SceneId::KeyboardConfig, std::move(kbConfigScene));
+    m_SceneManager->Register(SceneId::LocalPlay, std::move(localPlayScene));
+    m_SceneManager->Register(SceneId::LocalPlayGame, std::move(localPlayGameScene));
+    m_SceneManager->Register(SceneId::LevelSelect, std::move(levelSelectScene));
+    m_SceneManager->Register(SceneId::Level01, std::move(levelOneScene));
 
-    levelSelectScene->SetLevelScene(0, levelOneScene.get());
-
-    m_TitleScene          = std::move(titleScene);
-    m_MenuScene           = std::move(menuScene);
-    m_ExitConfirmScene    = std::move(exitConfirmScene);
-    m_OptionMenuScene     = std::move(optionMenuScene);
-    m_KeyboardConfigScene = std::move(kbConfigScene);
-    m_LocalPlayScene      = std::move(localPlayScene);
-    m_LocalPlayGameScene  = std::move(localPlayGameScene);
-    m_LevelSelectScene    = std::move(levelSelectScene);
-
-    for (auto& s : m_LevelXScenes) {
-        s.reset();
-    }
-    m_LevelXScenes[0] = std::move(levelOneScene);
-
-    TransitionTo(m_TitleScene.get()); // ture scene
-    // TransitionTo(m_LevelXScenes[0].get()) ; // test
+    m_SceneManager->GoTo(SceneId::Title);
     m_CurrentState = State::UPDATE;
 }

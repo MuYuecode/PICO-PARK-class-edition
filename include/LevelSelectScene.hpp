@@ -13,21 +13,18 @@
 #include "GameText.hpp"
 #include "SaveManager.hpp"
 
-class LocalPlayGameScene;
-
 class LevelSelectScene : public Scene {
 public:
-    LevelSelectScene(GameContext& ctx,
-                     LocalPlayGameScene* localPlayGameScene);
+    explicit LevelSelectScene(GameContext& ctx);
     ~LevelSelectScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    Scene* Update()  override;
+    SceneId Update()  override;
 
-    void SetLevelScene(int levelIdx, Scene* scene) {
+    void SetLevelSceneId(int levelIdx, SceneId sceneId) {
         if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)
-            m_LevelScenes[levelIdx] = scene;
+            m_LevelSceneIds[levelIdx] = sceneId;
     }
 
     static constexpr int   LEVEL_COUNT = 10;
@@ -66,8 +63,7 @@ private:
 
     std::array<LevelSaveData, LEVEL_COUNT> m_LevelData;
 
-    LocalPlayGameScene*             m_LocalPlayGameScene = nullptr;
-    std::array<Scene*, LEVEL_COUNT> m_LevelScenes;
+    std::array<SceneId, LEVEL_COUNT> m_LevelSceneIds{};
 
     void UpdateSelectorPos()  const;
     void UpdateTitleText()    const;

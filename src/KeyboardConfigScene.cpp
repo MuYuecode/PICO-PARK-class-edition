@@ -5,7 +5,6 @@
 #include "SaveManager.hpp"
 #include "AppUtil.hpp"
 #include "KeyboardConfigScene.hpp"
-#include "OptionMenuScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -61,11 +60,9 @@ std::vector<Keycode> PlayerKeyConfig::AllKeys() const {
 }
 
 KeyboardConfigScene::KeyboardConfigScene(GameContext& ctx,
-                                         OptionMenuScene* optionScene,
                                          std::shared_ptr<Character> exitGameButton)
     : Scene(ctx)
     , m_ExitGameButton(std::move(exitGameButton))
-    , m_OptionScene(optionScene)
 {
     m_Applied[0] = k_Default1P;
     m_Applied[1] = k_Default2P;
@@ -230,7 +227,7 @@ void KeyboardConfigScene::OnExit() {
     m_Ctx.Root.RemoveChild(m_ExitGameButton);
 }
 
-Scene* KeyboardConfigScene::Update() {
+SceneId KeyboardConfigScene::Update() {
     m_PlayerLeftBtn->UpdateButton();
     m_PlayerRightBtn->UpdateButton();
 
@@ -243,13 +240,13 @@ Scene* KeyboardConfigScene::Update() {
             m_WaitingForKey = false;
             UpdateValueTexts();
         }
-        return nullptr;
+        return SceneId::None;
     }
 
     if (Input::IsKeyDown(Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked() ||
         m_CancelText->IsLeftClicked()) {
-        return m_OptionScene;
+        return SceneId::OptionMenu;
     }
 
     if (Input::IsKeyDown(Keycode::W) ||
@@ -316,11 +313,11 @@ Scene* KeyboardConfigScene::Update() {
             }
             else {
                 CommitPending();
-                return m_OptionScene;
+                return SceneId::OptionMenu;
             }
         }
         else if (m_SelectedRow == ROW_CANCEL) {
-            return m_OptionScene;
+            return SceneId::OptionMenu;
         }
         else if (m_SelectedRow == ROW_DEFAULT) {
             ApplyDefault();
@@ -339,7 +336,7 @@ Scene* KeyboardConfigScene::Update() {
     if (m_OkText->IsLeftClicked()) {
         if (!(m_CurrentPlayer >= 1 && HasConflicts())) {
             CommitPending();
-            return m_OptionScene;
+            return SceneId::OptionMenu;
         }
     }
     if (m_DefaultText->IsLeftClicked()) {
@@ -347,7 +344,7 @@ Scene* KeyboardConfigScene::Update() {
         UpdateValueTexts();
     }
 
-    return nullptr;
+    return SceneId::None;
 }
 
 void KeyboardConfigScene::LoadPlayer(int playerIdx) {
