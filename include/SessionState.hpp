@@ -21,6 +21,16 @@ public:
         return m_AppliedKeyConfigs;
     }
 
+    int GetConfiguredPlayerCount() const override {
+        int count = 0;
+        for (const auto& cfg : m_AppliedKeyConfigs) {
+            if (static_cast<int>(cfg.AllKeys().size()) >= 4) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
     bool ShouldQuit() const override { return m_ShouldQuit; }
     void RequestQuit() override { m_ShouldQuit = true; }
     void ClearQuitRequest() override { m_ShouldQuit = false; }

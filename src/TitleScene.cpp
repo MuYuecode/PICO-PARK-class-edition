@@ -1,5 +1,7 @@
 #include "TitleScene.hpp"
 
+#include "BoundaryFactory.hpp"
+
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -20,30 +22,17 @@ TitleScene::TitleScene(SceneServices services)
 }
 
 void TitleScene::SetupStaticBoundaries() {
-    constexpr float kWallHalfW  = 50.f;   // thickness of left/right walls
-    constexpr float kWallHalfH  = 400.f;  // height of left/right wall colliders
-    constexpr float kFloorHalfH = 40.f;   // thickness of the floor collider
-
     float floorSurfaceY = -360.f;  // fallback if Floor is null
     if (m_Actors.Floor() != nullptr) {
         floorSurfaceY = m_Actors.Floor()->GetPosition().y
                       + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
-    // Floor: center is below the surface, top edge sits at floorSurfaceY.
-    m_World.AddStaticBoundary(
-        {0.f, floorSurfaceY - kFloorHalfH},
-        {640.f + kWallHalfW, kFloorHalfH});
-
-    // Left boundary wall.
-    m_World.AddStaticBoundary(
-        {-(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
-
-    // Right boundary wall.
-    m_World.AddStaticBoundary(
-        { (640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        std::nullopt,
+        LevelGeometryPreset::kSharedMenuLikeNoCeiling);
 }
 
 

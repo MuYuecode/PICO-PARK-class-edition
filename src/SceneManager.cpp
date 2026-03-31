@@ -38,72 +38,86 @@ void SceneManager::GoTo(SceneId id) {
         return;
     }
 
-    Scene* current = GetCurrentScene();
-    if (current != nullptr) {
-        current->OnExit();
+    // Exit all stacked scenes from top to bottom for consistent lifecycle.
+    while (!m_StackIds.empty()) {
+        Scene* top = ResolveScene(m_StackIds.back());
+        if (top != nullptr) {
+            top->OnExit();
+        }
+        m_StackIds.pop_back();
     }
 
-    m_StackIds.clear();
     m_StackIds.push_back(id);
     target->OnEnter();
 }
 
 void SceneManager::PushOverlay(SceneId id) {
-    if (m_StackIds.size() != 1) {
-        LOG_ERROR("SceneManager::PushOverlay requires one base scene, stack size={}", static_cast<int>(m_StackIds.size()));
+    if (m_StackIds.empty()) {
+        LOG_ERROR("SceneManager::PushOverlay requires at least one underlying scene");
         return;
     }
 
-    Scene* base = ResolveScene(m_StackIds.front());
+    Scene* top = ResolveScene(m_StackIds.back());
     Scene* overlay = ResolveScene(id);
-    if (base == nullptr || overlay == nullptr) {
-        LOG_ERROR("SceneManager::PushOverlay failed, invalid base/overlay id={}", static_cast<int>(id));
+    if (top == nullptr || overlay == nullptr) {
+        LOG_ERROR("SceneManager::PushOverlay failed, invalid top/overlay id={}", static_cast<int>(id));
         return;
     }
 
-    base->PauseGameplay();
+    top->PauseGameplay();
     m_StackIds.push_back(id);
     overlay->OnEnter();
 }
 
 void SceneManager::PopOverlay() {
-    if (m_StackIds.size() != 2) {
-        LOG_ERROR("SceneManager::PopOverlay requires overlay stack size 2, got {}", static_cast<int>(m_StackIds.size()));
+    if (m_StackIds.size() < 2) {
+        LOG_ERROR("SceneManager::PopOverlay requires stack size >= 2, got {}", static_cast<int>(m_StackIds.size()));
         return;
     }
 
     Scene* overlay = ResolveScene(m_StackIds.back());
-    Scene* base = ResolveScene(m_StackIds.front());
-    if (overlay == nullptr || base == nullptr) {
-        LOG_ERROR("SceneManager::PopOverlay failed, base or overlay scene missing");
+    if (overlay == nullptr) {
+        LOG_ERROR("SceneManager::PopOverlay failed, overlay scene missing");
         return;
     }
 
     overlay->OnExit();
     m_StackIds.pop_back();
-    base->ResumeGameplay();
+
+    Scene* newTop = ResolveScene(m_StackIds.back());
+    if (newTop == nullptr) {
+        LOG_ERROR("SceneManager::PopOverlay failed, new top scene missing after pop");
+        return;
+    }
+
+    newTop->ResumeGameplay();
 }
 
 void SceneManager::RestartUnderlying() {
-    if (m_StackIds.size() != 2) {
-        LOG_ERROR("SceneManager::RestartUnderlying requires overlay stack size 2, got {}", static_cast<int>(m_StackIds.size()));
+    if (m_StackIds.size() < 2) {
+        LOG_ERROR("SceneManager::RestartUnderlying requires stack size >= 2, got {}", static_cast<int>(m_StackIds.size()));
         return;
     }
 
     Scene* overlay = ResolveScene(m_StackIds.back());
-    Scene* base = ResolveScene(m_StackIds.front());
-    if (overlay == nullptr || base == nullptr) {
-        LOG_ERROR("SceneManager::RestartUnderlying failed, base or overlay scene missing");
+    if (overlay == nullptr) {
+        LOG_ERROR("SceneManager::RestartUnderlying failed, overlay scene missing");
         return;
     }
 
     overlay->OnExit();
     m_StackIds.pop_back();
 
-    base->OnExit();
-    base->OnEnter();
-    // RETRY should leave the base scene playable immediately (same as PopOverlay path).
-    base->ResumeGameplay();
+    Scene* underlying = ResolveScene(m_StackIds.back());
+    if (underlying == nullptr) {
+        LOG_ERROR("SceneManager::RestartUnderlying failed, underlying scene missing after pop");
+        return;
+    }
+
+    underlying->OnExit();
+    underlying->OnEnter();
+    // Retry should leave the restarted scene immediately playable.
+    underlying->ResumeGameplay();
 }
 
 void SceneManager::ClearToAndGoTo(SceneId id) {
@@ -113,18 +127,10 @@ void SceneManager::ClearToAndGoTo(SceneId id) {
         return;
     }
 
-    if (m_StackIds.size() == 2) {
-        Scene* overlay = ResolveScene(m_StackIds.back());
-        if (overlay != nullptr) {
-            overlay->OnExit();
-        }
-        m_StackIds.pop_back();
-    }
-
-    if (m_StackIds.size() == 1) {
-        Scene* base = ResolveScene(m_StackIds.back());
-        if (base != nullptr) {
-            base->OnExit();
+    while (!m_StackIds.empty()) {
+        Scene* top = ResolveScene(m_StackIds.back());
+        if (top != nullptr) {
+            top->OnExit();
         }
         m_StackIds.pop_back();
     }

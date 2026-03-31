@@ -2,74 +2,65 @@
 
 ## Scope
 
-`PhysicsWorld` is scene-local and coordinates body update, collision resolution, and callback dispatch.
+- `PhysicsWorld` is scene-local and deterministic per frame.
+- Active body implementations: `PlayerCat`, `PushableBox`, `StaticBody`.
+- `PushableBox` is the only current `IPushable` implementation.
 
-```text
-IPhysicsBody: PlayerCat, PushableBox, StaticBody
-IPushable:    PushableBox
-```
+## Body Contract
 
-## Body Interface Expectations
-
-- `PhysicsUpdate()` computes intent.
-- `GetDesiredDelta()` exposes intended movement for this frame.
+- `PhysicsUpdate()` computes intended movement state.
+- `GetDesiredDelta()` exposes this frame's desired displacement.
 - `ApplyResolvedDelta()` applies world-resolved displacement.
-- `OnCollision()` receives contact normals.
-- `PostUpdate()` runs after resolution.
-- `IsActive` and `IsFrozen` gate participation.
+- `OnCollision(CollisionInfo)` receives contact normals after resolution.
+- `PostUpdate()` finalizes animation/state after physics.
+- `IsActive()` and `IsFrozen()` gate participation in simulation.
 
 ## World Responsibilities
 
-- body lifecycle: `Register`, `Unregister`, `Clear`
-- static collider creation: `AddStaticBoundary` (owned as `StaticBody`)
-- stepping: `Update`
-- pause control: `FreezeAll`, `UnfreezeAll`
-- cooperative push query: `CountCharactersPushing`
-- rope metadata storage: `AddRope`, `RemoveRope`, `GetRopesOf`
+- Lifecycle: `Register`, `Unregister`, `Clear`.
+- Geometry ownership: `AddStaticBoundary()` allocates and owns `StaticBody` colliders.
+- Stepping: `Update()` (including periodic weak-pointer purge).
+- Pause support: `FreezeAll()` and `UnfreezeAll()`.
+- Cooperative-force query: `CountCharactersPushing()` with recursive chain traversal.
+- Rope APIs are metadata only (`AddRope`, `RemoveRope`, `GetRopesOf`); no solver step yet.
 
 ## Frame Pipeline
 
-`PhysicsWorld::Update()` runs:
-
-1. periodic weak-reference purge
-2. `StepPhysicsUpdate()` in two passes
-   - non-`PUSHABLE_BOX` first
-   - `PUSHABLE_BOX` second
-3. `StepResolveAndApply()`
+1. Purge expired weak references every `kPurgeInterval` frames.
+2. `StepPhysicsUpdate()` in two passes:
+   - non-box active, non-frozen bodies
+   - `PUSHABLE_BOX` bodies
+3. `StepResolveAndApply()`:
    - snapshot active bodies
-   - detect rider/support links
-   - resolve desired deltas with support ordering
+   - detect support links (`DetectRiding`, tolerance-based)
+   - resolve in support dependency order
    - apply resolved deltas
-   - dispatch collision callbacks
-4. `PostUpdate()` for active, non-frozen bodies
+   - dispatch `OnCollision` callbacks
+4. Run `PostUpdate()` on active, non-frozen bodies.
 
-The two-pass update ensures pushable boxes read current-frame character push intent.
+The two-pass update ensures box push evaluation sees same-frame player move intents.
 
-## Collision and Support Resolution
+## Collision and Support Rules
 
-- AABB overlap with axis-separated resolution (horizontal, then vertical).
-- Bodies riding supports inherit support horizontal movement.
-- Kinematic/frozen bodies are marked resolved early.
-- Unresolved leftovers are force-resolved as a safety fallback.
+- Collision primitive: AABB overlap with strict `<` checks (edge-touch is not overlap).
+- Resolution order: horizontal pass, then vertical pass.
+- Riders inherit resolved horizontal movement from their support body.
+- Kinematic/frozen bodies are marked resolved first and treated as reference geometry.
+- Fallback path resolves any remaining unresolved body without support carry.
 
 ## Cooperative Push Mechanics
 
-- `CountCharactersPushing(target, dir)` recursively traverses adjacent push chains.
-- Counts active `CHARACTER` bodies with matching push direction.
-- Allows passive intermediates and box relays.
-- `PushableBox` computes right/left counts separately, then applies net force threshold (`requiredPushers`).
+- `PushableBox::PhysicsUpdate()` computes `net = rightPushers - leftPushers` from world queries.
+- Box moves only when `abs(net) >= requiredPushers`; otherwise only gravity applies.
+- Recursive counting allows force transmission through chained characters/boxes.
+- Box maintains an in-world deficit label: `max(0, requiredPushers - abs(net))`.
+- Adjacent qualifying characters receive `NotifyPush()` to drive push animation state.
 
 ## Scene Integration Pattern
 
-Main physics scenes: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
-
-- `OnEnter()`: register dynamic bodies + static boundaries.
-- `Update()`: set input intent and call `m_World.Update()` once.
-- `OnExit()`: `m_World.Clear()`.
-
-`LevelOneScene` pause hooks use `FreezeAll()` and `UnfreezeAll()` for overlay pause/resume.
-
-## Current Limits
-
-- Rope constraints are stored as data only; no rope solver pass is implemented.
-- Several `BodyType` entries are reserved for future gameplay entities.
+- Physics-backed scenes: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
+- Typical lifecycle:
+  - `OnEnter`: clear world, register dynamic bodies, build static room boundaries
+  - `Update`: set movement intents, call `m_World.Update()` once
+  - `OnExit`: clear world
+- `LevelOneScene` maps overlay pause/resume directly to freeze/unfreeze world state.

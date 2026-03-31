@@ -51,13 +51,6 @@ static constexpr std::array<Keycode PlayerKeyConfig::*, 9> kBindFields = {
     &PlayerKeyConfig::subMenu,
 };
 
-std::vector<Keycode> PlayerKeyConfig::AllKeys() const {
-    std::vector<Keycode> result;
-    for (auto k : {up, down, left, right, jump, cancel, shot, menu, subMenu}) {
-        if (k != Keycode::UNKNOWN) result.push_back(k);
-    }
-    return result;
-}
 
 KeyboardConfigScene::KeyboardConfigScene(SceneServices services)
     : Scene(services)

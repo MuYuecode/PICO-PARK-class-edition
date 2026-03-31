@@ -249,9 +249,7 @@ void OptionMenuScene::Update() {
         m_ExitGameButton->IsLeftClicked()              ||
         m_CancelText->IsLeftClicked())
     {
-        m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-        m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        CancelAndRevert();
         return;
     }
 
@@ -260,20 +258,7 @@ void OptionMenuScene::Update() {
         return;
     }
     if (m_OkText->IsLeftClicked()) {
-        m_Applied = m_Pending;
-        m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-        m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-
-        {
-            OptionSettingsData toSave{
-                m_Applied.bgColorIndex,
-                m_Applied.bgmVolume,
-                m_Applied.seVolume,
-                m_Applied.dispNumber
-            };
-            SaveManager::SaveOptionSettings(toSave);
-        }
-        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        CommitAndExit();
         return;
     }
 
@@ -332,30 +317,37 @@ void OptionMenuScene::Update() {
             RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::KeyboardConfig});
             return;
         case 5:
-            m_Applied = m_Pending;
-            m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-            m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-
-            {
-            OptionSettingsData toSave{
-                m_Applied.bgColorIndex,
-                m_Applied.bgmVolume,
-                m_Applied.seVolume,
-                m_Applied.dispNumber
-            };
-            SaveManager::SaveOptionSettings(toSave);
-            }
-            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+            CommitAndExit();
             return;
         case 6:
-            m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-            m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+            CancelAndRevert();
             return;
         default:
             break;
         }
     }
+}
+
+void OptionMenuScene::CommitAndExit() {
+    m_Applied = m_Pending;
+    m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+    m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
+
+    OptionSettingsData toSave{
+        m_Applied.bgColorIndex,
+        m_Applied.bgmVolume,
+        m_Applied.seVolume,
+        m_Applied.dispNumber
+    };
+    SaveManager::SaveOptionSettings(toSave);
+
+    RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+}
+
+void OptionMenuScene::CancelAndRevert() {
+    m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+    m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
+    RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
 }
 
 void OptionMenuScene::DecrementRow() {

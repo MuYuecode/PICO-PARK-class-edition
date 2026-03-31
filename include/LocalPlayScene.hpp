@@ -11,12 +11,9 @@
 
 #include "UITriangleButton.hpp"
 
-class KeyboardConfigScene;
-
 class LocalPlayScene : public Scene {
 public:
-    LocalPlayScene(SceneServices services,
-                   KeyboardConfigScene* kbConfigScene);
+    explicit LocalPlayScene(SceneServices services);
     ~LocalPlayScene() override = default;
 
     void   OnEnter() override;
@@ -40,7 +37,6 @@ private:
 
     int m_PlayerCount = MIN_PLAYERS;
 
-    KeyboardConfigScene* m_KbConfigScene = nullptr;
 
     static const Util::Color k_Black;
     static const Util::Color k_Red;

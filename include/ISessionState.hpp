@@ -17,6 +17,7 @@ public:
 
     virtual const std::array<PlayerKeyConfig, 8>& GetAppliedKeyConfigs() const = 0;
     virtual std::array<PlayerKeyConfig, 8>& MutableAppliedKeyConfigs() = 0;
+    virtual int GetConfiguredPlayerCount() const = 0;
 
     virtual bool ShouldQuit() const = 0;
     virtual void RequestQuit() = 0;

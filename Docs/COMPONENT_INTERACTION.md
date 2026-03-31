@@ -1,53 +1,41 @@
 # Component Interaction
 
-## Per-Frame Flow
+## Per-Frame Execution Chain
 
-`App::Update()` executes:
-
-1. `IAudioService::UpdateBgm()`
-2. `SceneManager::UpdateCurrent()`
-3. quit check (`ISessionState::ShouldQuit()`)
-4. `m_Root.Update()`
+1. `AudioService::UpdateBgm()` advances BGM track switching.
+2. `SceneManager::UpdateCurrent()` runs scene logic and may execute one transition.
+3. `SessionState::ShouldQuit()` can switch `App` to `END`.
+4. `Renderer::Update()` processes the render tree.
 
 ## Scene Transition Handshake
 
-Current scene interaction is strictly:
+1. Active scene executes `Update()`.
+2. Scene returns intent via `ConsumeSceneOp()`.
+3. `SceneManager` applies stack operation (`PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`).
 
-1. `SceneManager` calls `current->Update()`
-2. scene may call `RequestSceneOp(...)`
-3. `SceneManager` reads `current->ConsumeSceneOp()`
-4. manager executes the operation if present
+Scenes never mutate manager state directly; they only emit operation requests.
 
-There is no `SceneId` return-based transition path in scene `Update()`.
+## Service and Data Flow
 
-## Overlay Stack Behavior
+- `IGlobalActors`: shared visual nodes (`Root`, `Background`, `Floor`, `Door`, startup cats, test box).
+- `ISessionState`: runtime gameplay data (player count, key configs, cooperative value, quit flag).
+- `IAudioService` and `IVisualThemeService`: immediate preview paths used by option UI.
+- `SaveManager`: persistent storage boundary for options, key profiles, and level best times.
 
-- `PushOverlay`: pauses base scene (`PauseGameplay()`), pushes overlay, calls overlay `OnEnter()`.
-- `PopOverlay`: calls overlay `OnExit()`, pops stack, resumes base (`ResumeGameplay()`).
-- `RestartUnderlying`: exits overlay, then re-enters base (`OnExit()` -> `OnEnter()`).
-- `ClearToAndGoTo`: exits current stack and enters target scene as new base.
+## Key Interaction Scenarios
 
-## Shared Services in Scene Logic
+- `ExitConfirmScene`: YES calls `RequestQuit()`; `App` exits on the next quit gate.
+- `OptionMenuScene`: applies pending theme/audio values immediately, commits only on OK, reverts on cancel/escape.
+- `KeyboardConfigScene`: edits one player profile, blocks conflicting save for non-1P profiles, then syncs to session.
+- `LocalPlayScene`: validates selected player count against configured key profiles before entering gameplay.
+- `LocalPlayGameScene`: tracks per-player door entry, then routes to `LevelSelectScene` when all entered.
 
-- `IAudioService`: BGM lifecycle and option preview/commit volume changes.
-- `IVisualThemeService`: background preview and apply/restore behavior.
-- `ISessionState`: selected player count, key bindings, cooperative values, quit flag.
-- `IGlobalActors`: shared root and reusable actors (background, header, floor, door, startup cats, optional test box).
+## `LevelOneScene` + `LevelExitScene` Overlay Cycle
 
-## Key Runtime Interaction Paths
-
-- `ExitConfirmScene`: YES calls `RequestQuit()`, app exits in later frame gate.
-- `OptionMenuScene`: edits pending settings, previews theme/audio, persists on OK; `seVolume` and `dispNumber` are currently UI/persistence-focused.
-- `KeyboardConfigScene`: edits per-player bindings, conflict-gates save, syncs to session.
-- `LocalPlayScene`: compares selected player count with configured profiles before entering gameplay.
-- `LevelSelectScene`: loads save data, updates best-time/crown UI, routes to mapped level scene.
-
-## Gameplay + Overlay Example (`LevelOne`)
-
-- `LevelOneScene::Update()` order: input -> `PhysicsWorld::Update()` -> timer -> key/door logic -> clear gate.
-- ESC emits `PushOverlay(LevelExit)`.
-- `LevelOneScene::PauseGameplay()` / `ResumeGameplay()` map to `PhysicsWorld::FreezeAll()` / `UnfreezeAll()`.
-- `LevelExitScene` confirmation emits:
-  - return game: `PopOverlay`
-  - retry: `RestartUnderlying`
-  - level select/title: `ClearToAndGoTo(...)`
+- `LevelOneScene` update order: player input -> `PhysicsWorld::Update()` -> timer -> key pickup/follow -> door unlock -> per-player entry.
+- Pressing ESC pushes `LevelExitScene` as overlay; base gameplay is frozen via `PauseGameplay()`.
+- Overlay actions:
+  - Return -> `PopOverlay` (resume)
+  - Retry -> `RestartUnderlying` (re-enter same level)
+  - Leave -> `ClearToAndGoTo(LevelSelect or Title)`
+- On full clear, `LevelOneScene` saves best time and returns to `LevelSelectScene`.

@@ -3,7 +3,6 @@
 //
 
 #include "LocalPlayScene.hpp"
-#include "KeyboardConfigScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -14,10 +13,8 @@ const Util::Color LocalPlayScene::k_Red   = Util::Color::FromRGB(220, 50,  50,  
 using ip = Util::Input ;
 using k  = Util::Keycode ;
 
-LocalPlayScene::LocalPlayScene(SceneServices services,
-                               KeyboardConfigScene* kbConfigScene)
+LocalPlayScene::LocalPlayScene(SceneServices services)
     : Scene(services)
-    , m_KbConfigScene(kbConfigScene)
 {
     m_MenuFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
@@ -143,10 +140,7 @@ void LocalPlayScene::Update() {
     }
 
     if ( ip::IsKeyDown(k::RETURN)) {
-        int configuredCount = 0;
-        if (m_KbConfigScene != nullptr) {
-            configuredCount = m_KbConfigScene->GetConfiguredPlayerCount();
-        }
+        const int configuredCount = m_Session.GetConfiguredPlayerCount();
 
         if (m_PlayerCount <= configuredCount) {
             m_Session.SetSelectedPlayerCount(m_PlayerCount);
@@ -163,10 +157,7 @@ void LocalPlayScene::Update() {
 void LocalPlayScene::UpdateDisplay() const {
     m_PlayerCountText->SetText(std::to_string(m_PlayerCount) + "PLAYER GAME");
 
-    int configuredCount = 0;
-    if (m_KbConfigScene != nullptr) {
-        configuredCount = m_KbConfigScene->GetConfiguredPlayerCount();
-    }
+    const int configuredCount = m_Session.GetConfiguredPlayerCount();
 
     const bool hasWarning = (m_PlayerCount > configuredCount);
 

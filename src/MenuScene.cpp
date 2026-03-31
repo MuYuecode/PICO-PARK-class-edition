@@ -1,4 +1,6 @@
 #include "MenuScene.hpp"
+
+#include "BoundaryFactory.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -49,30 +51,17 @@ MenuScene::MenuScene(SceneServices services)
 }
 
 void MenuScene::SetupStaticBoundaries() {
-    constexpr float kWallHalfW  = 50.f;
-    constexpr float kWallHalfH  = 400.f;
-    constexpr float kFloorHalfH = 40.f;
-
     float floorSurfaceY = -360.f;
     if (m_Actors.Floor() != nullptr) {
         floorSurfaceY = m_Actors.Floor()->GetPosition().y
                       + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
-    // Floor collider: top edge sits at floorSurfaceY.
-    m_World.AddStaticBoundary(
-        {0.f, floorSurfaceY - kFloorHalfH},
-        {640.f + kWallHalfW, kFloorHalfH});
-
-    // Left wall.
-    m_World.AddStaticBoundary(
-        {-(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
-
-    // Right wall.
-    m_World.AddStaticBoundary(
-        { (640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        std::nullopt,
+        LevelGeometryPreset::kSharedMenuLikeNoCeiling);
 }
 
 void MenuScene::OnEnter() {

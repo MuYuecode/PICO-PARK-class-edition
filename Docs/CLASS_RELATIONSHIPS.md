@@ -1,6 +1,6 @@
 # Class Relationships
 
-## Core Inheritance
+## Inheritance Map
 
 ```text
 Util::GameObject
@@ -36,7 +36,7 @@ Scene
 └─ LevelOneScene
 ```
 
-## Service and Runtime Contracts
+## Interface Contracts
 
 ```text
 IAudioService       -> AudioService
@@ -45,27 +45,23 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-- `Scene` stores only interface references from `SceneServices`.
-- `SceneManager` is the sole executor of `SceneOp` emitted by scenes.
+- `Scene` receives only interface references through `SceneServices`.
+- `App::Start()` is the composition root that binds concrete implementations.
 
-## Scene Control Relationships
+## Control and Ownership Links
 
-```text
-Scene::Update() -> RequestSceneOp(...) -> Scene::ConsumeSceneOp() -> SceneManager::UpdateCurrent()
-```
+- `SceneManager` owns all scene objects and enforces transition semantics.
+- `Scene` owns one pending `SceneOp`; `SceneManager::UpdateCurrent()` consumes at most one op per frame.
+- Scenes never call other scenes directly; they communicate through `SceneOpType` commands.
 
-- Transition output is single-channel (`SceneOp`) with four active operations:
-  - `PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`.
+## Physics-Side Coupling
 
-## Ownership Model
+- `PhysicsWorld` tracks participants by `weak_ptr<IPhysicsBody>` and owns only static boundaries (`StaticBody`).
+- `PushableBox` holds a non-owning `PhysicsWorld*` to query cooperative push counts and notify push animations.
+- `PlayerCat` and `PushableBox` are dual-role objects: render actor + physics body in one instance.
 
-- `App` owns global systems and application lifetime.
-- `SceneManager` owns scene instances (`std::unique_ptr<Scene>`).
-- `GlobalActors` owns reusable world/UI actors shared across scenes.
-- Scene-local gameplay systems (for example `PhysicsWorld`) are owned by each scene instance.
+## Persistence and Session Coupling
 
-## Intentional Couplings
-
-- `LocalPlayScene` references `KeyboardConfigScene*` to validate configured player count.
-- `PushableBox` references `PhysicsWorld*` (non-owning) for cooperative push counting.
-- Persistence flows are centralized in `SaveManager` calls from option/key/level scenes.
+- `OptionMenuScene` reads/writes option settings via `SaveManager` and previews through audio/theme services.
+- `KeyboardConfigScene` synchronizes key profiles to both `SaveManager` and `SessionState`.
+- `LevelOneScene` writes best times via `SaveManager::UpdateBestTime()` using current session player count.

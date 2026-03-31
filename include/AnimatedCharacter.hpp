@@ -25,24 +25,34 @@ public:
     void SetFacingByDirection(int dir);
 
     [[nodiscard]] bool IsLooping() const {
-        return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetLooping();
+        const auto animation = GetAnimation();
+        return animation != nullptr && animation->GetLooping();
     }
 
     [[nodiscard]] bool IsPlaying() const {
-        return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetState() == Util::Animation::State::PLAY;
+        const auto animation = GetAnimation();
+        return animation != nullptr &&
+               animation->GetState() == Util::Animation::State::PLAY;
     }
 
     void SetLooping(bool looping) const {
-        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable) ;
-        temp->SetLooping(looping);
+        const auto animation = GetAnimation();
+        if (animation != nullptr) {
+            animation->SetLooping(looping);
+        }
     }
 
     void Play() const {
-        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
-        temp->Play();
+        const auto animation = GetAnimation();
+        if (animation != nullptr) {
+            animation->Play();
+        }
     }
+
     [[nodiscard]] bool IfAnimationEnds() const;
 
+private:
+    [[nodiscard]] std::shared_ptr<Util::Animation> GetAnimation() const;
 };
 
 #endif //ANIMATED_CHARACTER_HPP

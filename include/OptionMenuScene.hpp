@@ -88,6 +88,9 @@ private:
     void UpdateChoiceFrame() const;
     void UpdateValueTexts() const;
 
+    void CommitAndExit();
+    void CancelAndRevert();
+
     void DecrementRow();
     void IncrementRow();
     void AdjustLeft(int row);

@@ -46,6 +46,7 @@ The content is organized as follows:
   AppUtil.hpp
   AudioService.hpp
   BGMPlayer.hpp
+  BoundaryFactory.hpp
   CatAssets.hpp
   Character.hpp
   CharacterPhysicsSystem.hpp
@@ -90,6 +91,7 @@ The content is organized as follows:
   AppUtil.cpp
   AudioService.cpp
   BGMPlayer.cpp
+  BoundaryFactory.cpp
   Character.cpp
   CharacterPhysicsSystem.cpp
   ExitConfirmScene.cpp
@@ -106,6 +108,7 @@ The content is organized as follows:
   OptionMenuScene.cpp
   PhysicsWorld.cpp
   PlayerCat.cpp
+  PlayerKeyConfig.cpp
   PushableBox.cpp
   SaveManager.cpp
   SceneManager.cpp
@@ -397,24 +400,34 @@ public:
     void SetFacingByDirection(int dir);
 
     [[nodiscard]] bool IsLooping() const {
-        return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetLooping();
+        const auto animation = GetAnimation();
+        return animation != nullptr && animation->GetLooping();
     }
 
     [[nodiscard]] bool IsPlaying() const {
-        return std::dynamic_pointer_cast<Util::Animation>(m_Drawable)->GetState() == Util::Animation::State::PLAY;
+        const auto animation = GetAnimation();
+        return animation != nullptr &&
+               animation->GetState() == Util::Animation::State::PLAY;
     }
 
     void SetLooping(bool looping) const {
-        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable) ;
-        temp->SetLooping(looping);
+        const auto animation = GetAnimation();
+        if (animation != nullptr) {
+            animation->SetLooping(looping);
+        }
     }
 
     void Play() const {
-        auto temp = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
-        temp->Play();
+        const auto animation = GetAnimation();
+        if (animation != nullptr) {
+            animation->Play();
+        }
     }
+
     [[nodiscard]] bool IfAnimationEnds() const;
 
+private:
+    [[nodiscard]] std::shared_ptr<Util::Animation> GetAnimation() const;
 };
 
 #endif //ANIMATED_CHARACTER_HPP
@@ -557,6 +570,70 @@ private:
 
 
 #endif //PICOPART_BGMPLAYER_HPP
+</file>
+
+<file path="BoundaryFactory.hpp">
+#ifndef BOUNDARY_FACTORY_HPP
+#define BOUNDARY_FACTORY_HPP
+
+#include <optional>
+
+#include "PhysicsWorld.hpp"
+
+struct BoundaryPreset {
+    float worldHalfWidth;
+    float wallHalfWidth;
+    float wallHalfHeight;
+    float floorHalfHeight;
+    bool hasCeiling;
+    float ceilingHalfHeight;
+    float leftWallCenterX;
+    float rightWallCenterX;
+};
+
+namespace LevelGeometryPreset {
+inline constexpr BoundaryPreset kSharedMenuLikeNoCeiling = {
+    690.0f,
+    50.0f,
+    400.0f,
+    40.0f,
+    false,
+    0.0f,
+    -690.0f,
+    690.0f,
+};
+
+inline constexpr BoundaryPreset kSharedMenuLikeWithCeiling = {
+    690.0f,
+    50.0f,
+    400.0f,
+    40.0f,
+    true,
+    40.0f,
+    -690.0f,
+    690.0f,
+};
+
+inline constexpr BoundaryPreset kLevelOneRoom = {
+    600.0f,
+    32.0f,
+    360.0f,
+    35.0f,
+    true,
+    35.0f,
+    -639.0f,
+    639.0f,
+};
+} // namespace LevelGeometryPreset
+
+namespace BoundaryFactory {
+void AddStaticRoomBoundaries(PhysicsWorld& world,
+                             float floorSurfaceY,
+                             std::optional<float> ceilingSurfaceY,
+                             const BoundaryPreset& preset);
+} // namespace BoundaryFactory
+
+#endif // BOUNDARY_FACTORY_HPP
 </file>
 
 <file path="CatAssets.hpp">
@@ -948,6 +1025,7 @@ public:
 
     virtual const std::array<PlayerKeyConfig, 8>& GetAppliedKeyConfigs() const = 0;
     virtual std::array<PlayerKeyConfig, 8>& MutableAppliedKeyConfigs() = 0;
+    virtual int GetConfiguredPlayerCount() const = 0;
 
     virtual bool ShouldQuit() const = 0;
     virtual void RequestQuit() = 0;
@@ -1376,12 +1454,9 @@ private:
 
 #include "UITriangleButton.hpp"
 
-class KeyboardConfigScene;
-
 class LocalPlayScene : public Scene {
 public:
-    LocalPlayScene(SceneServices services,
-                   KeyboardConfigScene* kbConfigScene);
+    explicit LocalPlayScene(SceneServices services);
     ~LocalPlayScene() override = default;
 
     void   OnEnter() override;
@@ -1405,7 +1480,6 @@ private:
 
     int m_PlayerCount = MIN_PLAYERS;
 
-    KeyboardConfigScene* m_KbConfigScene = nullptr;
 
     static const Util::Color k_Black;
     static const Util::Color k_Red;
@@ -1550,6 +1624,9 @@ private:
 
     void UpdateChoiceFrame() const;
     void UpdateValueTexts() const;
+
+    void CommitAndExit();
+    void CancelAndRevert();
 
     void DecrementRow();
     void IncrementRow();
@@ -2204,6 +2281,16 @@ public:
         return m_AppliedKeyConfigs;
     }
 
+    int GetConfiguredPlayerCount() const override {
+        int count = 0;
+        for (const auto& cfg : m_AppliedKeyConfigs) {
+            if (static_cast<int>(cfg.AllKeys().size()) >= 4) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
     bool ShouldQuit() const override { return m_ShouldQuit; }
     void RequestQuit() override { m_ShouldQuit = true; }
     void ClearQuitRequest() override { m_ShouldQuit = false; }
@@ -2385,9 +2472,16 @@ void AnimatedCharacter::SetFacingByDirection(int dir) {
     m_Transform.scale.x = (dir < 0) ? -absX : absX;
 }
 
+std::shared_ptr<Util::Animation> AnimatedCharacter::GetAnimation() const {
+    return std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
+}
+
 bool AnimatedCharacter::IfAnimationEnds() const {
-    auto animation = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
-        return animation->GetCurrentFrameIndex() == animation->GetFrameCount() - 1;
+    const auto animation = GetAnimation();
+    if (animation == nullptr) {
+        return false;
+    }
+    return animation->GetCurrentFrameIndex() == animation->GetFrameCount() - 1;
 }
 </file>
 
@@ -2536,9 +2630,7 @@ void App::Start() {
 
     auto kbConfigScene = make_unique<KeyboardConfigScene>(services);
 
-    auto localPlayScene = make_unique<LocalPlayScene>(
-        services,
-        kbConfigScene.get());
+    auto localPlayScene = make_unique<LocalPlayScene>(services);
 
     auto localPlayGameScene = make_unique<LocalPlayGameScene>(services);
 
@@ -2572,6 +2664,7 @@ void App::Start() {
 void App::Update() {
     if (m_SceneManager == nullptr || m_SceneManager->GetCurrentScene() == nullptr) {
         LOG_ERROR("SceneManager current scene is nullptr!");
+        m_CurrentState = State::END;
         return;
     }
 
@@ -2825,6 +2918,37 @@ void BGMPlayer::Update() {
 }
 </file>
 
+<file path="BoundaryFactory.cpp">
+#include "BoundaryFactory.hpp"
+
+namespace BoundaryFactory {
+
+void AddStaticRoomBoundaries(PhysicsWorld& world,
+                             float floorSurfaceY,
+                             std::optional<float> ceilingSurfaceY,
+                             const BoundaryPreset& preset) {
+    world.AddStaticBoundary(
+        {0.0f, floorSurfaceY - preset.floorHalfHeight},
+        {preset.worldHalfWidth, preset.floorHalfHeight});
+
+    if (preset.hasCeiling && ceilingSurfaceY.has_value()) {
+        world.AddStaticBoundary(
+            {0.0f, *ceilingSurfaceY + preset.ceilingHalfHeight},
+            {preset.worldHalfWidth, preset.ceilingHalfHeight});
+    }
+
+    world.AddStaticBoundary(
+        {preset.leftWallCenterX, 0.0f},
+        {preset.wallHalfWidth, preset.wallHalfHeight});
+
+    world.AddStaticBoundary(
+        {preset.rightWallCenterX, 0.0f},
+        {preset.wallHalfWidth, preset.wallHalfHeight});
+}
+
+} // namespace BoundaryFactory
+</file>
+
 <file path="Character.cpp">
 #include "Character.hpp"
 #include "Util/Image.hpp"
@@ -3075,13 +3199,6 @@ static constexpr std::array<Keycode PlayerKeyConfig::*, 9> kBindFields = {
     &PlayerKeyConfig::subMenu,
 };
 
-std::vector<Keycode> PlayerKeyConfig::AllKeys() const {
-    std::vector<Keycode> result;
-    for (auto k : {up, down, left, right, jump, cancel, shot, menu, subMenu}) {
-        if (k != Keycode::UNKNOWN) result.push_back(k);
-    }
-    return result;
-}
 
 KeyboardConfigScene::KeyboardConfigScene(SceneServices services)
     : Scene(services)
@@ -3705,6 +3822,7 @@ void LevelExitScene::ConfirmSelection() {
 
 <file path="LevelOneScene.cpp">
 #include "LevelOneScene.hpp"
+#include "BoundaryFactory.hpp"
 #include <algorithm>
 #include <cmath>
 #include "CatAssets.hpp"
@@ -3753,11 +3871,6 @@ bool LevelOneScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
 }
 
 void LevelOneScene::SetupStaticBoundaries() {
-    constexpr float wallHalfW  = 32.0f;
-    constexpr float wallHalfH  = 360.0f;
-    constexpr float floorHalfH = 35.0f;
-    constexpr float ceilHalfH  = 35.0f;
-
     // Derive the physical floor surface from the visual floor sprite.
     // This keeps collider and art aligned.
     float floorSurfaceY = kRoomFloorY;
@@ -3772,15 +3885,11 @@ void LevelOneScene::SetupStaticBoundaries() {
                         - m_CeilingSprite->GetScaledSize().y * 0.5f;
     }
 
-    // Floor collider: top edge = floorSurfaceY.
-    m_World.AddStaticBoundary({0.0f, floorSurfaceY - floorHalfH}, {600.0f, floorHalfH});
-
-    // Ceiling collider: bottom edge = ceilingSurfaceY.
-    m_World.AddStaticBoundary({0.0f, ceilingSurfaceY + ceilHalfH}, {600.0f, ceilHalfH});
-
-    // Side walls.
-    m_World.AddStaticBoundary({kRoomLeftX-15.0f,  0.0f}, {wallHalfW, wallHalfH});
-    m_World.AddStaticBoundary({kRoomRightX+15.0f, 0.0f}, {wallHalfW, wallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        ceilingSurfaceY,
+        LevelGeometryPreset::kLevelOneRoom);
 }
 
 
@@ -3938,6 +4047,8 @@ void LevelOneScene::OnExit() {
     }
     m_Players.clear();
 
+    // Ensure paused overlay state does not persist frozen flags into next enter.
+    m_World.UnfreezeAll();
     m_World.Clear();
 
     m_Actors.Root().RemoveChild(m_FloorSprite);
@@ -4312,6 +4423,7 @@ void LevelSelectScene::UpdateCrowns() const {
 
 <file path="LocalPlayGameScene.cpp">
 #include "LocalPlayGameScene.hpp"
+#include "BoundaryFactory.hpp"
 #include "LocalPlayScene.hpp"
 #include "KeyboardConfigScene.hpp"
 #include "CatAssets.hpp"
@@ -4327,11 +4439,6 @@ LocalPlayGameScene::LocalPlayGameScene(SceneServices services)
     : Scene(services) {}
 
 void LocalPlayGameScene::SetupStaticBoundaries() {
-    constexpr float kWallHalfW  = 50.f;
-    constexpr float kWallHalfH  = 400.f;
-    constexpr float kFloorHalfH = 40.f;
-    constexpr float kCeilHalfH  = 40.f;
-
     float floorSurfaceY   = -360.f;
     float ceilingSurfaceY = 360.f;
 
@@ -4340,21 +4447,11 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
                       + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
-    m_World.AddStaticBoundary(
-        {0.f, floorSurfaceY - kFloorHalfH},
-        {640.f + kWallHalfW, kFloorHalfH});
-
-    m_World.AddStaticBoundary(
-        {0.f, ceilingSurfaceY + kCeilHalfH},
-        {640.f + kWallHalfW, kCeilHalfH});
-
-    m_World.AddStaticBoundary(
-        {-(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
-
-    m_World.AddStaticBoundary(
-        {(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        ceilingSurfaceY,
+        LevelGeometryPreset::kSharedMenuLikeWithCeiling);
 }
 
 void LocalPlayGameScene::OnEnter() {
@@ -4600,7 +4697,6 @@ void LocalPlayGameScene::UpdateDoorCountText() const {
 //
 
 #include "LocalPlayScene.hpp"
-#include "KeyboardConfigScene.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -4611,10 +4707,8 @@ const Util::Color LocalPlayScene::k_Red   = Util::Color::FromRGB(220, 50,  50,  
 using ip = Util::Input ;
 using k  = Util::Keycode ;
 
-LocalPlayScene::LocalPlayScene(SceneServices services,
-                               KeyboardConfigScene* kbConfigScene)
+LocalPlayScene::LocalPlayScene(SceneServices services)
     : Scene(services)
-    , m_KbConfigScene(kbConfigScene)
 {
     m_MenuFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
@@ -4740,10 +4834,7 @@ void LocalPlayScene::Update() {
     }
 
     if ( ip::IsKeyDown(k::RETURN)) {
-        int configuredCount = 0;
-        if (m_KbConfigScene != nullptr) {
-            configuredCount = m_KbConfigScene->GetConfiguredPlayerCount();
-        }
+        const int configuredCount = m_Session.GetConfiguredPlayerCount();
 
         if (m_PlayerCount <= configuredCount) {
             m_Session.SetSelectedPlayerCount(m_PlayerCount);
@@ -4760,10 +4851,7 @@ void LocalPlayScene::Update() {
 void LocalPlayScene::UpdateDisplay() const {
     m_PlayerCountText->SetText(std::to_string(m_PlayerCount) + "PLAYER GAME");
 
-    int configuredCount = 0;
-    if (m_KbConfigScene != nullptr) {
-        configuredCount = m_KbConfigScene->GetConfiguredPlayerCount();
-    }
+    const int configuredCount = m_Session.GetConfiguredPlayerCount();
 
     const bool hasWarning = (m_PlayerCount > configuredCount);
 
@@ -4804,6 +4892,8 @@ int main(int, char**) {
 
 <file path="MenuScene.cpp">
 #include "MenuScene.hpp"
+
+#include "BoundaryFactory.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -4854,30 +4944,17 @@ MenuScene::MenuScene(SceneServices services)
 }
 
 void MenuScene::SetupStaticBoundaries() {
-    constexpr float kWallHalfW  = 50.f;
-    constexpr float kWallHalfH  = 400.f;
-    constexpr float kFloorHalfH = 40.f;
-
     float floorSurfaceY = -360.f;
     if (m_Actors.Floor() != nullptr) {
         floorSurfaceY = m_Actors.Floor()->GetPosition().y
                       + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
-    // Floor collider: top edge sits at floorSurfaceY.
-    m_World.AddStaticBoundary(
-        {0.f, floorSurfaceY - kFloorHalfH},
-        {640.f + kWallHalfW, kFloorHalfH});
-
-    // Left wall.
-    m_World.AddStaticBoundary(
-        {-(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
-
-    // Right wall.
-    m_World.AddStaticBoundary(
-        { (640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        std::nullopt,
+        LevelGeometryPreset::kSharedMenuLikeNoCeiling);
 }
 
 void MenuScene::OnEnter() {
@@ -5239,9 +5316,7 @@ void OptionMenuScene::Update() {
         m_ExitGameButton->IsLeftClicked()              ||
         m_CancelText->IsLeftClicked())
     {
-        m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-        m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        CancelAndRevert();
         return;
     }
 
@@ -5250,20 +5325,7 @@ void OptionMenuScene::Update() {
         return;
     }
     if (m_OkText->IsLeftClicked()) {
-        m_Applied = m_Pending;
-        m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-        m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-
-        {
-            OptionSettingsData toSave{
-                m_Applied.bgColorIndex,
-                m_Applied.bgmVolume,
-                m_Applied.seVolume,
-                m_Applied.dispNumber
-            };
-            SaveManager::SaveOptionSettings(toSave);
-        }
-        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        CommitAndExit();
         return;
     }
 
@@ -5322,30 +5384,37 @@ void OptionMenuScene::Update() {
             RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::KeyboardConfig});
             return;
         case 5:
-            m_Applied = m_Pending;
-            m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-            m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-
-            {
-            OptionSettingsData toSave{
-                m_Applied.bgColorIndex,
-                m_Applied.bgmVolume,
-                m_Applied.seVolume,
-                m_Applied.dispNumber
-            };
-            SaveManager::SaveOptionSettings(toSave);
-            }
-            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+            CommitAndExit();
             return;
         case 6:
-            m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
-            m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+            CancelAndRevert();
             return;
         default:
             break;
         }
     }
+}
+
+void OptionMenuScene::CommitAndExit() {
+    m_Applied = m_Pending;
+    m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+    m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
+
+    OptionSettingsData toSave{
+        m_Applied.bgColorIndex,
+        m_Applied.bgmVolume,
+        m_Applied.seVolume,
+        m_Applied.dispNumber
+    };
+    SaveManager::SaveOptionSettings(toSave);
+
+    RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+}
+
+void OptionMenuScene::CancelAndRevert() {
+    m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+    m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
+    RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
 }
 
 void OptionMenuScene::DecrementRow() {
@@ -6036,6 +6105,18 @@ void PlayerCat::SetCatAnimState(CatAnimState newState) {
 }
 </file>
 
+<file path="PlayerKeyConfig.cpp">
+#include "PlayerKeyConfig.hpp"
+
+std::vector<Util::Keycode> PlayerKeyConfig::AllKeys() const {
+    std::vector<Util::Keycode> result;
+    for (auto k : {up, down, left, right, jump, cancel, shot, menu, subMenu}) {
+        if (k != Util::Keycode::UNKNOWN) result.push_back(k);
+    }
+    return result;
+}
+</file>
+
 <file path="PushableBox.cpp">
 //
 // Created by cody2 on 2026/3/27.
@@ -6441,72 +6522,86 @@ void SceneManager::GoTo(SceneId id) {
         return;
     }
 
-    Scene* current = GetCurrentScene();
-    if (current != nullptr) {
-        current->OnExit();
+    // Exit all stacked scenes from top to bottom for consistent lifecycle.
+    while (!m_StackIds.empty()) {
+        Scene* top = ResolveScene(m_StackIds.back());
+        if (top != nullptr) {
+            top->OnExit();
+        }
+        m_StackIds.pop_back();
     }
 
-    m_StackIds.clear();
     m_StackIds.push_back(id);
     target->OnEnter();
 }
 
 void SceneManager::PushOverlay(SceneId id) {
-    if (m_StackIds.size() != 1) {
-        LOG_ERROR("SceneManager::PushOverlay requires one base scene, stack size={}", static_cast<int>(m_StackIds.size()));
+    if (m_StackIds.empty()) {
+        LOG_ERROR("SceneManager::PushOverlay requires at least one underlying scene");
         return;
     }
 
-    Scene* base = ResolveScene(m_StackIds.front());
+    Scene* top = ResolveScene(m_StackIds.back());
     Scene* overlay = ResolveScene(id);
-    if (base == nullptr || overlay == nullptr) {
-        LOG_ERROR("SceneManager::PushOverlay failed, invalid base/overlay id={}", static_cast<int>(id));
+    if (top == nullptr || overlay == nullptr) {
+        LOG_ERROR("SceneManager::PushOverlay failed, invalid top/overlay id={}", static_cast<int>(id));
         return;
     }
 
-    base->PauseGameplay();
+    top->PauseGameplay();
     m_StackIds.push_back(id);
     overlay->OnEnter();
 }
 
 void SceneManager::PopOverlay() {
-    if (m_StackIds.size() != 2) {
-        LOG_ERROR("SceneManager::PopOverlay requires overlay stack size 2, got {}", static_cast<int>(m_StackIds.size()));
+    if (m_StackIds.size() < 2) {
+        LOG_ERROR("SceneManager::PopOverlay requires stack size >= 2, got {}", static_cast<int>(m_StackIds.size()));
         return;
     }
 
     Scene* overlay = ResolveScene(m_StackIds.back());
-    Scene* base = ResolveScene(m_StackIds.front());
-    if (overlay == nullptr || base == nullptr) {
-        LOG_ERROR("SceneManager::PopOverlay failed, base or overlay scene missing");
+    if (overlay == nullptr) {
+        LOG_ERROR("SceneManager::PopOverlay failed, overlay scene missing");
         return;
     }
 
     overlay->OnExit();
     m_StackIds.pop_back();
-    base->ResumeGameplay();
+
+    Scene* newTop = ResolveScene(m_StackIds.back());
+    if (newTop == nullptr) {
+        LOG_ERROR("SceneManager::PopOverlay failed, new top scene missing after pop");
+        return;
+    }
+
+    newTop->ResumeGameplay();
 }
 
 void SceneManager::RestartUnderlying() {
-    if (m_StackIds.size() != 2) {
-        LOG_ERROR("SceneManager::RestartUnderlying requires overlay stack size 2, got {}", static_cast<int>(m_StackIds.size()));
+    if (m_StackIds.size() < 2) {
+        LOG_ERROR("SceneManager::RestartUnderlying requires stack size >= 2, got {}", static_cast<int>(m_StackIds.size()));
         return;
     }
 
     Scene* overlay = ResolveScene(m_StackIds.back());
-    Scene* base = ResolveScene(m_StackIds.front());
-    if (overlay == nullptr || base == nullptr) {
-        LOG_ERROR("SceneManager::RestartUnderlying failed, base or overlay scene missing");
+    if (overlay == nullptr) {
+        LOG_ERROR("SceneManager::RestartUnderlying failed, overlay scene missing");
         return;
     }
 
     overlay->OnExit();
     m_StackIds.pop_back();
 
-    base->OnExit();
-    base->OnEnter();
-    // RETRY should leave the base scene playable immediately (same as PopOverlay path).
-    base->ResumeGameplay();
+    Scene* underlying = ResolveScene(m_StackIds.back());
+    if (underlying == nullptr) {
+        LOG_ERROR("SceneManager::RestartUnderlying failed, underlying scene missing after pop");
+        return;
+    }
+
+    underlying->OnExit();
+    underlying->OnEnter();
+    // Retry should leave the restarted scene immediately playable.
+    underlying->ResumeGameplay();
 }
 
 void SceneManager::ClearToAndGoTo(SceneId id) {
@@ -6516,18 +6611,10 @@ void SceneManager::ClearToAndGoTo(SceneId id) {
         return;
     }
 
-    if (m_StackIds.size() == 2) {
-        Scene* overlay = ResolveScene(m_StackIds.back());
-        if (overlay != nullptr) {
-            overlay->OnExit();
-        }
-        m_StackIds.pop_back();
-    }
-
-    if (m_StackIds.size() == 1) {
-        Scene* base = ResolveScene(m_StackIds.back());
-        if (base != nullptr) {
-            base->OnExit();
+    while (!m_StackIds.empty()) {
+        Scene* top = ResolveScene(m_StackIds.back());
+        if (top != nullptr) {
+            top->OnExit();
         }
         m_StackIds.pop_back();
     }
@@ -6584,6 +6671,8 @@ StaticBody::StaticBody(glm::vec2 center, glm::vec2 halfSize, BodyType type)
 <file path="TitleScene.cpp">
 #include "TitleScene.hpp"
 
+#include "BoundaryFactory.hpp"
+
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -6604,30 +6693,17 @@ TitleScene::TitleScene(SceneServices services)
 }
 
 void TitleScene::SetupStaticBoundaries() {
-    constexpr float kWallHalfW  = 50.f;   // thickness of left/right walls
-    constexpr float kWallHalfH  = 400.f;  // height of left/right wall colliders
-    constexpr float kFloorHalfH = 40.f;   // thickness of the floor collider
-
     float floorSurfaceY = -360.f;  // fallback if Floor is null
     if (m_Actors.Floor() != nullptr) {
         floorSurfaceY = m_Actors.Floor()->GetPosition().y
                       + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
-    // Floor: center is below the surface, top edge sits at floorSurfaceY.
-    m_World.AddStaticBoundary(
-        {0.f, floorSurfaceY - kFloorHalfH},
-        {640.f + kWallHalfW, kFloorHalfH});
-
-    // Left boundary wall.
-    m_World.AddStaticBoundary(
-        {-(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
-
-    // Right boundary wall.
-    m_World.AddStaticBoundary(
-        { (640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        std::nullopt,
+        LevelGeometryPreset::kSharedMenuLikeNoCeiling);
 }
 
 
@@ -6826,57 +6902,47 @@ void VisualThemeService::RestoreAppliedBackground() {
 <file path="ARCHITECTURE.md">
 # Architecture Overview
 
-This project is a scene-oriented game runtime with interface-injected services and scene-local gameplay systems.
+## Runtime Backbone
 
-## Runtime State Machine
-
-- `main.cpp` drives `App` states: `START -> UPDATE -> END`.
-- `App::Update()` runs in this order:
-  1. `IAudioService::UpdateBgm()`
-  2. `SceneManager::UpdateCurrent()`
-  3. quit gate via `ISessionState::ShouldQuit()`
-  4. `m_Root.Update()` (render tree update)
+- `main.cpp` drives `App` as a small state machine: `START -> UPDATE -> END`.
+- `App::Update()` order is fixed: `AudioService::UpdateBgm()` -> `SceneManager::UpdateCurrent()` -> quit gate (`SessionState`) -> `Renderer::Update()`.
+- `SceneManager` is the only transition executor; scenes only emit `SceneOp` intents.
 
 ## Composition Root (`App::Start`)
 
-- Creates long-lived systems: `GlobalActors`, `SessionState`, `AudioService`/`BGMPlayer`, `VisualThemeService`, `SceneManager`.
-- Builds shared actors (background, floor, header, door, startup cats) once and stores them in `GlobalActors`.
-- Registers all scenes into `SceneManager` and enters `SceneId::Title`.
-
-## Scene Contract
-
-- Base class `Scene` exposes `OnEnter()`, `OnExit()`, `Update()` (`void`).
-- Scene transitions are **single-channel** via `SceneOp` only:
-  - `PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`.
-- Scene requests transitions through `RequestSceneOp(...)`; `SceneManager` executes them after `Update()` via `ConsumeSceneOp()`.
+- Builds long-lived services: `GlobalActors`, `SessionState`, `BGMPlayer`/`AudioService`, `VisualThemeService`, `SceneManager`.
+- Creates shared world actors once (background, floor, header, door, startup cats) and stores them in `GlobalActors`.
+- Registers all scenes, maps `SceneId::Level01` to `LevelOneScene`, then enters `SceneId::Title`.
 
 ## Scene Stack Model
 
-- `SceneManager` owns `std::unique_ptr<Scene>` registry and a stack of `SceneId`.
-- Base scene + optional overlay is the supported runtime shape.
-- Overlay operations:
-  - `PushOverlay`: pause base scene, enter overlay.
-  - `PopOverlay`: exit overlay, resume base scene.
-  - `RestartUnderlying`: exit overlay, re-enter base scene.
-  - `ClearToAndGoTo`: clear current stack and enter target.
+- Allowed stack shapes: one base scene, or base + one overlay.
+- `PushOverlay` pauses base (`PauseGameplay`) and enters overlay.
+- `PopOverlay` exits overlay and resumes base (`ResumeGameplay`).
+- `RestartUnderlying` exits overlay, restarts base (`OnExit` -> `OnEnter`), then resumes it.
+- `ClearToAndGoTo` clears overlay/base and enters target as new base.
 
-## Data and Ownership Boundaries
+## Ownership Boundaries
 
-- `App` owns global lifetime objects.
-- Scenes own scene-local state (UI nodes, temporary gameplay entities, `PhysicsWorld`).
-- Shared visual actors are accessed through `IGlobalActors` and not re-owned by scenes.
-- Cross-scene runtime data lives in `ISessionState`; persistence uses `SaveManager`.
+- `App` owns process-lifetime objects and scene registry lifetime.
+- `SceneManager` owns scenes as `std::unique_ptr<Scene>`.
+- Each scene owns its transient gameplay objects (`PhysicsWorld`, local UI, level entities).
+- Scenes access shared visuals through `IGlobalActors` (non-owning) and shared mutable session data through `ISessionState`.
+- File persistence is centralized in `SaveManager`:
+  - `settings.json` for option + key config data
+  - `save_data.json` for level best-time data
 
-## Registered Scene Set
+## Current Gameplay Topology
 
-- `TitleScene`, `MenuScene`, `ExitConfirmScene`, `OptionMenuScene`, `KeyboardConfigScene`, `LocalPlayScene`, `LocalPlayGameScene`, `LevelSelectScene`, `LevelExitScene` (overlay), `LevelOneScene`.
-- `LevelOneScene` is registered under `SceneId::Level01`.
+- Core route: `Title -> Menu -> LocalPlay -> LocalPlayGame -> LevelSelect -> Level01`.
+- `LevelOneScene` uses an overlay pause menu (`LevelExitScene`) via `PushOverlay`/`PopOverlay`/`RestartUnderlying`.
+- Only Level 1 is currently wired from level select; `Level02` to `Level10` ids exist but are not registered yet.
 </file>
 
 <file path="CLASS_RELATIONSHIPS.md">
 # Class Relationships
 
-## Core Inheritance
+## Inheritance Map
 
 ```text
 Util::GameObject
@@ -6912,7 +6978,7 @@ Scene
 └─ LevelOneScene
 ```
 
-## Service and Runtime Contracts
+## Interface Contracts
 
 ```text
 IAudioService       -> AudioService
@@ -6921,131 +6987,116 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-- `Scene` stores only interface references from `SceneServices`.
-- `SceneManager` is the sole executor of `SceneOp` emitted by scenes.
+- `Scene` receives only interface references through `SceneServices`.
+- `App::Start()` is the composition root that binds concrete implementations.
 
-## Scene Control Relationships
+## Control and Ownership Links
 
-```text
-Scene::Update() -> RequestSceneOp(...) -> Scene::ConsumeSceneOp() -> SceneManager::UpdateCurrent()
-```
+- `SceneManager` owns all scene objects and enforces transition semantics.
+- `Scene` owns one pending `SceneOp`; `SceneManager::UpdateCurrent()` consumes at most one op per frame.
+- Scenes never call other scenes directly; they communicate through `SceneOpType` commands.
 
-- Transition output is single-channel (`SceneOp`) with four active operations:
-  - `PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`.
+## Physics-Side Coupling
 
-## Ownership Model
+- `PhysicsWorld` tracks participants by `weak_ptr<IPhysicsBody>` and owns only static boundaries (`StaticBody`).
+- `PushableBox` holds a non-owning `PhysicsWorld*` to query cooperative push counts and notify push animations.
+- `PlayerCat` and `PushableBox` are dual-role objects: render actor + physics body in one instance.
 
-- `App` owns global systems and application lifetime.
-- `SceneManager` owns scene instances (`std::unique_ptr<Scene>`).
-- `GlobalActors` owns reusable world/UI actors shared across scenes.
-- Scene-local gameplay systems (for example `PhysicsWorld`) are owned by each scene instance.
+## Persistence and Session Coupling
 
-## Intentional Couplings
-
-- `LocalPlayScene` references `KeyboardConfigScene*` to validate configured player count.
-- `PushableBox` references `PhysicsWorld*` (non-owning) for cooperative push counting.
-- Persistence flows are centralized in `SaveManager` calls from option/key/level scenes.
+- `OptionMenuScene` reads/writes option settings via `SaveManager` and previews through audio/theme services.
+- `KeyboardConfigScene` synchronizes key profiles to both `SaveManager` and `SessionState`.
+- `LevelOneScene` writes best times via `SaveManager::UpdateBestTime()` using current session player count.
 </file>
 
 <file path="COMPONENT_INTERACTION.md">
 # Component Interaction
 
-## Per-Frame Flow
+## Per-Frame Execution Chain
 
-`App::Update()` executes:
-
-1. `IAudioService::UpdateBgm()`
-2. `SceneManager::UpdateCurrent()`
-3. quit check (`ISessionState::ShouldQuit()`)
-4. `m_Root.Update()`
+1. `AudioService::UpdateBgm()` advances BGM track switching.
+2. `SceneManager::UpdateCurrent()` runs scene logic and may execute one transition.
+3. `SessionState::ShouldQuit()` can switch `App` to `END`.
+4. `Renderer::Update()` processes the render tree.
 
 ## Scene Transition Handshake
 
-Current scene interaction is strictly:
+1. Active scene executes `Update()`.
+2. Scene returns intent via `ConsumeSceneOp()`.
+3. `SceneManager` applies stack operation (`PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`).
 
-1. `SceneManager` calls `current->Update()`
-2. scene may call `RequestSceneOp(...)`
-3. `SceneManager` reads `current->ConsumeSceneOp()`
-4. manager executes the operation if present
+Scenes never mutate manager state directly; they only emit operation requests.
 
-There is no `SceneId` return-based transition path in scene `Update()`.
+## Service and Data Flow
 
-## Overlay Stack Behavior
+- `IGlobalActors`: shared visual nodes (`Root`, `Background`, `Floor`, `Door`, startup cats, test box).
+- `ISessionState`: runtime gameplay data (player count, key configs, cooperative value, quit flag).
+- `IAudioService` and `IVisualThemeService`: immediate preview paths used by option UI.
+- `SaveManager`: persistent storage boundary for options, key profiles, and level best times.
 
-- `PushOverlay`: pauses base scene (`PauseGameplay()`), pushes overlay, calls overlay `OnEnter()`.
-- `PopOverlay`: calls overlay `OnExit()`, pops stack, resumes base (`ResumeGameplay()`).
-- `RestartUnderlying`: exits overlay, then re-enters base (`OnExit()` -> `OnEnter()`).
-- `ClearToAndGoTo`: exits current stack and enters target scene as new base.
+## Key Interaction Scenarios
 
-## Shared Services in Scene Logic
+- `ExitConfirmScene`: YES calls `RequestQuit()`; `App` exits on the next quit gate.
+- `OptionMenuScene`: applies pending theme/audio values immediately, commits only on OK, reverts on cancel/escape.
+- `KeyboardConfigScene`: edits one player profile, blocks conflicting save for non-1P profiles, then syncs to session.
+- `LocalPlayScene`: validates selected player count against configured key profiles before entering gameplay.
+- `LocalPlayGameScene`: tracks per-player door entry, then routes to `LevelSelectScene` when all entered.
 
-- `IAudioService`: BGM lifecycle and option preview/commit volume changes.
-- `IVisualThemeService`: background preview and apply/restore behavior.
-- `ISessionState`: selected player count, key bindings, cooperative values, quit flag.
-- `IGlobalActors`: shared root and reusable actors (background, header, floor, door, startup cats, optional test box).
+## `LevelOneScene` + `LevelExitScene` Overlay Cycle
 
-## Key Runtime Interaction Paths
-
-- `ExitConfirmScene`: YES calls `RequestQuit()`, app exits in later frame gate.
-- `OptionMenuScene`: edits pending settings, previews theme/audio, persists on OK; `seVolume` and `dispNumber` are currently UI/persistence-focused.
-- `KeyboardConfigScene`: edits per-player bindings, conflict-gates save, syncs to session.
-- `LocalPlayScene`: compares selected player count with configured profiles before entering gameplay.
-- `LevelSelectScene`: loads save data, updates best-time/crown UI, routes to mapped level scene.
-
-## Gameplay + Overlay Example (`LevelOne`)
-
-- `LevelOneScene::Update()` order: input -> `PhysicsWorld::Update()` -> timer -> key/door logic -> clear gate.
-- ESC emits `PushOverlay(LevelExit)`.
-- `LevelOneScene::PauseGameplay()` / `ResumeGameplay()` map to `PhysicsWorld::FreezeAll()` / `UnfreezeAll()`.
-- `LevelExitScene` confirmation emits:
-  - return game: `PopOverlay`
-  - retry: `RestartUnderlying`
-  - level select/title: `ClearToAndGoTo(...)`
+- `LevelOneScene` update order: player input -> `PhysicsWorld::Update()` -> timer -> key pickup/follow -> door unlock -> per-player entry.
+- Pressing ESC pushes `LevelExitScene` as overlay; base gameplay is frozen via `PauseGameplay()`.
+- Overlay actions:
+  - Return -> `PopOverlay` (resume)
+  - Retry -> `RestartUnderlying` (re-enter same level)
+  - Leave -> `ClearToAndGoTo(LevelSelect or Title)`
+- On full clear, `LevelOneScene` saves best time and returns to `LevelSelectScene`.
 </file>
 
 <file path="HPP_PURPOSE.md">
 # include/*.hpp 用途一覽（重點版）
 
-- `AnimatedCharacter.hpp`：動畫角色基底，負責切換與播放動畫。
-- `App.hpp`：應用程式狀態機與核心成員（START/UPDATE/END）。
-- `AppUtil.hpp`：UI 對齊、滑鼠判定、鍵碼轉字串等工具函式。
-- `AudioService.hpp`：`IAudioService` 實作，封裝 BGM 播放控制。
-- `BGMPlayer.hpp`：BGM 清單、播放索引與音量管理。
-- `CatAssets.hpp`：集中產生各色貓咪動畫資源路徑。
-- `Character.hpp`：圖片型可渲染物件，含滑鼠互動判定。
-- `CharacterPhysicsSystem.hpp`：角色物理常數與參數集中定義。
-- `ExitConfirmScene.hpp`：離開確認場景（YES/NO）邏輯。
-- `GameText.hpp`：文字顯示與文字互動物件。
-- `GlobalActors.hpp`：`IGlobalActors` 實作，管理共享背景/地板/門/貓等物件。
-- `IAudioService.hpp`：音訊服務抽象介面。
-- `IGlobalActors.hpp`：共享場景物件抽象介面。
-- `IPhysicsBody.hpp`：物理物件抽象介面與 `BodyType` 列舉。
-- `IPushable.hpp`：可推物件推力需求抽象介面。
-- `ISessionState.hpp`：跨場景共享狀態抽象介面。
-- `IVisualThemeService.hpp`：背景主題服務抽象介面。
-- `KeyboardConfigScene.hpp`：鍵位設定場景與衝突檢查流程。
-- `LevelExitScene.hpp`：關卡暫停 overlay（返回/重試/離開）。
-- `LevelOneScene.hpp`：第一關玩法、計時、鑰匙與出門流程。
-- `LevelSelectScene.hpp`：關卡選擇與最佳時間/皇冠顯示。
-- `LocalPlayGameScene.hpp`：本地多人遊玩場景與入門流程。
-- `LocalPlayScene.hpp`：玩家人數選擇與進場條件檢查。
-- `MenuScene.hpp`：主選單項目切換與轉場入口。
-- `OptionMenuScene.hpp`：選項場景（背景、音量、顯示設定）。
-- `PhysicsWorld.hpp`：場景內物理世界（更新、解算、碰撞回呼）。
-- `PlayerCat.hpp`：玩家貓角色行為、動畫狀態與物理介面實作。
-- `PlayerKeyConfig.hpp`：玩家按鍵配置資料結構。
-- `PushableBox.hpp`：可推箱子邏輯（需求推力、提示數字）。
-- `SaveManager.hpp`：設定與關卡紀錄讀寫 API。
-- `Scene.hpp`：場景基底，提供生命週期與 `SceneOp` 轉場通道。
+- `AnimatedCharacter.hpp`：動畫角色基底，封裝位置、縮放、朝向與動畫播放判定。
+- `App.hpp`：`App` 主流程宣告，管理 `START/UPDATE/END` 生命週期與核心服務。
+- `AppUtil.hpp`：UI 對齊、按鍵顯示字串、滑鼠矩形命中等共用工具。
+- `AudioService.hpp`：`IAudioService` 實作，轉接 `BGMPlayer` 控制介面。
+- `BGMPlayer.hpp`：BGM 播放器，管理曲目清單、音量、切歌與完成回呼。
+- `BoundaryFactory.hpp`：房間邊界工廠，依幾何預設快速建立地板/牆/天花碰撞體。
+- `CatAssets.hpp`：貓咪動畫資源路徑產生器，統一輸出 `CatAnimPaths`。
+- `Character.hpp`：靜態圖片物件，提供圖片切換、位置設定與滑鼠點擊判定。
+- `CharacterPhysicsSystem.hpp`：歷史物理常數集中區（現行邏輯多已移至 `PlayerCat/PhysicsWorld`）。
+- `ExitConfirmScene.hpp`：離開遊戲確認場景（YES/NO 選擇流程）。
+- `GameText.hpp`：文字物件，支援內容/顏色更新與滑鼠互動判定。
+- `GlobalActors.hpp`：`IGlobalActors` 實作，集中保存跨場景共用 Actor。
+- `IAudioService.hpp`：音訊服務抽象介面（播放、暫停、續播、更新、音量）。
+- `IGlobalActors.hpp`：共享 Actor 存取介面（Root、背景、地板、門、啟動貓等）。
+- `IPhysicsBody.hpp`：物理物件協定（移動意圖、解算套用、碰撞回呼、凍結/啟用）。
+- `IPushable.hpp`：可推動物件介面（最少推動需求）。
+- `ISessionState.hpp`：跨場景執行期資料介面（玩家數、鍵位、合作值、離開旗標）。
+- `IVisualThemeService.hpp`：視覺主題介面（背景套用、還原、索引夾取）。
+- `KeyboardConfigScene.hpp`：鍵位設定場景（多玩家配置、衝突檢查、預設鍵位）。
+- `LevelExitScene.hpp`：關卡暫停 Overlay（返回、重試、回關卡選單、回標題）。
+- `LevelOneScene.hpp`：第一關主場景（鑰匙、雙箱、開門、計時、通關）。
+- `LevelSelectScene.hpp`：關卡選擇場景（格子選取、最佳時間、皇冠顯示、路由）。
+- `LocalPlayGameScene.hpp`：本地多人遊玩場景（玩家生成、進門計數、物理解算）。
+- `LocalPlayScene.hpp`：本地玩家數選擇場景（人數切換與鍵位配置門檻檢查）。
+- `MenuScene.hpp`：主選單場景（選項切換與分流轉場）。
+- `OptionMenuScene.hpp`：選項場景（背景/BGM/SE/顯示設定、預覽、儲存）。
+- `PhysicsWorld.hpp`：場景內物理核心（註冊、兩階段更新、碰撞解算、推力統計）。
+- `PlayerCat.hpp`：玩家貓角色（動畫狀態機 + `IPhysicsBody` 實作）。
+- `PlayerKeyConfig.hpp`：玩家鍵位資料結構與鍵位集合工具 `AllKeys()`。
+- `PushableBox.hpp`：可推箱子（需求推力、重力、碰撞與缺口文字顯示）。
+- `SaveManager.hpp`：持久化存取 API（`settings.json`、`save_data.json`）。
+- `Scene.hpp`：場景抽象基底與 `SceneOp` 請求/消費通道。
 - `SceneId.hpp`：場景識別列舉。
-- `SceneManager.hpp`：場景註冊、堆疊管理與 `SceneOp` 執行。
-- `SceneOp.hpp`：場景操作命令定義（Push/Pop/Restart/ClearToAndGoTo）。
-- `SceneServices.hpp`：場景建構時注入的服務聚合。
-- `SessionState.hpp`：`ISessionState` 實作，保存執行期共享資料。
-- `StaticBody.hpp`：靜態碰撞體（地板/牆/天花板等）。
-- `TitleScene.hpp`：標題場景與進入主選單流程。
-- `UITriangleButton.hpp`：三角按鈕元件（按壓與回彈狀態）。
-- `VisualThemeService.hpp`：`IVisualThemeService` 實作，套用背景主題。
+- `SceneManager.hpp`：場景註冊與堆疊切換管理（含 Overlay 操作）。
+- `SceneOp.hpp`：場景操作命令模型（`PushOverlay/PopOverlay/RestartUnderlying/ClearToAndGoTo`）。
+- `SceneServices.hpp`：場景建構注入服務聚合（Audio/Theme/Session/Actors）。
+- `SessionState.hpp`：`ISessionState` 實作，保存執行期共享狀態。
+- `StaticBody.hpp`：靜態碰撞體（地板、牆、天花等不可動邊界）。
+- `TitleScene.hpp`：標題場景（閃爍提示、啟動貓展示、進入主選單）。
+- `UITriangleButton.hpp`：三角按鈕元件（按下貼圖與短暫回彈狀態）。
+- `VisualThemeService.hpp`：`IVisualThemeService` 實作，管理背景主題套用。
 </file>
 
 <file path="PHYSICS_DESIGN.md">
@@ -7053,77 +7104,68 @@ There is no `SceneId` return-based transition path in scene `Update()`.
 
 ## Scope
 
-`PhysicsWorld` is scene-local and coordinates body update, collision resolution, and callback dispatch.
+- `PhysicsWorld` is scene-local and deterministic per frame.
+- Active body implementations: `PlayerCat`, `PushableBox`, `StaticBody`.
+- `PushableBox` is the only current `IPushable` implementation.
 
-```text
-IPhysicsBody: PlayerCat, PushableBox, StaticBody
-IPushable:    PushableBox
-```
+## Body Contract
 
-## Body Interface Expectations
-
-- `PhysicsUpdate()` computes intent.
-- `GetDesiredDelta()` exposes intended movement for this frame.
+- `PhysicsUpdate()` computes intended movement state.
+- `GetDesiredDelta()` exposes this frame's desired displacement.
 - `ApplyResolvedDelta()` applies world-resolved displacement.
-- `OnCollision()` receives contact normals.
-- `PostUpdate()` runs after resolution.
-- `IsActive` and `IsFrozen` gate participation.
+- `OnCollision(CollisionInfo)` receives contact normals after resolution.
+- `PostUpdate()` finalizes animation/state after physics.
+- `IsActive()` and `IsFrozen()` gate participation in simulation.
 
 ## World Responsibilities
 
-- body lifecycle: `Register`, `Unregister`, `Clear`
-- static collider creation: `AddStaticBoundary` (owned as `StaticBody`)
-- stepping: `Update`
-- pause control: `FreezeAll`, `UnfreezeAll`
-- cooperative push query: `CountCharactersPushing`
-- rope metadata storage: `AddRope`, `RemoveRope`, `GetRopesOf`
+- Lifecycle: `Register`, `Unregister`, `Clear`.
+- Geometry ownership: `AddStaticBoundary()` allocates and owns `StaticBody` colliders.
+- Stepping: `Update()` (including periodic weak-pointer purge).
+- Pause support: `FreezeAll()` and `UnfreezeAll()`.
+- Cooperative-force query: `CountCharactersPushing()` with recursive chain traversal.
+- Rope APIs are metadata only (`AddRope`, `RemoveRope`, `GetRopesOf`); no solver step yet.
 
 ## Frame Pipeline
 
-`PhysicsWorld::Update()` runs:
-
-1. periodic weak-reference purge
-2. `StepPhysicsUpdate()` in two passes
-   - non-`PUSHABLE_BOX` first
-   - `PUSHABLE_BOX` second
-3. `StepResolveAndApply()`
+1. Purge expired weak references every `kPurgeInterval` frames.
+2. `StepPhysicsUpdate()` in two passes:
+   - non-box active, non-frozen bodies
+   - `PUSHABLE_BOX` bodies
+3. `StepResolveAndApply()`:
    - snapshot active bodies
-   - detect rider/support links
-   - resolve desired deltas with support ordering
+   - detect support links (`DetectRiding`, tolerance-based)
+   - resolve in support dependency order
    - apply resolved deltas
-   - dispatch collision callbacks
-4. `PostUpdate()` for active, non-frozen bodies
+   - dispatch `OnCollision` callbacks
+4. Run `PostUpdate()` on active, non-frozen bodies.
 
-The two-pass update ensures pushable boxes read current-frame character push intent.
+The two-pass update ensures box push evaluation sees same-frame player move intents.
 
-## Collision and Support Resolution
+## Collision and Support Rules
 
-- AABB overlap with axis-separated resolution (horizontal, then vertical).
-- Bodies riding supports inherit support horizontal movement.
-- Kinematic/frozen bodies are marked resolved early.
-- Unresolved leftovers are force-resolved as a safety fallback.
+- Collision primitive: AABB overlap with strict `<` checks (edge-touch is not overlap).
+- Resolution order: horizontal pass, then vertical pass.
+- Riders inherit resolved horizontal movement from their support body.
+- Kinematic/frozen bodies are marked resolved first and treated as reference geometry.
+- Fallback path resolves any remaining unresolved body without support carry.
 
 ## Cooperative Push Mechanics
 
-- `CountCharactersPushing(target, dir)` recursively traverses adjacent push chains.
-- Counts active `CHARACTER` bodies with matching push direction.
-- Allows passive intermediates and box relays.
-- `PushableBox` computes right/left counts separately, then applies net force threshold (`requiredPushers`).
+- `PushableBox::PhysicsUpdate()` computes `net = rightPushers - leftPushers` from world queries.
+- Box moves only when `abs(net) >= requiredPushers`; otherwise only gravity applies.
+- Recursive counting allows force transmission through chained characters/boxes.
+- Box maintains an in-world deficit label: `max(0, requiredPushers - abs(net))`.
+- Adjacent qualifying characters receive `NotifyPush()` to drive push animation state.
 
 ## Scene Integration Pattern
 
-Main physics scenes: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
-
-- `OnEnter()`: register dynamic bodies + static boundaries.
-- `Update()`: set input intent and call `m_World.Update()` once.
-- `OnExit()`: `m_World.Clear()`.
-
-`LevelOneScene` pause hooks use `FreezeAll()` and `UnfreezeAll()` for overlay pause/resume.
-
-## Current Limits
-
-- Rope constraints are stored as data only; no rope solver pass is implemented.
-- Several `BodyType` entries are reserved for future gameplay entities.
+- Physics-backed scenes: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
+- Typical lifecycle:
+  - `OnEnter`: clear world, register dynamic bodies, build static room boundaries
+  - `Update`: set movement intents, call `m_World.Update()` once
+  - `OnExit`: clear world
+- `LevelOneScene` maps overlay pause/resume directly to freeze/unfreeze world state.
 </file>
 
 <file path="Image/Level_Cover/LevelOneScene/關卡敘述.txt">

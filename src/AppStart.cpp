@@ -133,9 +133,7 @@ void App::Start() {
 
     auto kbConfigScene = make_unique<KeyboardConfigScene>(services);
 
-    auto localPlayScene = make_unique<LocalPlayScene>(
-        services,
-        kbConfigScene.get());
+    auto localPlayScene = make_unique<LocalPlayScene>(services);
 
     auto localPlayGameScene = make_unique<LocalPlayGameScene>(services);
 

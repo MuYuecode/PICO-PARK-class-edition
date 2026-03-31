@@ -1,43 +1,44 @@
 # include/*.hpp 用途一覽（重點版）
 
-- `AnimatedCharacter.hpp`：動畫角色基底，負責切換與播放動畫。
-- `App.hpp`：應用程式狀態機與核心成員（START/UPDATE/END）。
-- `AppUtil.hpp`：UI 對齊、滑鼠判定、鍵碼轉字串等工具函式。
-- `AudioService.hpp`：`IAudioService` 實作，封裝 BGM 播放控制。
-- `BGMPlayer.hpp`：BGM 清單、播放索引與音量管理。
-- `CatAssets.hpp`：集中產生各色貓咪動畫資源路徑。
-- `Character.hpp`：圖片型可渲染物件，含滑鼠互動判定。
-- `CharacterPhysicsSystem.hpp`：角色物理常數與參數集中定義。
-- `ExitConfirmScene.hpp`：離開確認場景（YES/NO）邏輯。
-- `GameText.hpp`：文字顯示與文字互動物件。
-- `GlobalActors.hpp`：`IGlobalActors` 實作，管理共享背景/地板/門/貓等物件。
-- `IAudioService.hpp`：音訊服務抽象介面。
-- `IGlobalActors.hpp`：共享場景物件抽象介面。
-- `IPhysicsBody.hpp`：物理物件抽象介面與 `BodyType` 列舉。
-- `IPushable.hpp`：可推物件推力需求抽象介面。
-- `ISessionState.hpp`：跨場景共享狀態抽象介面。
-- `IVisualThemeService.hpp`：背景主題服務抽象介面。
-- `KeyboardConfigScene.hpp`：鍵位設定場景與衝突檢查流程。
-- `LevelExitScene.hpp`：關卡暫停 overlay（返回/重試/離開）。
-- `LevelOneScene.hpp`：第一關玩法、計時、鑰匙與出門流程。
-- `LevelSelectScene.hpp`：關卡選擇與最佳時間/皇冠顯示。
-- `LocalPlayGameScene.hpp`：本地多人遊玩場景與入門流程。
-- `LocalPlayScene.hpp`：玩家人數選擇與進場條件檢查。
-- `MenuScene.hpp`：主選單項目切換與轉場入口。
-- `OptionMenuScene.hpp`：選項場景（背景、音量、顯示設定）。
-- `PhysicsWorld.hpp`：場景內物理世界（更新、解算、碰撞回呼）。
-- `PlayerCat.hpp`：玩家貓角色行為、動畫狀態與物理介面實作。
-- `PlayerKeyConfig.hpp`：玩家按鍵配置資料結構。
-- `PushableBox.hpp`：可推箱子邏輯（需求推力、提示數字）。
-- `SaveManager.hpp`：設定與關卡紀錄讀寫 API。
-- `Scene.hpp`：場景基底，提供生命週期與 `SceneOp` 轉場通道。
+- `AnimatedCharacter.hpp`：動畫角色基底，封裝位置、縮放、朝向與動畫播放判定。
+- `App.hpp`：`App` 主流程宣告，管理 `START/UPDATE/END` 生命週期與核心服務。
+- `AppUtil.hpp`：UI 對齊、按鍵顯示字串、滑鼠矩形命中等共用工具。
+- `AudioService.hpp`：`IAudioService` 實作，轉接 `BGMPlayer` 控制介面。
+- `BGMPlayer.hpp`：BGM 播放器，管理曲目清單、音量、切歌與完成回呼。
+- `BoundaryFactory.hpp`：房間邊界工廠，依幾何預設快速建立地板/牆/天花碰撞體。
+- `CatAssets.hpp`：貓咪動畫資源路徑產生器，統一輸出 `CatAnimPaths`。
+- `Character.hpp`：靜態圖片物件，提供圖片切換、位置設定與滑鼠點擊判定。
+- `CharacterPhysicsSystem.hpp`：歷史物理常數集中區（現行邏輯多已移至 `PlayerCat/PhysicsWorld`）。
+- `ExitConfirmScene.hpp`：離開遊戲確認場景（YES/NO 選擇流程）。
+- `GameText.hpp`：文字物件，支援內容/顏色更新與滑鼠互動判定。
+- `GlobalActors.hpp`：`IGlobalActors` 實作，集中保存跨場景共用 Actor。
+- `IAudioService.hpp`：音訊服務抽象介面（播放、暫停、續播、更新、音量）。
+- `IGlobalActors.hpp`：共享 Actor 存取介面（Root、背景、地板、門、啟動貓等）。
+- `IPhysicsBody.hpp`：物理物件協定（移動意圖、解算套用、碰撞回呼、凍結/啟用）。
+- `IPushable.hpp`：可推動物件介面（最少推動需求）。
+- `ISessionState.hpp`：跨場景執行期資料介面（玩家數、鍵位、合作值、離開旗標）。
+- `IVisualThemeService.hpp`：視覺主題介面（背景套用、還原、索引夾取）。
+- `KeyboardConfigScene.hpp`：鍵位設定場景（多玩家配置、衝突檢查、預設鍵位）。
+- `LevelExitScene.hpp`：關卡暫停 Overlay（返回、重試、回關卡選單、回標題）。
+- `LevelOneScene.hpp`：第一關主場景（鑰匙、雙箱、開門、計時、通關）。
+- `LevelSelectScene.hpp`：關卡選擇場景（格子選取、最佳時間、皇冠顯示、路由）。
+- `LocalPlayGameScene.hpp`：本地多人遊玩場景（玩家生成、進門計數、物理解算）。
+- `LocalPlayScene.hpp`：本地玩家數選擇場景（人數切換與鍵位配置門檻檢查）。
+- `MenuScene.hpp`：主選單場景（選項切換與分流轉場）。
+- `OptionMenuScene.hpp`：選項場景（背景/BGM/SE/顯示設定、預覽、儲存）。
+- `PhysicsWorld.hpp`：場景內物理核心（註冊、兩階段更新、碰撞解算、推力統計）。
+- `PlayerCat.hpp`：玩家貓角色（動畫狀態機 + `IPhysicsBody` 實作）。
+- `PlayerKeyConfig.hpp`：玩家鍵位資料結構與鍵位集合工具 `AllKeys()`。
+- `PushableBox.hpp`：可推箱子（需求推力、重力、碰撞與缺口文字顯示）。
+- `SaveManager.hpp`：持久化存取 API（`settings.json`、`save_data.json`）。
+- `Scene.hpp`：場景抽象基底與 `SceneOp` 請求/消費通道。
 - `SceneId.hpp`：場景識別列舉。
-- `SceneManager.hpp`：場景註冊、堆疊管理與 `SceneOp` 執行。
-- `SceneOp.hpp`：場景操作命令定義（Push/Pop/Restart/ClearToAndGoTo）。
-- `SceneServices.hpp`：場景建構時注入的服務聚合。
-- `SessionState.hpp`：`ISessionState` 實作，保存執行期共享資料。
-- `StaticBody.hpp`：靜態碰撞體（地板/牆/天花板等）。
-- `TitleScene.hpp`：標題場景與進入主選單流程。
-- `UITriangleButton.hpp`：三角按鈕元件（按壓與回彈狀態）。
-- `VisualThemeService.hpp`：`IVisualThemeService` 實作，套用背景主題。
+- `SceneManager.hpp`：場景註冊與堆疊切換管理（含 Overlay 操作）。
+- `SceneOp.hpp`：場景操作命令模型（`PushOverlay/PopOverlay/RestartUnderlying/ClearToAndGoTo`）。
+- `SceneServices.hpp`：場景建構注入服務聚合（Audio/Theme/Session/Actors）。
+- `SessionState.hpp`：`ISessionState` 實作，保存執行期共享狀態。
+- `StaticBody.hpp`：靜態碰撞體（地板、牆、天花等不可動邊界）。
+- `TitleScene.hpp`：標題場景（閃爍提示、啟動貓展示、進入主選單）。
+- `UITriangleButton.hpp`：三角按鈕元件（按下貼圖與短暫回彈狀態）。
+- `VisualThemeService.hpp`：`IVisualThemeService` 實作，管理背景主題套用。
 

@@ -4,6 +4,7 @@
 void App::Update() {
     if (m_SceneManager == nullptr || m_SceneManager->GetCurrentScene() == nullptr) {
         LOG_ERROR("SceneManager current scene is nullptr!");
+        m_CurrentState = State::END;
         return;
     }
 

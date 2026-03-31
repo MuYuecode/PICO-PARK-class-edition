@@ -1,4 +1,5 @@
 #include "LocalPlayGameScene.hpp"
+#include "BoundaryFactory.hpp"
 #include "LocalPlayScene.hpp"
 #include "KeyboardConfigScene.hpp"
 #include "CatAssets.hpp"
@@ -14,11 +15,6 @@ LocalPlayGameScene::LocalPlayGameScene(SceneServices services)
     : Scene(services) {}
 
 void LocalPlayGameScene::SetupStaticBoundaries() {
-    constexpr float kWallHalfW  = 50.f;
-    constexpr float kWallHalfH  = 400.f;
-    constexpr float kFloorHalfH = 40.f;
-    constexpr float kCeilHalfH  = 40.f;
-
     float floorSurfaceY   = -360.f;
     float ceilingSurfaceY = 360.f;
 
@@ -27,21 +23,11 @@ void LocalPlayGameScene::SetupStaticBoundaries() {
                       + m_Actors.Floor()->GetScaledSize().y * 0.5f;
     }
 
-    m_World.AddStaticBoundary(
-        {0.f, floorSurfaceY - kFloorHalfH},
-        {640.f + kWallHalfW, kFloorHalfH});
-
-    m_World.AddStaticBoundary(
-        {0.f, ceilingSurfaceY + kCeilHalfH},
-        {640.f + kWallHalfW, kCeilHalfH});
-
-    m_World.AddStaticBoundary(
-        {-(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
-
-    m_World.AddStaticBoundary(
-        {(640.f + kWallHalfW), 0.f},
-        {kWallHalfW, kWallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        ceilingSurfaceY,
+        LevelGeometryPreset::kSharedMenuLikeWithCeiling);
 }
 
 void LocalPlayGameScene::OnEnter() {

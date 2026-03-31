@@ -36,7 +36,14 @@ void AnimatedCharacter::SetFacingByDirection(int dir) {
     m_Transform.scale.x = (dir < 0) ? -absX : absX;
 }
 
+std::shared_ptr<Util::Animation> AnimatedCharacter::GetAnimation() const {
+    return std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
+}
+
 bool AnimatedCharacter::IfAnimationEnds() const {
-    auto animation = std::dynamic_pointer_cast<Util::Animation>(m_Drawable);
-        return animation->GetCurrentFrameIndex() == animation->GetFrameCount() - 1;
+    const auto animation = GetAnimation();
+    if (animation == nullptr) {
+        return false;
+    }
+    return animation->GetCurrentFrameIndex() == animation->GetFrameCount() - 1;
 }

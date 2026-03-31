@@ -1,4 +1,5 @@
 #include "LevelOneScene.hpp"
+#include "BoundaryFactory.hpp"
 #include <algorithm>
 #include <cmath>
 #include "CatAssets.hpp"
@@ -47,11 +48,6 @@ bool LevelOneScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
 }
 
 void LevelOneScene::SetupStaticBoundaries() {
-    constexpr float wallHalfW  = 32.0f;
-    constexpr float wallHalfH  = 360.0f;
-    constexpr float floorHalfH = 35.0f;
-    constexpr float ceilHalfH  = 35.0f;
-
     // Derive the physical floor surface from the visual floor sprite.
     // This keeps collider and art aligned.
     float floorSurfaceY = kRoomFloorY;
@@ -66,15 +62,11 @@ void LevelOneScene::SetupStaticBoundaries() {
                         - m_CeilingSprite->GetScaledSize().y * 0.5f;
     }
 
-    // Floor collider: top edge = floorSurfaceY.
-    m_World.AddStaticBoundary({0.0f, floorSurfaceY - floorHalfH}, {600.0f, floorHalfH});
-
-    // Ceiling collider: bottom edge = ceilingSurfaceY.
-    m_World.AddStaticBoundary({0.0f, ceilingSurfaceY + ceilHalfH}, {600.0f, ceilHalfH});
-
-    // Side walls.
-    m_World.AddStaticBoundary({kRoomLeftX-15.0f,  0.0f}, {wallHalfW, wallHalfH});
-    m_World.AddStaticBoundary({kRoomRightX+15.0f, 0.0f}, {wallHalfW, wallHalfH});
+    BoundaryFactory::AddStaticRoomBoundaries(
+        m_World,
+        floorSurfaceY,
+        ceilingSurfaceY,
+        LevelGeometryPreset::kLevelOneRoom);
 }
 
 
@@ -232,6 +224,8 @@ void LevelOneScene::OnExit() {
     }
     m_Players.clear();
 
+    // Ensure paused overlay state does not persist frozen flags into next enter.
+    m_World.UnfreezeAll();
     m_World.Clear();
 
     m_Actors.Root().RemoveChild(m_FloorSprite);
