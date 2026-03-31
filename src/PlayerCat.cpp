@@ -101,6 +101,9 @@ void PlayerCat::OnCollision(const CollisionInfo& info) {
     }
 
     if (std::abs(info.normal.x) > 0.5f && m_MoveDir != 0) {
+        if (info.other != nullptr && info.other->GetBodyType() == BodyType::PATROL_ENEMY) {
+            return;
+        }
         const bool movingRight  = (m_MoveDir > 0);
         const bool blockedRight = (info.normal.x < -0.5f);
         if (movingRight == blockedRight) {

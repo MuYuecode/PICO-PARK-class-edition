@@ -12,6 +12,8 @@
 #include "LevelSelectScene.hpp"
 #include "LevelExitScene.hpp"
 #include "LevelOneScene.hpp"
+#include "LevelTwoScene.hpp"
+#include "LevelThreeScene.hpp"
 #include "SceneId.hpp"
 
 #include "Util/Logger.hpp"
@@ -139,10 +141,14 @@ void App::Start() {
 
     auto levelSelectScene = make_unique<LevelSelectScene>(services);
     levelSelectScene->SetLevelSceneId(0, SceneId::Level01);
+    levelSelectScene->SetLevelSceneId(1, SceneId::Level02);
+    levelSelectScene->SetLevelSceneId(2, SceneId::Level03);
 
     auto levelExitScene = make_unique<LevelExitScene>(services);
 
     auto levelOneScene = make_unique<LevelOneScene>(services);
+    auto levelTwoScene = make_unique<LevelTwoScene>(services);
+    auto levelThreeScene = make_unique<LevelThreeScene>(services);
 
     m_SceneManager->Register(SceneId::Title, std::move(titleScene));
     m_SceneManager->Register(SceneId::Menu, std::move(menuScene));
@@ -154,6 +160,8 @@ void App::Start() {
     m_SceneManager->Register(SceneId::LevelSelect, std::move(levelSelectScene));
     m_SceneManager->Register(SceneId::LevelExit, std::move(levelExitScene));
     m_SceneManager->Register(SceneId::Level01, std::move(levelOneScene));
+    m_SceneManager->Register(SceneId::Level02, std::move(levelTwoScene));
+    m_SceneManager->Register(SceneId::Level03, std::move(levelThreeScene));
 
     m_SceneManager->GoTo(SceneId::Title);
     m_CurrentState = State::UPDATE;

@@ -1,0 +1,15 @@
+filelist.txt
+Flag.png 36*68
+GamePad.png 164*84
+LFloor.png 356*28
+LHighFloor.png 612*36
+LLift.png 120*20
+LMidFloor.png 548*35
+MidBlock.png 35*36
+Mob1.png 59*45
+Mob2.png 52*30
+Pipe.png 68*68
+RFloor.png 580*28
+RHighFloor.png 354*36
+RLift.png 119*20
+RMidFloor.png 196*36

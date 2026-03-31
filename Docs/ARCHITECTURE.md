@@ -2,36 +2,33 @@
 
 ## Runtime Backbone
 
-- `main.cpp` drives `App` as a small state machine: `START -> UPDATE -> END`.
-- `App::Update()` order is fixed: `AudioService::UpdateBgm()` -> `SceneManager::UpdateCurrent()` -> quit gate (`SessionState`) -> `Renderer::Update()`.
-- `SceneManager` is the only transition executor; scenes only emit `SceneOp` intents.
+- `main.cpp` drives `App` through `START -> UPDATE -> END`.
+- `App::Update()` order is fixed: BGM tick -> active scene update/transition -> quit gate -> renderer tick.
+- Scene switching is intent-based: scenes publish `SceneOp`, `SceneManager` executes exactly one op after scene update.
 
 ## Composition Root (`App::Start`)
 
-- Builds long-lived services: `GlobalActors`, `SessionState`, `BGMPlayer`/`AudioService`, `VisualThemeService`, `SceneManager`.
-- Creates shared world actors once (background, floor, header, door, startup cats) and stores them in `GlobalActors`.
-- Registers all scenes, maps `SceneId::Level01` to `LevelOneScene`, then enters `SceneId::Title`.
+- Creates process-lifetime services: `GlobalActors`, `SessionState`, `BGMPlayer`/`AudioService`, `VisualThemeService`, `SceneManager`.
+- Builds shared visuals once: background, floor, header, door, startup cats.
+- Registers all shipped scenes, then enters `SceneId::Title`.
+- Current level registration is active for `Level01`, `Level02`, and `Level03`.
 
-## Scene Stack Model
+## Scene and Stack Model
 
-- Allowed stack shapes: one base scene, or base + one overlay.
-- `PushOverlay` pauses base (`PauseGameplay`) and enters overlay.
-- `PopOverlay` exits overlay and resumes base (`ResumeGameplay`).
-- `RestartUnderlying` exits overlay, restarts base (`OnExit` -> `OnEnter`), then resumes it.
-- `ClearToAndGoTo` clears overlay/base and enters target as new base.
+- `SceneManager` owns scene instances (`unique_ptr`) and a stack of `SceneId`.
+- Stack forms either a base scene or base + overlay (`LevelExitScene`).
+- Overlay protocol: `PushOverlay` pauses base, `PopOverlay` resumes base, `RestartUnderlying` recreates base scene state, `ClearToAndGoTo` resets stack.
 
 ## Ownership Boundaries
 
-- `App` owns process-lifetime objects and scene registry lifetime.
-- `SceneManager` owns scenes as `std::unique_ptr<Scene>`.
-- Each scene owns its transient gameplay objects (`PhysicsWorld`, local UI, level entities).
-- Scenes access shared visuals through `IGlobalActors` (non-owning) and shared mutable session data through `ISessionState`.
-- File persistence is centralized in `SaveManager`:
-  - `settings.json` for option + key config data
-  - `save_data.json` for level best-time data
+- `App` owns long-lived systems; each scene owns only local runtime objects (UI, actors, local `PhysicsWorld`).
+- Shared cross-scene access is interface-only via `SceneServices` (`IAudioService`, `IVisualThemeService`, `ISessionState`, `IGlobalActors`).
+- Persistence is centralized in `SaveManager`:
+  - `settings.json`: option values + keyboard mappings
+  - `save_data.json`: best time table per level (`2P`~`8P`)
 
-## Current Gameplay Topology
+## Active Gameplay Topology
 
-- Core route: `Title -> Menu -> LocalPlay -> LocalPlayGame -> LevelSelect -> Level01`.
-- `LevelOneScene` uses an overlay pause menu (`LevelExitScene`) via `PushOverlay`/`PopOverlay`/`RestartUnderlying`.
-- Only Level 1 is currently wired from level select; `Level02` to `Level10` ids exist but are not registered yet.
+- Primary route: `Title -> Menu -> LocalPlay -> LocalPlayGame -> LevelSelect -> (Level01 | Level02 | Level03)`.
+- `LevelSelectScene` keeps 10 slots; only mapped slots are enterable (`SceneId != None`).
+- `LevelOneScene`, `LevelTwoScene`, `LevelThreeScene` share the same pause overlay contract (`ESC` -> `LevelExitScene`).

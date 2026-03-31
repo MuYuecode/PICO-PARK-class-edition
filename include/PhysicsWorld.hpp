@@ -146,7 +146,7 @@ private:
 
     int m_FrameCount = 0;
     static constexpr int kPurgeInterval = 60;
-    static constexpr float kRidingTolerance = 5.f;
+    static constexpr float kRidingTolerance = 3.f;
 };
 
 #endif // PHYSICS_WORLD_HPP

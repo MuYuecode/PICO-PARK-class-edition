@@ -1,25 +1,15 @@
 # Class Relationships
 
-## Inheritance Map
+## Inheritance Skeleton
 
 ```text
 Util::GameObject
 ├─ Character
 │  ├─ UITriangleButton
-│  └─ PushableBox      (+ IPhysicsBody, + IPushable)
+│  └─ PushableBox            (+ IPhysicsBody, + IPushable)
 ├─ AnimatedCharacter
-│  └─ PlayerCat        (+ IPhysicsBody)
+│  └─ PlayerCat              (+ IPhysicsBody)
 └─ GameText
-```
-
-```text
-IPhysicsBody
-├─ PlayerCat
-├─ PushableBox
-└─ StaticBody
-
-IPushable
-└─ PushableBox
 ```
 
 ```text
@@ -33,10 +23,28 @@ Scene
 ├─ LocalPlayGameScene
 ├─ LevelSelectScene
 ├─ LevelExitScene
-└─ LevelOneScene
+├─ LevelOneScene
+├─ LevelTwoScene
+└─ LevelThreeScene
 ```
 
-## Interface Contracts
+## Physics Body Implementers
+
+```text
+IPhysicsBody
+├─ PlayerCat
+├─ PushableBox
+├─ StaticBody
+├─ LevelTwoScene::MovingPlankBody
+├─ LevelThreeScene::MovingLiftBody
+├─ LevelThreeScene::PatrolMobBody
+└─ LevelThreeScene::PipeMobBody
+
+IPushable
+└─ PushableBox
+```
+
+## Interface-to-Concrete Bindings
 
 ```text
 IAudioService       -> AudioService
@@ -45,23 +53,17 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-- `Scene` receives only interface references through `SceneServices`.
-- `App::Start()` is the composition root that binds concrete implementations.
+- `Scene` receives only interfaces through `SceneServices`; concrete wiring happens in `App::Start()`.
 
 ## Control and Ownership Links
 
-- `SceneManager` owns all scene objects and enforces transition semantics.
-- `Scene` owns one pending `SceneOp`; `SceneManager::UpdateCurrent()` consumes at most one op per frame.
-- Scenes never call other scenes directly; they communicate through `SceneOpType` commands.
+- `SceneManager` owns all scene instances and stack transitions.
+- Each scene owns one pending transition intent (`SceneOp`), consumed by manager post-update.
+- Scenes are decoupled from each other; routing happens through `SceneId` + `SceneOpType` only.
 
-## Physics-Side Coupling
+## State and Persistence Coupling
 
-- `PhysicsWorld` tracks participants by `weak_ptr<IPhysicsBody>` and owns only static boundaries (`StaticBody`).
-- `PushableBox` holds a non-owning `PhysicsWorld*` to query cooperative push counts and notify push animations.
-- `PlayerCat` and `PushableBox` are dual-role objects: render actor + physics body in one instance.
-
-## Persistence and Session Coupling
-
-- `OptionMenuScene` reads/writes option settings via `SaveManager` and previews through audio/theme services.
-- `KeyboardConfigScene` synchronizes key profiles to both `SaveManager` and `SessionState`.
-- `LevelOneScene` writes best times via `SaveManager::UpdateBestTime()` using current session player count.
+- `SessionState` is the runtime source for selected player count, cooperative push power, key configs, and quit flag.
+- `KeyboardConfigScene` writes key configs to both `SaveManager` and `SessionState`.
+- `OptionMenuScene` uses live service preview (audio/theme) and persists only on commit.
+- `LevelOneScene`, `LevelTwoScene`, and `LevelThreeScene` write clear-time records via `SaveManager::UpdateBestTime()`.

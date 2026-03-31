@@ -63,6 +63,8 @@ The content is organized as follows:
   LevelExitScene.hpp
   LevelOneScene.hpp
   LevelSelectScene.hpp
+  LevelThreeScene.hpp
+  LevelTwoScene.hpp
   LocalPlayGameScene.hpp
   LocalPlayScene.hpp
   MenuScene.hpp
@@ -101,6 +103,8 @@ The content is organized as follows:
   LevelExitScene.cpp
   LevelOneScene.cpp
   LevelSelectScene.cpp
+  LevelThreeScene.cpp
+  LevelTwoScene.cpp
   LocalPlayGameScene.cpp
   LocalPlayScene.cpp
   main.cpp
@@ -364,7 +368,30 @@ The content is organized as follows:
   Image/Level_Cover/LevelOneScene/Frame.png
   Image/Level_Cover/LevelOneScene/LevelOneScene.png
   Image/Level_Cover/LevelThree.png
+  Image/Level_Cover/LevelThreeScene/filelist.txt
+  Image/Level_Cover/LevelThreeScene/Flag.png
+  Image/Level_Cover/LevelThreeScene/GamePad.png
+  Image/Level_Cover/LevelThreeScene/LevelThreeScene.png
+  Image/Level_Cover/LevelThreeScene/LFloor.png
+  Image/Level_Cover/LevelThreeScene/LHighFloor.png
+  Image/Level_Cover/LevelThreeScene/LLift.png
+  Image/Level_Cover/LevelThreeScene/LMidFloor.png
+  Image/Level_Cover/LevelThreeScene/MidBlock.png
+  Image/Level_Cover/LevelThreeScene/Mob1.png
+  Image/Level_Cover/LevelThreeScene/Mob2.png
+  Image/Level_Cover/LevelThreeScene/Pipe.png
+  Image/Level_Cover/LevelThreeScene/RFloor.png
+  Image/Level_Cover/LevelThreeScene/RHighFloor.png
+  Image/Level_Cover/LevelThreeScene/RLift.png
+  Image/Level_Cover/LevelThreeScene/RMidFloor.png
   Image/Level_Cover/LevelTwo.png
+  Image/Level_Cover/LevelTwoScene/ButtonDown.png
+  Image/Level_Cover/LevelTwoScene/ButtonUp.png
+  Image/Level_Cover/LevelTwoScene/Ceiling.png
+  Image/Level_Cover/LevelTwoScene/LeftFloor.png
+  Image/Level_Cover/LevelTwoScene/LevelTwoScene.png
+  Image/Level_Cover/LevelTwoScene/Plank.png
+  Image/Level_Cover/LevelTwoScene/RightFloor.png
   Save/save_data.json
   Save/settings.json
 </directory_structure>
@@ -1394,6 +1421,251 @@ private:
 #endif // LEVEL_SELECT_SCENE_HPP
 </file>
 
+<file path="LevelThreeScene.hpp">
+#ifndef LEVEL_THREE_SCENE_HPP
+#define LEVEL_THREE_SCENE_HPP
+
+#include <memory>
+#include <vector>
+
+#include "Character.hpp"
+#include "GameText.hpp"
+#include "PhysicsWorld.hpp"
+#include "PlayerCat.hpp"
+#include "PlayerKeyConfig.hpp"
+#include "Scene.hpp"
+
+class LevelThreeScene : public Scene {
+public:
+    explicit LevelThreeScene(SceneServices services);
+    ~LevelThreeScene() override = default;
+
+    void OnEnter() override;
+    void OnExit() override;
+    void Update() override;
+    void PauseGameplay() override;
+    void ResumeGameplay() override;
+
+private:
+    class MovingLiftBody;
+    class PatrolMobBody;
+    class PipeMobBody;
+
+    static bool AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
+                            const glm::vec2& bPos, const glm::vec2& bHalf);
+
+    void SetupSceneVisuals();
+    void SetupStaticBoundaries();
+    void SetupDynamicBodies();
+    void LogLayoutSnapshot() const;
+
+    void BuildConsensusBindings(int playerCount);
+    void HandleConsensusInput();
+    [[nodiscard]] bool IsAllPlayersHolding(Util::Keycode PlayerKeyConfig::* keyMember) const;
+
+    void SyncDynamicSprites() const;
+    void UpdateTimerText() const;
+
+    void UpdateCheckpoint();
+    void TryPickKey();
+    void UpdateKeyFollow() const;
+    void TryOpenDoor();
+    void TryClearLevel();
+    [[nodiscard]] bool IsPlayerInOpenDoorZone() const;
+
+    void HandleHazardsAndRespawn();
+    [[nodiscard]] bool IsStompCollision(const IPhysicsBody& mobBody) const;
+    void TriggerStompBounce(const IPhysicsBody& mobBody) const;
+    void StartDeath();
+    void RespawnPlayer();
+
+    void UpdateShake();
+    void ResetShake() const;
+
+    static constexpr int   kLevelIndex = 2;
+    static constexpr float kRoomLeftX  = -624.0f;
+    static constexpr float kRoomRightX = 624.0f;
+    static constexpr float kRoomTopY   = 337.0f;
+    static constexpr float kRoomFloorY = -337.0f;
+
+    static constexpr float kBottomTopY = -300.0f;
+    static constexpr float kMidTopY    = -40.0f;
+    static constexpr float kHighTopY   = 210.0f;
+
+    static constexpr float kDeathRespawnDelaySec = 2.0f;
+    static constexpr float kShakeDurationSec = 0.35f;
+    static constexpr float kShakeAmplitudePx = 18.0f;
+
+    PhysicsWorld m_World;
+
+    std::shared_ptr<Character> m_CeilingSprite;
+    std::shared_ptr<Character> m_LeftWallSprite;
+    std::shared_ptr<Character> m_RightWallSprite;
+
+    std::shared_ptr<Character> m_GamePadSprite;
+    std::shared_ptr<Character> m_LFloorSprite;
+    std::shared_ptr<Character> m_RFloorSprite;
+    std::shared_ptr<Character> m_LMidFloorSprite;
+    std::shared_ptr<Character> m_RMidFloorSprite;
+    std::shared_ptr<Character> m_LHighFloorSprite;
+    std::shared_ptr<Character> m_RHighFloorSprite;
+    std::shared_ptr<Character> m_LLiftSprite;
+    std::shared_ptr<Character> m_RLiftSprite;
+    std::shared_ptr<Character> m_MidBlockLeftSprite;
+    std::shared_ptr<Character> m_MidBlockRightSprite;
+    std::shared_ptr<Character> m_PipeSprite;
+    std::shared_ptr<Character> m_Mob1Sprite;
+    std::shared_ptr<Character> m_Mob2Sprite;
+    std::shared_ptr<Character> m_FlagSprite;
+    std::shared_ptr<Character> m_KeySprite;
+    std::shared_ptr<Character> m_DeadCatSprite;
+
+    std::shared_ptr<GameText> m_CheckText;
+    std::shared_ptr<GameText> m_TimerText;
+
+    std::shared_ptr<PlayerCat> m_Player;
+
+    std::shared_ptr<MovingLiftBody> m_LeftLiftBody;
+    std::shared_ptr<MovingLiftBody> m_RightLiftBody;
+    std::shared_ptr<PatrolMobBody>  m_Mob2Body;
+    std::shared_ptr<PipeMobBody>    m_Mob1Body;
+
+    std::vector<PlayerKeyConfig> m_ConsensusBindings;
+
+    glm::vec2 m_SpawnPoint = {-520.0f, kBottomTopY + PlayerCat::kHalfHeight};
+    glm::vec2 m_RespawnPoint = m_SpawnPoint;
+    glm::vec2 m_PlayerPrevPos = m_SpawnPoint;
+
+    bool  m_CheckpointReached = false;
+    bool  m_HasKey = false;
+    bool  m_DoorOpened = false;
+    bool  m_PlayerDead = false;
+    bool  m_ClearDone = false;
+
+    float m_ElapsedSec = 0.0f;
+    float m_DeathWaitSec = 0.0f;
+    float m_ShakeTimerSec = 0.0f;
+    float m_ShakeSeed = 0.0f;
+    bool  m_JumpConsensusLatched = false;
+};
+
+#endif // LEVEL_THREE_SCENE_HPP
+</file>
+
+<file path="LevelTwoScene.hpp">
+#ifndef LEVEL_TWO_SCENE_HPP
+#define LEVEL_TWO_SCENE_HPP
+
+#include <memory>
+#include <vector>
+
+#include "Character.hpp"
+#include "GameText.hpp"
+#include "PhysicsWorld.hpp"
+#include "PlayerCat.hpp"
+#include "PlayerKeyConfig.hpp"
+#include "Scene.hpp"
+
+class LevelTwoScene : public Scene {
+public:
+    explicit LevelTwoScene(SceneServices services);
+    ~LevelTwoScene() override = default;
+
+    void OnEnter() override;
+    void OnExit() override;
+    void Update() override;
+    void PauseGameplay() override;
+    void ResumeGameplay() override;
+
+private:
+    struct PlayerBinding {
+        std::shared_ptr<PlayerCat> cat;
+        PlayerKeyConfig            key;
+    };
+
+    class MovingPlankBody;
+
+    static bool AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
+                            const glm::vec2& bPos, const glm::vec2& bHalf);
+
+    void SetupStaticBoundaries();
+    void SpawnPlayers(int count);
+    void ApplyInitialFormation() const;
+
+    void HandlePlayerInput() const;
+    void UpdateTimerText() const;
+
+    void SetupPlanks(int playerCount);
+    void SyncPlankSprites() const;
+    void TryActivateButton();
+    void UpdateFallenPlayers();
+
+    void TryPickKey();
+    void UpdateKeyFollow() const;
+    void TryOpenDoorAndClear();
+    void UpdateDoorEntryAndClear();
+
+    static constexpr int   kLevelIndex = 1;
+    static constexpr float kRoomLeftX  = -624.0f;
+    static constexpr float kRoomRightX = 624.0f;
+    static constexpr float kRoomTopY   = 337.0f;
+    static constexpr float kRoomFloorY = -337.0f;
+
+    static constexpr float kRightSectionShiftX = 72.0f;
+
+    static constexpr float kRightFloorBaseMinX  = 300.0f;
+    static constexpr float kRightFloorBaseMaxX  = 550.0f;
+    static constexpr float kRightFloorMinX      = kRightFloorBaseMinX + kRightSectionShiftX;
+    static constexpr float kRightFloorMaxX      = kRightFloorBaseMaxX + kRightSectionShiftX;
+    static constexpr float kRightFloorCenterX   = (kRightFloorMinX + kRightFloorMaxX) * 0.5f;
+
+    static constexpr float kCeilingLeftX      = -178.0f;
+    static constexpr float kCeilingRightX     = 672.0f;
+
+    static constexpr float kButtonTriggerHalfW = 28.0f;
+    static constexpr float kButtonTriggerHalfH = 18.0f;
+
+    static constexpr float kPlankMoveSpeed = 160.0f; // px/s
+    static constexpr float kPlankSeamInsetPx = 2.0f; // each side contributes 2px seam padding
+    static constexpr int   kPlankCount = 10;
+
+    static constexpr float kFallTeleportThresholdY = -390.0f;
+    static constexpr glm::vec2 kTeleportPos = {-540.0f, 300.0f};
+
+    static constexpr glm::vec2 kKeyHalf  = {20.0f, 26.0f};
+    static constexpr glm::vec2 kDoorHalf = {31.0f, 34.0f};
+
+    PhysicsWorld m_World;
+
+    std::shared_ptr<Character> m_LeftFloorSprite;
+    std::shared_ptr<Character> m_RightFloorSprite;
+    std::shared_ptr<Character> m_CeilingSprite;
+    std::shared_ptr<Character> m_LeftWallSprite;
+    std::shared_ptr<Character> m_RightWallSprite;
+    std::shared_ptr<Character> m_KeySprite;
+    std::shared_ptr<Character> m_ButtonSprite;
+
+    std::vector<std::shared_ptr<Character>>       m_PlankSprites;
+    std::vector<std::shared_ptr<MovingPlankBody>> m_PlankBodies;
+    std::vector<float>                            m_PlankTargetX;
+
+    std::shared_ptr<GameText> m_TimerText;
+
+    std::vector<PlayerBinding> m_Players;
+
+    bool  m_ButtonPressed = false;
+    int   m_KeyCarrierIdx = -1;
+    bool  m_DoorOpened    = false;
+    float m_ElapsedSec    = 0.0f;
+
+    std::vector<bool> m_PlayerEntered;
+    int  m_EnteredCount = 0;
+    bool m_ClearDone    = false;
+};
+
+#endif // LEVEL_TWO_SCENE_HPP
+</file>
+
 <file path="LocalPlayGameScene.hpp">
 #ifndef PICOPART_LOCALPLAYGAMESCENE_HPP
 #define PICOPART_LOCALPLAYGAMESCENE_HPP
@@ -1788,7 +2060,7 @@ private:
 
     int m_FrameCount = 0;
     static constexpr int kPurgeInterval = 60;
-    static constexpr float kRidingTolerance = 5.f;
+    static constexpr float kRidingTolerance = 3.f;
 };
 
 #endif // PHYSICS_WORLD_HPP
@@ -2509,6 +2781,8 @@ void App::End() {
 #include "LevelSelectScene.hpp"
 #include "LevelExitScene.hpp"
 #include "LevelOneScene.hpp"
+#include "LevelTwoScene.hpp"
+#include "LevelThreeScene.hpp"
 #include "SceneId.hpp"
 
 #include "Util/Logger.hpp"
@@ -2636,10 +2910,14 @@ void App::Start() {
 
     auto levelSelectScene = make_unique<LevelSelectScene>(services);
     levelSelectScene->SetLevelSceneId(0, SceneId::Level01);
+    levelSelectScene->SetLevelSceneId(1, SceneId::Level02);
+    levelSelectScene->SetLevelSceneId(2, SceneId::Level03);
 
     auto levelExitScene = make_unique<LevelExitScene>(services);
 
     auto levelOneScene = make_unique<LevelOneScene>(services);
+    auto levelTwoScene = make_unique<LevelTwoScene>(services);
+    auto levelThreeScene = make_unique<LevelThreeScene>(services);
 
     m_SceneManager->Register(SceneId::Title, std::move(titleScene));
     m_SceneManager->Register(SceneId::Menu, std::move(menuScene));
@@ -2651,6 +2929,8 @@ void App::Start() {
     m_SceneManager->Register(SceneId::LevelSelect, std::move(levelSelectScene));
     m_SceneManager->Register(SceneId::LevelExit, std::move(levelExitScene));
     m_SceneManager->Register(SceneId::Level01, std::move(levelOneScene));
+    m_SceneManager->Register(SceneId::Level02, std::move(levelTwoScene));
+    m_SceneManager->Register(SceneId::Level03, std::move(levelThreeScene));
 
     m_SceneManager->GoTo(SceneId::Title);
     m_CurrentState = State::UPDATE;
@@ -4421,6 +4701,1567 @@ void LevelSelectScene::UpdateCrowns() const {
 }
 </file>
 
+<file path="LevelThreeScene.cpp">
+#include "LevelThreeScene.hpp"
+
+#include <algorithm>
+#include <cmath>
+
+#include "CatAssets.hpp"
+#include "KeyboardConfigScene.hpp"
+#include "SaveManager.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+#include "Util/Logger.hpp"
+#include "Util/Time.hpp"
+
+using ip = Util::Input;
+using k  = Util::Keycode;
+
+namespace {
+constexpr float kLiftSpeed = 80.0f;
+constexpr float kMob2Speed = 90.0f;
+constexpr float kMob1RiseSpeed = 35.0f;
+constexpr float kSpawnYOffset = 0.0f;
+constexpr float kFallDeathYOffset = 120.0f;
+constexpr float kLiftEndpointInset = 4.0f;
+constexpr float kHazardContactSlack = 4.0f;
+
+float SpriteHalfW(const std::shared_ptr<Character>& obj, float fallback) {
+    if (obj == nullptr) return fallback;
+    return std::max(1.0f, std::abs(obj->GetScaledSize().x) * 0.5f);
+}
+
+float SpriteHalfH(const std::shared_ptr<Character>& obj, float fallback) {
+    if (obj == nullptr) return fallback;
+    return std::max(1.0f, std::abs(obj->GetScaledSize().y) * 0.5f);
+}
+
+void PlaceSpriteTop(const std::shared_ptr<Character>& obj, float x, float topY) {
+    if (obj == nullptr) return;
+    const float halfH = SpriteHalfH(obj, 20.0f);
+    obj->SetPosition({x, topY - halfH});
+}
+
+float SpriteTopY(const std::shared_ptr<Character>& obj, float fallback) {
+    if (obj == nullptr) return fallback;
+    return obj->GetPosition().y + SpriteHalfH(obj, 20.0f);
+}
+} // namespace
+
+class LevelThreeScene::MovingLiftBody final : public IPhysicsBody {
+public:
+    MovingLiftBody(const glm::vec2& pos, const glm::vec2& half,
+                   float lowY, float highY, float speed)
+        : m_Pos(pos),
+          m_Half(glm::abs(half)),
+          m_LowY(std::min(lowY, highY)),
+          m_HighY(std::max(lowY, highY)),
+          m_Speed(std::max(1.0f, speed)) {}
+
+    [[nodiscard]] BodyType GetBodyType() const override { return BodyType::MOVING_PLATFORM; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }
+    void SetPosition(const glm::vec2& pos) override { m_Pos = pos; }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override { return m_Half; }
+
+    [[nodiscard]] bool IsSolid() const override { return true; }
+    [[nodiscard]] bool IsKinematic() const override { return true; }
+
+    void PhysicsUpdate() override {
+        const float dtSec = Util::Time::GetDeltaTimeMs() / 1000.0f;
+        const float step  = m_Speed * std::max(0.0f, dtSec) * m_Direction;
+        float targetY = m_Pos.y + step;
+
+        if (targetY >= m_HighY) {
+            targetY = m_HighY;
+            m_Direction = -1.0f;
+        } else if (targetY <= m_LowY) {
+            targetY = m_LowY;
+            m_Direction = 1.0f;
+        }
+
+        m_Desired = {0.0f, targetY - m_Pos.y};
+    }
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return m_Desired; }
+
+    void ApplyResolvedDelta(const glm::vec2& delta) override {
+        m_Pos += delta;
+    }
+
+private:
+    glm::vec2 m_Pos;
+    glm::vec2 m_Half;
+    glm::vec2 m_Desired = {0.0f, 0.0f};
+
+    float m_LowY = 0.0f;
+    float m_HighY = 0.0f;
+    float m_Speed = 80.0f;
+    float m_Direction = 1.0f;
+};
+
+class LevelThreeScene::PatrolMobBody final : public IPhysicsBody {
+public:
+    PatrolMobBody(const glm::vec2& pos, const glm::vec2& half,
+                  float minX, float maxX, float speed)
+        : m_Pos(pos),
+          m_Half(glm::abs(half)),
+          m_MinX(std::min(minX, maxX)),
+          m_MaxX(std::max(minX, maxX)),
+          m_Speed(std::max(1.0f, speed)) {}
+
+    [[nodiscard]] BodyType GetBodyType() const override { return BodyType::PATROL_ENEMY; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }
+    void SetPosition(const glm::vec2& pos) override { m_Pos = pos; }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override { return m_Half; }
+
+    [[nodiscard]] bool IsSolid() const override { return true; }
+    [[nodiscard]] bool IsKinematic() const override { return true; }
+
+    void PhysicsUpdate() override {
+        const float dtSec = Util::Time::GetDeltaTimeMs() / 1000.0f;
+        const float step  = m_Speed * std::max(0.0f, dtSec) * m_Direction;
+        float targetX = m_Pos.x + step;
+
+        if (targetX >= m_MaxX) {
+            targetX = m_MaxX;
+            m_Direction = -1.0f;
+        } else if (targetX <= m_MinX) {
+            targetX = m_MinX;
+            m_Direction = 1.0f;
+        }
+
+        m_Desired = {targetX - m_Pos.x, 0.0f};
+    }
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return m_Desired; }
+    [[nodiscard]] int GetFacingDir() const { return (m_Direction >= 0.0f) ? 1 : -1; }
+
+    void ApplyResolvedDelta(const glm::vec2& delta) override {
+        m_Pos += delta;
+    }
+
+private:
+    glm::vec2 m_Pos;
+    glm::vec2 m_Half;
+    glm::vec2 m_Desired = {0.0f, 0.0f};
+
+    float m_MinX = 0.0f;
+    float m_MaxX = 0.0f;
+    float m_Speed = 90.0f;
+    float m_Direction = -1.0f;
+};
+
+class LevelThreeScene::PipeMobBody final : public IPhysicsBody {
+public:
+    PipeMobBody(const glm::vec2& pos, const glm::vec2& half,
+                float hiddenY, float visibleY, float speed)
+        : m_Pos(pos),
+          m_Half(glm::abs(half)),
+          m_HiddenY(hiddenY),
+          m_VisibleY(visibleY),
+          m_Speed(std::max(1.0f, speed)) {
+        m_Pos.y = m_HiddenY;
+    }
+
+    [[nodiscard]] BodyType GetBodyType() const override { return BodyType::PATROL_ENEMY; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }
+    void SetPosition(const glm::vec2& pos) override { m_Pos = pos; }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override { return m_Half; }
+
+    [[nodiscard]] bool IsSolid() const override { return true; }
+    [[nodiscard]] bool IsKinematic() const override { return true; }
+
+    void PhysicsUpdate() override {
+        const float dtSec = Util::Time::GetDeltaTimeMs() / 1000.0f;
+        const float maxStep = m_Speed * std::max(0.0f, dtSec);
+        m_Desired = {0.0f, 0.0f};
+
+        switch (m_State) {
+            case State::HiddenWait:
+                m_Timer += dtSec;
+                if (m_Timer >= 5.0f) {
+                    m_Timer = 0.0f;
+                    m_State = State::Rising;
+                }
+                break;
+            case State::Rising: {
+                const float dy = std::min(maxStep, m_VisibleY - m_Pos.y);
+                m_Desired.y = std::max(0.0f, dy);
+                if (m_Pos.y + m_Desired.y >= m_VisibleY - 0.01f) {
+                    m_State = State::VisibleWait;
+                    m_Timer = 0.0f;
+                }
+                break;
+            }
+            case State::VisibleWait:
+                m_Timer += dtSec;
+                if (m_Timer >= 3.0f) {
+                    m_Timer = 0.0f;
+                    m_State = State::Descending;
+                }
+                break;
+            case State::Descending: {
+                const float dy = std::min(maxStep, m_Pos.y - m_HiddenY);
+                m_Desired.y = -std::max(0.0f, dy);
+                if (m_Pos.y + m_Desired.y <= m_HiddenY + 0.01f) {
+                    m_State = State::HiddenWait;
+                    m_Timer = 0.0f;
+                }
+                break;
+            }
+        }
+    }
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return m_Desired; }
+
+    void ApplyResolvedDelta(const glm::vec2& delta) override {
+        m_Pos += delta;
+    }
+
+private:
+    enum class State {
+        HiddenWait,
+        Rising,
+        VisibleWait,
+        Descending,
+    };
+
+    glm::vec2 m_Pos;
+    glm::vec2 m_Half;
+    glm::vec2 m_Desired = {0.0f, 0.0f};
+
+    float m_HiddenY = 0.0f;
+    float m_VisibleY = 0.0f;
+    float m_Speed = 35.0f;
+
+    State m_State = State::HiddenWait;
+    float m_Timer = 0.0f;
+};
+
+LevelThreeScene::LevelThreeScene(SceneServices services)
+    : Scene(services) {
+    m_CeilingSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Ceiling.png");
+    m_LeftWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_lwall.png");
+    m_RightWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_rwall.png");
+
+    m_GamePadSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/GamePad.png");
+    m_LFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/LFloor.png");
+    m_RFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/RFloor.png");
+    m_LMidFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/LMidFloor.png");
+    m_RMidFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/RMidFloor.png");
+    m_LHighFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/LHighFloor.png");
+    m_RHighFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/RHighFloor.png");
+    m_LLiftSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/LLift.png");
+    m_RLiftSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/RLift.png");
+    m_MidBlockLeftSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/MidBlock.png");
+    m_MidBlockRightSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/MidBlock.png");
+    m_PipeSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/Pipe.png");
+    m_Mob1Sprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/Mob1.png");
+    m_Mob2Sprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/Mob2.png");
+    m_FlagSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/Flag.png");
+
+    m_KeySprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Key.png");
+    m_DeadCatSprite = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Character/red_cat/red_cat_die.png");
+
+    m_CheckText = std::make_shared<GameText>("Check", 22, Util::Color::FromRGB(0, 0, 0, 255));
+    m_TimerText = std::make_shared<GameText>("TIME 00:00.00", 42, Util::Color::FromRGB(255, 140, 0, 255));
+
+    m_CeilingSprite->SetZIndex(4.0f);
+    m_LeftWallSprite->SetZIndex(4.1f);
+    m_RightWallSprite->SetZIndex(4.1f);
+
+    m_GamePadSprite->SetZIndex(4.3f);
+
+    m_LFloorSprite->SetZIndex(6.0f);
+    m_RFloorSprite->SetZIndex(6.0f);
+    m_LMidFloorSprite->SetZIndex(6.0f);
+    m_RMidFloorSprite->SetZIndex(6.0f);
+    m_LHighFloorSprite->SetZIndex(6.0f);
+    m_RHighFloorSprite->SetZIndex(6.0f);
+
+    m_LLiftSprite->SetZIndex(7.0f);
+    m_RLiftSprite->SetZIndex(7.0f);
+
+    m_MidBlockLeftSprite->SetZIndex(8.0f);
+    m_MidBlockRightSprite->SetZIndex(8.0f);
+    m_PipeSprite->SetZIndex(8.0f);
+
+    m_FlagSprite->SetZIndex(16.0f);
+    m_CheckText->SetZIndex(16.1f);
+    m_CheckText->SetVisible(false);
+
+    // Mob1 should render behind Pipe.
+    m_Mob1Sprite->SetZIndex(7.8f);
+    m_Mob2Sprite->SetZIndex(19.0f);
+    m_KeySprite->SetZIndex(18.0f);
+
+    m_DeadCatSprite->SetZIndex(24.0f);
+    m_DeadCatSprite->SetVisible(false);
+
+    m_TimerText->SetZIndex(40.0f);
+    m_TimerText->SetPosition({450.0f, 320.0f});
+}
+
+bool LevelThreeScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
+                                  const glm::vec2& bPos, const glm::vec2& bHalf) {
+    return std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) &&
+           std::abs(aPos.y - bPos.y) < (aHalf.y + bHalf.y);
+}
+
+void LevelThreeScene::BuildConsensusBindings(int playerCount) {
+    m_ConsensusBindings.clear();
+    m_ConsensusBindings.reserve(static_cast<size_t>(playerCount));
+
+    const auto& allConfigs = m_Session.GetAppliedKeyConfigs();
+    for (int i = 0; i < playerCount; ++i) {
+        PlayerKeyConfig cfg = allConfigs[static_cast<size_t>(i)];
+        if (i == 0) {
+            const auto& d = KeyboardConfigScene::k_Default1P;
+            if (cfg.left  == k::UNKNOWN) cfg.left = d.left;
+            if (cfg.right == k::UNKNOWN) cfg.right = d.right;
+            if (cfg.jump  == k::UNKNOWN) cfg.jump = d.jump;
+            if (cfg.up    == k::UNKNOWN) cfg.up = d.up;
+        } else if (i == 1) {
+            const auto& d = KeyboardConfigScene::k_Default2P;
+            if (cfg.left  == k::UNKNOWN) cfg.left = d.left;
+            if (cfg.right == k::UNKNOWN) cfg.right = d.right;
+            if (cfg.jump  == k::UNKNOWN) cfg.jump = d.jump;
+            if (cfg.up    == k::UNKNOWN) cfg.up = d.up;
+        }
+        m_ConsensusBindings.push_back(cfg);
+    }
+}
+
+bool LevelThreeScene::IsAllPlayersHolding(Util::Keycode PlayerKeyConfig::* keyMember) const {
+    if (m_ConsensusBindings.empty()) return false;
+
+    int participants = 0;
+
+    for (const auto& cfg : m_ConsensusBindings) {
+        const Util::Keycode keycode = cfg.*keyMember;
+        if (keycode == k::UNKNOWN) {
+            continue;
+        }
+        ++participants;
+        if (!ip::IsKeyPressed(keycode)) {
+            return false;
+        }
+    }
+    return participants > 0;
+}
+
+void LevelThreeScene::HandleConsensusInput() {
+    if (m_Player == nullptr || !m_Player->IsActive() || !m_Player->GetInputEnabled()) {
+        return;
+    }
+
+    const bool allLeft  = IsAllPlayersHolding(&PlayerKeyConfig::left);
+    const bool allRight = IsAllPlayersHolding(&PlayerKeyConfig::right);
+
+    int moveDir = 0;
+    if (allLeft && !allRight) moveDir = -1;
+    else if (allRight && !allLeft) moveDir = 1;
+
+    m_Player->SetMoveDir(moveDir);
+
+    const bool allJumpHeld = IsAllPlayersHolding(&PlayerKeyConfig::jump);
+    const bool blockJumpForDoorEntry = IsPlayerInOpenDoorZone();
+    if (allJumpHeld && !m_JumpConsensusLatched && m_Player->IsGrounded() && !blockJumpForDoorEntry) {
+        m_Player->Jump();
+        m_JumpConsensusLatched = true;
+    }
+    if (!allJumpHeld) {
+        m_JumpConsensusLatched = false;
+    }
+}
+
+bool LevelThreeScene::IsPlayerInOpenDoorZone() const {
+    if (!m_DoorOpened || m_PlayerDead || m_Player == nullptr || m_Actors.Door() == nullptr) {
+        return false;
+    }
+
+    // Slightly expand the doorway interaction area so same-key up/jump can clear reliably.
+    glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
+    doorHalf.x += 12.0f;
+    doorHalf.y += 8.0f;
+
+    return AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
+                       m_Actors.Door()->GetPosition(), doorHalf);
+}
+
+void LevelThreeScene::SetupSceneVisuals() {
+    constexpr float kRoomInnerLeft  = -610.0f;
+    constexpr float kRoomInnerRight = 610.0f;
+    constexpr float kBottomLayerTopY = kBottomTopY - 33.0f;
+
+    const float ceilHalfH = SpriteHalfH(m_CeilingSprite, 35.0f);
+    m_CeilingSprite->SetPosition({0.0f, kRoomTopY + ceilHalfH});
+    m_LeftWallSprite->SetPosition({kRoomLeftX, 0.0f});
+    m_RightWallSprite->SetPosition({kRoomRightX, 0.0f});
+
+    // Slightly intersects ceiling while mostly below it.
+    m_GamePadSprite->SetPosition({0.0f, kRoomTopY - 37.0f});
+
+    // Bottom layer
+    const float lFloorHalfW = SpriteHalfW(m_LFloorSprite, 178.0f);
+    const float lFloorX = kRoomInnerLeft + lFloorHalfW;
+    PlaceSpriteTop(m_LFloorSprite, lFloorX, kBottomLayerTopY);
+
+    const float rFloorHalfW = SpriteHalfW(m_RFloorSprite, 290.0f);
+    const float rFloorLeftX = -180.0f;
+    const float rFloorX = rFloorLeftX + rFloorHalfW;
+    PlaceSpriteTop(m_RFloorSprite, rFloorX, kBottomLayerTopY);
+
+    // Middle layer
+    PlaceSpriteTop(m_LMidFloorSprite, -180.0f, kMidTopY);
+    PlaceSpriteTop(m_RMidFloorSprite, 300.0f, kMidTopY);
+
+    // High layer
+    PlaceSpriteTop(m_LHighFloorSprite, -115.0f, kHighTopY);
+    PlaceSpriteTop(m_RHighFloorSprite, 430.0f, kHighTopY);
+
+    // Lifts: left of LHigh, and right of RMid.
+    const float lLiftHalfW = SpriteHalfW(m_LLiftSprite, 60.0f);
+    PlaceSpriteTop(m_LLiftSprite, kRoomInnerLeft + lLiftHalfW + 5.0f, kMidTopY);
+
+    const float rLiftHalfW = SpriteHalfW(m_RLiftSprite, 59.5f);
+    PlaceSpriteTop(m_RLiftSprite, kRoomInnerRight - rLiftHalfW - 70.0f, kBottomLayerTopY);
+
+    // Mid blocks and patrol lane.
+    PlaceSpriteTop(m_MidBlockLeftSprite, -250.0f, kMidTopY + 36.0f);
+    PlaceSpriteTop(m_MidBlockRightSprite, 40.0f, kMidTopY + 36.0f);
+
+    // Pipe sits on RFloor.
+    PlaceSpriteTop(m_PipeSprite, 50.0f, kBottomLayerTopY + SpriteHalfH(m_PipeSprite, 34.0f) * 2.0f - 2.0f);
+
+    const float mob2Y = kMidTopY + SpriteHalfH(m_Mob2Sprite, 15.0f);
+    m_Mob2Sprite->SetPosition({-180.0f, mob2Y});
+
+    const float pipeTop = m_PipeSprite->GetPosition().y + SpriteHalfH(m_PipeSprite, 32.0f);
+    const float mob1HiddenY = pipeTop - SpriteHalfH(m_Mob1Sprite, 24.0f) * 0.8f;
+    m_Mob1Sprite->SetPosition({m_PipeSprite->GetPosition().x, mob1HiddenY - 10.0f});
+
+    m_FlagSprite->SetPosition({300.0f, kMidTopY + SpriteHalfH(m_FlagSprite, 34.0f) - 4.0f});
+    m_CheckText->SetPosition(m_FlagSprite->GetPosition() + glm::vec2{0.0f, 42.0f});
+
+    m_KeySprite->SetVisible(true);
+    const float keyHalfW = SpriteHalfW(m_KeySprite, 20.0f);
+    const float keyHalfH = SpriteHalfH(m_KeySprite, 26.0f);
+    const float rHighTop = SpriteTopY(m_RHighFloorSprite, kHighTopY);
+    m_KeySprite->SetPosition({kRoomInnerRight - keyHalfW - 48.0f,
+                              rHighTop + keyHalfH + 10.0f});
+
+    if (m_Actors.Door() != nullptr) {
+        const float doorHalfH = std::abs(m_Actors.Door()->GetScaledSize().y) * 0.5f;
+        m_Actors.Door()->SetPosition({
+            -325.0f,
+            SpriteTopY(m_LHighFloorSprite, kHighTopY) + doorHalfH - 2.0f
+        });
+    }
+}
+
+void LevelThreeScene::SetupStaticBoundaries() {
+    constexpr float wallHalfW = 32.0f;
+    constexpr float wallHalfH = 360.0f;
+    constexpr float ceilHalfH = 35.0f;
+
+    m_World.AddStaticBoundary({-639.0f, 0.0f}, {wallHalfW, wallHalfH}, BodyType::STATIC_BOUNDARY);
+    m_World.AddStaticBoundary({639.0f, 0.0f}, {wallHalfW, wallHalfH}, BodyType::STATIC_BOUNDARY);
+
+    const float ceilingSurfaceY = m_CeilingSprite->GetPosition().y - SpriteHalfH(m_CeilingSprite, ceilHalfH);
+    m_World.AddStaticBoundary({0.0f, ceilingSurfaceY + ceilHalfH}, {600.0f, ceilHalfH}, BodyType::STATIC_BOUNDARY);
+
+    const auto addSpriteAsPlatform = [&](const std::shared_ptr<Character>& obj) {
+        if (obj == nullptr) return;
+        const glm::vec2 size = glm::abs(obj->GetScaledSize());
+        const glm::vec2 half = {
+            std::max(16.0f, size.x * 0.5f),
+            std::max(2.0f, size.y * 0.5f)
+        };
+        m_World.AddStaticBoundary(obj->GetPosition(), half, BodyType::STATIC_BOUNDARY);
+    };
+
+    addSpriteAsPlatform(m_LFloorSprite);
+    addSpriteAsPlatform(m_RFloorSprite);
+    addSpriteAsPlatform(m_LMidFloorSprite);
+    addSpriteAsPlatform(m_RMidFloorSprite);
+    addSpriteAsPlatform(m_LHighFloorSprite);
+    addSpriteAsPlatform(m_RHighFloorSprite);
+    addSpriteAsPlatform(m_MidBlockLeftSprite);
+    addSpriteAsPlatform(m_MidBlockRightSprite);
+    addSpriteAsPlatform(m_PipeSprite);
+}
+
+void LevelThreeScene::SetupDynamicBodies() {
+    glm::vec2 lLiftHalf = glm::abs(m_LLiftSprite->GetScaledSize()) * 0.5f;
+    glm::vec2 rLiftHalf = glm::abs(m_RLiftSprite->GetScaledSize()) * 0.5f;
+    lLiftHalf.y = std::max(4.0f, lLiftHalf.y - 2.0f);
+    rLiftHalf.y = std::max(4.0f, rLiftHalf.y - 2.0f);
+
+    const float lLiftLowY = SpriteTopY(m_LMidFloorSprite, kMidTopY) - lLiftHalf.y - kLiftEndpointInset;
+    const float lLiftHighY = SpriteTopY(m_LHighFloorSprite, kHighTopY) - lLiftHalf.y - kLiftEndpointInset;
+    m_LeftLiftBody = std::make_shared<MovingLiftBody>(
+        glm::vec2{m_LLiftSprite->GetPosition().x, lLiftLowY}, lLiftHalf,
+        lLiftLowY, lLiftHighY, kLiftSpeed);
+    m_World.Register(m_LeftLiftBody);
+
+    const float rLiftLowY = SpriteTopY(m_RFloorSprite, kBottomTopY) - rLiftHalf.y - kLiftEndpointInset;
+    const float rLiftHighY = SpriteTopY(m_RMidFloorSprite, kMidTopY) - rLiftHalf.y - kLiftEndpointInset;
+    m_RightLiftBody = std::make_shared<MovingLiftBody>(
+        glm::vec2{m_RLiftSprite->GetPosition().x, rLiftLowY}, rLiftHalf,
+        rLiftLowY, rLiftHighY, kLiftSpeed);
+    m_World.Register(m_RightLiftBody);
+
+    const float mob2HalfW = SpriteHalfW(m_Mob2Sprite, 26.0f);
+    const float mob2HalfH = SpriteHalfH(m_Mob2Sprite, 15.0f);
+    const float leftBlockRight = m_MidBlockLeftSprite->GetPosition().x + SpriteHalfW(m_MidBlockLeftSprite, 24.0f);
+    const float rightBlockLeft = m_MidBlockRightSprite->GetPosition().x - SpriteHalfW(m_MidBlockRightSprite, 24.0f);
+    const float mobMinX = leftBlockRight + mob2HalfW + 2.0f;
+    const float mobMaxX = rightBlockLeft - mob2HalfW - 2.0f;
+
+    m_Mob2Body = std::make_shared<PatrolMobBody>(
+        glm::vec2{(mobMinX + mobMaxX) * 0.5f, m_Mob2Sprite->GetPosition().y},
+        glm::vec2{mob2HalfW, mob2HalfH},
+        mobMinX, mobMaxX, kMob2Speed);
+    m_World.Register(m_Mob2Body);
+
+    const float mob1HalfW = SpriteHalfW(m_Mob1Sprite, 29.5f);
+    const float mob1HalfH = SpriteHalfH(m_Mob1Sprite, 22.5f);
+    const float pipeTop = m_PipeSprite->GetPosition().y + SpriteHalfH(m_PipeSprite, 32.0f);
+    const float mobHiddenY = pipeTop - mob1HalfH * 0.8f - 10.0f;
+    const float mobVisibleY = pipeTop + mob1HalfH - 5.0f;
+
+    m_Mob1Body = std::make_shared<PipeMobBody>(
+        glm::vec2{m_PipeSprite->GetPosition().x, mobHiddenY},
+        glm::vec2{mob1HalfW, mob1HalfH},
+        mobHiddenY, mobVisibleY, kMob1RiseSpeed);
+    m_World.Register(m_Mob1Body);
+
+    m_LLiftSprite->SetPosition(m_LeftLiftBody->GetPosition());
+    m_RLiftSprite->SetPosition(m_RightLiftBody->GetPosition());
+    m_Mob1Sprite->SetPosition(m_Mob1Body->GetPosition());
+    m_Mob2Sprite->SetPosition(m_Mob2Body->GetPosition());
+}
+
+void LevelThreeScene::LogLayoutSnapshot() const {
+    const auto dump = [](const char* name, const std::shared_ptr<Character>& obj) {
+        if (obj == nullptr) {
+            LOG_INFO("L3_LAYOUT {}: null", name);
+            return;
+        }
+        const auto size = obj->GetScaledSize();
+        const auto pos = obj->GetPosition();
+        LOG_INFO("L3_LAYOUT {} pos=({}, {}) size=({}, {})", name, pos.x, pos.y, size.x, size.y);
+    };
+
+    dump("Ceiling", m_CeilingSprite);
+    dump("LWall", m_LeftWallSprite);
+    dump("RWall", m_RightWallSprite);
+    dump("LFloor", m_LFloorSprite);
+    dump("RFloor", m_RFloorSprite);
+    dump("LMidFloor", m_LMidFloorSprite);
+    dump("RMidFloor", m_RMidFloorSprite);
+    dump("LHighFloor", m_LHighFloorSprite);
+    dump("RHighFloor", m_RHighFloorSprite);
+    dump("LLift", m_LLiftSprite);
+    dump("RLift", m_RLiftSprite);
+    dump("MidBlockL", m_MidBlockLeftSprite);
+    dump("MidBlockR", m_MidBlockRightSprite);
+    dump("Pipe", m_PipeSprite);
+    dump("Mob1", m_Mob1Sprite);
+    dump("Mob2", m_Mob2Sprite);
+    dump("Flag", m_FlagSprite);
+    dump("Key", m_KeySprite);
+    if (m_Player != nullptr) {
+        const auto size = m_Player->GetScaledSize();
+        const auto pos = m_Player->GetPosition();
+        LOG_INFO("L3_LAYOUT Player pos=({}, {}) size=({}, {})", pos.x, pos.y, size.x, size.y);
+    }
+    if (m_Actors.Door() != nullptr) dump("Door", m_Actors.Door());
+}
+
+void LevelThreeScene::OnEnter() {
+    const int playerCount = std::clamp(m_Session.GetSelectedPlayerCount(), 2, 8);
+    m_Session.SetSelectedPlayerCount(playerCount);
+    BuildConsensusBindings(playerCount);
+
+    m_World.Clear();
+
+    m_ElapsedSec = 0.0f;
+    m_DeathWaitSec = 0.0f;
+    m_ShakeTimerSec = 0.0f;
+    m_PlayerDead = false;
+    m_CheckpointReached = false;
+    m_HasKey = false;
+    m_DoorOpened = false;
+    m_ClearDone = false;
+    m_JumpConsensusLatched = false;
+    m_CheckText->SetVisible(false);
+    m_CheckText->SetColor(Util::Color::FromRGB(0, 0, 0, 255));
+
+    if (m_Actors.Header()) m_Actors.Header()->SetVisible(false);
+    if (m_Actors.Floor()) m_Actors.Floor()->SetVisible(false);
+    if (m_Actors.TestBox()) {
+        m_Actors.TestBox()->SetVisible(false);
+        if (m_Actors.TestBox()->GetTextObject()) {
+            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
+        }
+    }
+    for (auto& cat : m_Actors.StartupCats()) {
+        if (cat) cat->SetVisible(false);
+    }
+
+    if (m_Actors.Door() != nullptr) {
+        m_Actors.Door()->SetVisible(true);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    }
+
+    SetupSceneVisuals();
+
+    const float lFloorTop = SpriteTopY(m_LFloorSprite, kBottomTopY);
+    m_SpawnPoint = {
+        m_LFloorSprite->GetPosition().x - SpriteHalfW(m_LFloorSprite, 178.0f) + 120.0f,
+        lFloorTop + PlayerCat::kHalfHeight + kSpawnYOffset
+    };
+    m_RespawnPoint = m_SpawnPoint;
+    m_PlayerPrevPos = m_SpawnPoint;
+
+    m_Player = std::make_shared<PlayerCat>(
+        CatAssets::BuildFullAnimPaths("red"),
+        k::UNKNOWN, k::UNKNOWN, k::UNKNOWN);
+    m_Player->SetPosition(m_SpawnPoint);
+    m_Player->SetZIndex(30.0f);
+    m_Player->SetInputEnabled(true);
+    m_Player->SetVisible(true);
+    m_Player->SetActive(true);
+    m_Player->SetMoveDir(0);
+
+    m_DeadCatSprite->SetVisible(false);
+    m_DeadCatSprite->SetPosition(m_SpawnPoint);
+
+    m_Actors.Root().AddChild(m_CeilingSprite);
+    m_Actors.Root().AddChild(m_LeftWallSprite);
+    m_Actors.Root().AddChild(m_RightWallSprite);
+    m_Actors.Root().AddChild(m_GamePadSprite);
+
+    m_Actors.Root().AddChild(m_LFloorSprite);
+    m_Actors.Root().AddChild(m_RFloorSprite);
+    m_Actors.Root().AddChild(m_LMidFloorSprite);
+    m_Actors.Root().AddChild(m_RMidFloorSprite);
+    m_Actors.Root().AddChild(m_LHighFloorSprite);
+    m_Actors.Root().AddChild(m_RHighFloorSprite);
+
+    m_Actors.Root().AddChild(m_LLiftSprite);
+    m_Actors.Root().AddChild(m_RLiftSprite);
+
+    m_Actors.Root().AddChild(m_MidBlockLeftSprite);
+    m_Actors.Root().AddChild(m_MidBlockRightSprite);
+    m_Actors.Root().AddChild(m_PipeSprite);
+    m_Actors.Root().AddChild(m_Mob1Sprite);
+    m_Actors.Root().AddChild(m_Mob2Sprite);
+
+    m_Actors.Root().AddChild(m_FlagSprite);
+    m_Actors.Root().AddChild(m_CheckText);
+    m_Actors.Root().AddChild(m_KeySprite);
+
+    m_Actors.Root().AddChild(m_Player);
+    m_Actors.Root().AddChild(m_DeadCatSprite);
+    m_Actors.Root().AddChild(m_TimerText);
+
+    UpdateTimerText();
+
+    SetupStaticBoundaries();
+    SetupDynamicBodies();
+    LogLayoutSnapshot();
+
+    m_World.Register(m_Player);
+
+    LOG_INFO("LevelThreeScene::OnEnter players={} (consensus control)", playerCount);
+}
+
+void LevelThreeScene::OnExit() {
+    m_World.UnfreezeAll();
+    m_World.Clear();
+
+    m_Actors.Root().RemoveChild(m_CeilingSprite);
+    m_Actors.Root().RemoveChild(m_LeftWallSprite);
+    m_Actors.Root().RemoveChild(m_RightWallSprite);
+    m_Actors.Root().RemoveChild(m_GamePadSprite);
+
+    m_Actors.Root().RemoveChild(m_LFloorSprite);
+    m_Actors.Root().RemoveChild(m_RFloorSprite);
+    m_Actors.Root().RemoveChild(m_LMidFloorSprite);
+    m_Actors.Root().RemoveChild(m_RMidFloorSprite);
+    m_Actors.Root().RemoveChild(m_LHighFloorSprite);
+    m_Actors.Root().RemoveChild(m_RHighFloorSprite);
+
+    m_Actors.Root().RemoveChild(m_LLiftSprite);
+    m_Actors.Root().RemoveChild(m_RLiftSprite);
+
+    m_Actors.Root().RemoveChild(m_MidBlockLeftSprite);
+    m_Actors.Root().RemoveChild(m_MidBlockRightSprite);
+    m_Actors.Root().RemoveChild(m_PipeSprite);
+    m_Actors.Root().RemoveChild(m_Mob1Sprite);
+    m_Actors.Root().RemoveChild(m_Mob2Sprite);
+
+    m_Actors.Root().RemoveChild(m_FlagSprite);
+    m_Actors.Root().RemoveChild(m_CheckText);
+    m_Actors.Root().RemoveChild(m_KeySprite);
+
+    if (m_Player != nullptr) {
+        m_Actors.Root().RemoveChild(m_Player);
+    }
+    m_Actors.Root().RemoveChild(m_DeadCatSprite);
+    m_Actors.Root().RemoveChild(m_TimerText);
+
+    m_Player.reset();
+    m_LeftLiftBody.reset();
+    m_RightLiftBody.reset();
+    m_Mob1Body.reset();
+    m_Mob2Body.reset();
+
+    if (m_Actors.Door() != nullptr) {
+        m_Actors.Door()->SetVisible(false);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    }
+
+    for (auto& cat : m_Actors.StartupCats()) {
+        if (cat) cat->SetVisible(true);
+    }
+
+    ResetShake();
+}
+
+void LevelThreeScene::PauseGameplay() {
+    m_World.FreezeAll();
+}
+
+void LevelThreeScene::ResumeGameplay() {
+    m_World.UnfreezeAll();
+}
+
+void LevelThreeScene::SyncDynamicSprites() const {
+    if (m_LeftLiftBody != nullptr) m_LLiftSprite->SetPosition(m_LeftLiftBody->GetPosition());
+    if (m_RightLiftBody != nullptr) m_RLiftSprite->SetPosition(m_RightLiftBody->GetPosition());
+    if (m_Mob1Body != nullptr) m_Mob1Sprite->SetPosition(m_Mob1Body->GetPosition());
+    if (m_Mob2Body != nullptr) {
+        m_Mob2Sprite->SetPosition(m_Mob2Body->GetPosition());
+        const float absX = std::abs(m_Mob2Sprite->m_Transform.scale.x);
+        const float sy = m_Mob2Sprite->m_Transform.scale.y;
+        m_Mob2Sprite->SetScale({(m_Mob2Body->GetFacingDir() < 0) ? absX : -absX, sy});
+    }
+}
+
+void LevelThreeScene::UpdateTimerText() const {
+    m_TimerText->SetText("TIME " + SaveManager::FormatTime(m_ElapsedSec));
+}
+
+void LevelThreeScene::UpdateCheckpoint() {
+    if (m_PlayerDead || m_CheckpointReached || m_Player == nullptr) return;
+
+    const glm::vec2 flagHalf = glm::abs(m_FlagSprite->GetScaledSize()) * 0.5f;
+    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
+                     m_FlagSprite->GetPosition(), flagHalf)) {
+        return;
+    }
+
+    m_CheckpointReached = true;
+    const float floorTopY = m_RMidFloorSprite->GetPosition().y +
+                            SpriteHalfH(m_RMidFloorSprite, 16.0f);
+    m_RespawnPoint = {m_FlagSprite->GetPosition().x,
+                      floorTopY + PlayerCat::kHalfHeight};
+    m_CheckText->SetVisible(true);
+    m_CheckText->SetColor(Util::Color::FromRGB(30, 150, 40, 255));
+}
+
+void LevelThreeScene::TryPickKey() {
+    if (m_PlayerDead || m_HasKey || m_Player == nullptr) return;
+
+    const glm::vec2 keyHalf = glm::abs(m_KeySprite->GetScaledSize()) * 0.5f;
+    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
+                     m_KeySprite->GetPosition(), keyHalf)) {
+        return;
+    }
+
+    m_HasKey = true;
+}
+
+void LevelThreeScene::UpdateKeyFollow() const {
+    if (!m_HasKey || m_Player == nullptr) return;
+    m_KeySprite->SetPosition(m_Player->GetPosition() + glm::vec2{-26.0f, 28.0f});
+}
+
+void LevelThreeScene::TryOpenDoor() {
+    if (!m_HasKey || m_DoorOpened || m_Player == nullptr || m_Actors.Door() == nullptr) return;
+
+    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
+    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
+                     m_Actors.Door()->GetPosition(), doorHalf)) {
+        return;
+    }
+
+    m_DoorOpened = true;
+    m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+    m_KeySprite->SetVisible(false);
+}
+
+void LevelThreeScene::TryClearLevel() {
+    if (m_ClearDone || !m_DoorOpened || m_PlayerDead || m_Player == nullptr || m_Actors.Door() == nullptr) {
+        return;
+    }
+
+    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
+    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
+                     m_Actors.Door()->GetPosition(), doorHalf)) {
+        return;
+    }
+
+    bool allUpDown = false;
+    int upParticipants = 0;
+    for (const auto& cfg : m_ConsensusBindings) {
+        if (cfg.up == k::UNKNOWN) {
+            continue;
+        }
+        ++upParticipants;
+        if (!ip::IsKeyPressed(cfg.up)) {
+            allUpDown = false;
+            break;
+        }
+        allUpDown = true;
+    }
+
+    if (upParticipants == 0) allUpDown = false;
+
+    if (!allUpDown) return;
+
+    SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
+    m_ClearDone = true;
+}
+
+bool LevelThreeScene::IsStompCollision(const IPhysicsBody& mobBody) const {
+    if (m_Player == nullptr) return false;
+
+    const glm::vec2 playerPos = m_Player->GetPosition();
+    const glm::vec2 playerHalf = m_Player->GetHalfSize();
+    const glm::vec2 mobPos = mobBody.GetPosition();
+    const glm::vec2 mobHalf = mobBody.GetHalfSize();
+
+    const bool descending = m_PlayerPrevPos.y > playerPos.y + 0.1f;
+    const float playerBottom = playerPos.y - playerHalf.y;
+    const float mobTop = mobPos.y + mobHalf.y;
+    const bool fromAbove = playerBottom >= mobTop - 8.0f;
+
+    return descending && fromAbove;
+}
+
+void LevelThreeScene::TriggerStompBounce(const IPhysicsBody& mobBody) const {
+    if (m_Player == nullptr) return;
+
+    const glm::vec2 mobPos = mobBody.GetPosition();
+    const glm::vec2 mobHalf = mobBody.GetHalfSize();
+    glm::vec2 pos = m_Player->GetPosition();
+
+    pos.y = mobPos.y + mobHalf.y + m_Player->GetHalfSize().y + 2.0f;
+    m_Player->SetPosition(pos);
+    m_Player->Jump();
+}
+
+void LevelThreeScene::StartDeath() {
+    if (m_Player == nullptr || m_PlayerDead) return;
+
+    m_PlayerDead = true;
+    m_DeathWaitSec = kDeathRespawnDelaySec;
+
+    m_DeadCatSprite->SetPosition(m_Player->GetPosition());
+    m_DeadCatSprite->SetVisible(true);
+
+    m_Player->SetVisible(false);
+    m_Player->SetActive(false);
+    m_Player->SetInputEnabled(false);
+    m_Player->SetMoveDir(0);
+
+    m_ShakeTimerSec = kShakeDurationSec;
+    m_ShakeSeed += 0.137f;
+}
+
+void LevelThreeScene::RespawnPlayer() {
+    if (m_Player == nullptr) return;
+
+    m_PlayerDead = false;
+    m_DeathWaitSec = 0.0f;
+
+    m_Player->SetPosition(m_RespawnPoint);
+    m_Player->SetVisible(true);
+    m_Player->SetActive(true);
+    m_Player->SetInputEnabled(true);
+    m_Player->SetMoveDir(0);
+    m_Player->SetCatAnimState(CatAnimState::STAND);
+    m_PlayerPrevPos = m_RespawnPoint;
+    m_JumpConsensusLatched = false;
+
+    m_DeadCatSprite->SetVisible(false);
+}
+
+void LevelThreeScene::HandleHazardsAndRespawn() {
+    if (m_Player == nullptr) return;
+
+    if (m_PlayerDead) {
+        m_DeathWaitSec -= Util::Time::GetDeltaTimeMs() / 1000.0f;
+        if (m_DeathWaitSec <= 0.0f) {
+            RespawnPlayer();
+        }
+        return;
+    }
+
+    // Falling below the play area counts as death in this level.
+    if (m_Player->GetPosition().y < (kRoomFloorY - kFallDeathYOffset)) {
+        StartDeath();
+        return;
+    }
+
+    const auto checkMob = [&](const std::shared_ptr<IPhysicsBody>& mob) -> bool {
+        if (mob == nullptr || !mob->IsActive()) return false;
+        const glm::vec2 playerPos = m_Player->GetPosition();
+        const glm::vec2 playerHalf = m_Player->GetHalfSize();
+        const glm::vec2 mobPos = mob->GetPosition();
+        const glm::vec2 mobHalf = mob->GetHalfSize();
+
+        const bool overlapNow = AabbOverlap(playerPos, playerHalf, mobPos, mobHalf);
+        const bool nearContact =
+            std::abs(playerPos.x - mobPos.x) <= (playerHalf.x + mobHalf.x + kHazardContactSlack) &&
+            std::abs(playerPos.y - mobPos.y) <= (playerHalf.y + mobHalf.y + kHazardContactSlack);
+
+        if (!(overlapNow || nearContact)) {
+            return false;
+        }
+
+        if (IsStompCollision(*mob)) {
+            TriggerStompBounce(*mob);
+            return true;
+        }
+
+        StartDeath();
+        return true;
+    };
+
+    if (checkMob(m_Mob1Body)) return;
+    checkMob(m_Mob2Body);
+}
+
+void LevelThreeScene::UpdateShake() {
+    if (m_ShakeTimerSec <= 0.0f) {
+        ResetShake();
+        return;
+    }
+
+    const float dtSec = Util::Time::GetDeltaTimeMs() / 1000.0f;
+    m_ShakeTimerSec = std::max(0.0f, m_ShakeTimerSec - dtSec);
+
+    // Screen-shake hook disabled by request; keep timer decay for future reuse.
+    (void)kShakeAmplitudePx;
+    (void)m_ShakeSeed;
+}
+
+void LevelThreeScene::ResetShake() const {
+    // Screen-shake hook disabled by request.
+}
+
+void LevelThreeScene::Update() {
+    if (ip::IsKeyDown(k::ESCAPE)) {
+        RequestSceneOp({SceneOpType::PushOverlay, SceneId::LevelExit});
+        return;
+    }
+
+    if (m_Player != nullptr) {
+        m_PlayerPrevPos = m_Player->GetPosition();
+    }
+
+    if (!m_PlayerDead) {
+        HandleConsensusInput();
+        // Safety: keep the controllable cat visible while alive.
+        if (m_Player != nullptr) {
+            m_Player->SetVisible(true);
+            m_Player->SetActive(true);
+        }
+    }
+
+    m_World.Update();
+    SyncDynamicSprites();
+
+    UpdateCheckpoint();
+    TryPickKey();
+    UpdateKeyFollow();
+    TryOpenDoor();
+    TryClearLevel();
+    HandleHazardsAndRespawn();
+
+    m_ElapsedSec += Util::Time::GetDeltaTimeMs() / 1000.0f;
+    UpdateTimerText();
+    UpdateShake();
+
+    if (m_ClearDone) {
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
+    }
+}
+</file>
+
+<file path="LevelTwoScene.cpp">
+#include "LevelTwoScene.hpp"
+
+#include <algorithm>
+#include <cmath>
+
+#include "CatAssets.hpp"
+#include "KeyboardConfigScene.hpp"
+#include "SaveManager.hpp"
+#include "Util/Input.hpp"
+#include "Util/Keycode.hpp"
+#include "Util/Logger.hpp"
+#include "Util/Time.hpp"
+
+using ip = Util::Input;
+using k  = Util::Keycode;
+
+class LevelTwoScene::MovingPlankBody final : public IPhysicsBody {
+public:
+    MovingPlankBody(const glm::vec2& pos, const glm::vec2& half, float speed)
+        : m_Pos(pos), m_Half(glm::abs(half)), m_Speed(std::max(0.0f, speed)) {}
+
+    [[nodiscard]] BodyType GetBodyType() const override { return BodyType::MOVING_PLATFORM; }
+    [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }
+    void SetPosition(const glm::vec2& pos) override { m_Pos = pos; }
+    [[nodiscard]] glm::vec2 GetHalfSize() const override { return m_Half; }
+
+    [[nodiscard]] bool IsSolid() const override { return true; }
+    [[nodiscard]] bool IsKinematic() const override { return true; }
+
+    void SetTargetX(float x) { m_TargetX = x; }
+
+    void PhysicsUpdate() override {
+        const float dtSec = Util::Time::GetDeltaTimeMs() / 1000.0f;
+        const float dx    = m_TargetX - m_Pos.x;
+        const float maxStep = m_Speed * std::max(0.0f, dtSec);
+
+        if (std::abs(dx) <= maxStep) {
+            m_Desired = {dx, 0.0f};
+        } else {
+            m_Desired = {(dx > 0.0f ? maxStep : -maxStep), 0.0f};
+        }
+    }
+
+    [[nodiscard]] glm::vec2 GetDesiredDelta() const override { return m_Desired; }
+
+    void ApplyResolvedDelta(const glm::vec2& delta) override {
+        m_Pos += delta;
+    }
+
+private:
+    glm::vec2 m_Pos;
+    glm::vec2 m_Half;
+    glm::vec2 m_Desired = {0.0f, 0.0f};
+
+    float m_TargetX = 0.0f;
+    float m_Speed   = 160.0f;
+};
+
+LevelTwoScene::LevelTwoScene(SceneServices services)
+    : Scene(services) {
+    m_LeftFloorSprite = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/LeftFloor.png");
+    m_RightFloorSprite = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/RightFloor.png");
+    m_CeilingSprite = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/Ceiling.png");
+
+    m_LeftWallSprite = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/Background_lwall.png");
+    m_RightWallSprite = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/Background_rwall.png");
+
+    m_KeySprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Key.png");
+    m_ButtonSprite = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/ButtonUp.png");
+
+    m_TimerText = std::make_shared<GameText>(
+        "TIME 00:00.00", 42, Util::Color::FromRGB(255, 140, 0, 255));
+
+    m_LeftFloorSprite->SetZIndex(4.0f);
+    m_RightFloorSprite->SetZIndex(4.0f);
+    m_CeilingSprite->SetZIndex(4.0f);
+    m_LeftWallSprite->SetZIndex(4.1f);
+    m_RightWallSprite->SetZIndex(4.1f);
+
+    m_KeySprite->SetZIndex(18.0f);
+    m_ButtonSprite->SetZIndex(17.0f);
+
+    m_TimerText->SetZIndex(40.0f);
+    m_TimerText->SetPosition({450.0f, 320.0f});
+
+    m_PlankSprites.reserve(kPlankCount);
+    for (int i = 0; i < kPlankCount; ++i) {
+        auto plank = std::make_shared<Character>(
+            GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/Plank.png");
+        plank->SetZIndex(3.0f + static_cast<float>(i) * 0.01f);
+        m_PlankSprites.push_back(plank);
+    }
+}
+
+bool LevelTwoScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
+                                const glm::vec2& bPos, const glm::vec2& bHalf) {
+    return std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) &&
+           std::abs(aPos.y - bPos.y) < (aHalf.y + bHalf.y);
+}
+
+void LevelTwoScene::SetupStaticBoundaries() {
+    constexpr float wallHalfW = 32.0f;
+    constexpr float wallHalfH = 360.0f;
+    constexpr float floorHalfH = 35.0f;
+    constexpr float ceilHalfH = 35.0f;
+
+    m_World.AddStaticBoundary(
+        {kRoomLeftX - 15.0f, 0.0f},
+        {wallHalfW, wallHalfH},
+        BodyType::STATIC_BOUNDARY);
+    m_World.AddStaticBoundary(
+        {kRoomRightX + 15.0f, 0.0f},
+        {wallHalfW, wallHalfH},
+        BodyType::STATIC_BOUNDARY);
+
+    // Keep floor colliders horizontally aligned with the visual floor sprites.
+    float leftFloorCenterX = -450.0f;
+    float leftFloorHalfW   = 150.0f;
+    if (m_LeftFloorSprite) {
+        leftFloorCenterX = m_LeftFloorSprite->GetPosition().x;
+        const float spriteHalfW = std::abs(m_LeftFloorSprite->GetScaledSize().x) * 0.5f;
+        if (spriteHalfW > 1.0f) leftFloorHalfW = spriteHalfW;
+    }
+
+    float rightFloorCenterX = kRightFloorCenterX;
+    float rightFloorHalfW   = (kRightFloorMaxX - kRightFloorMinX) * 0.5f;
+    if (m_RightFloorSprite) {
+        rightFloorCenterX = m_RightFloorSprite->GetPosition().x;
+        const float spriteHalfW = std::abs(m_RightFloorSprite->GetScaledSize().x) * 0.5f;
+        if (spriteHalfW > 1.0f) rightFloorHalfW = spriteHalfW;
+    }
+
+    m_World.AddStaticBoundary(
+        {leftFloorCenterX, kRoomFloorY - floorHalfH},
+        {leftFloorHalfW, floorHalfH},
+        BodyType::STATIC_BOUNDARY);
+    m_World.AddStaticBoundary(
+        {rightFloorCenterX, kRoomFloorY - floorHalfH},
+        {rightFloorHalfW, floorHalfH},
+        BodyType::STATIC_BOUNDARY);
+
+    const float ceilHalfW = (kCeilingRightX - kCeilingLeftX) * 0.5f;
+    const float ceilCenterX = (kCeilingLeftX + kCeilingRightX) * 0.5f;
+
+    m_World.AddStaticBoundary(
+        {ceilCenterX, kRoomTopY - ceilHalfH},
+        {ceilHalfW, ceilHalfH},
+        BodyType::STATIC_BOUNDARY);
+}
+
+void LevelTwoScene::SpawnPlayers(int count) {
+    m_Players.clear();
+    m_Players.reserve(static_cast<size_t>(count));
+
+    for (int i = 0; i < count; ++i) {
+        const std::string color = m_Actors.CatColorOrder()[static_cast<size_t>(i)];
+        auto cat = std::make_shared<PlayerCat>(
+            CatAssets::BuildFullAnimPaths(color),
+            k::UNKNOWN, k::UNKNOWN, k::UNKNOWN);
+
+        PlayerBinding pb;
+        pb.cat = cat;
+        pb.key = m_Session.GetAppliedKeyConfigs()[static_cast<size_t>(i)];
+
+        if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
+            pb.key = KeyboardConfigScene::k_Default1P;
+        } else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
+            pb.key = KeyboardConfigScene::k_Default2P;
+        }
+
+        cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
+        m_Players.push_back(pb);
+        m_Actors.Root().AddChild(cat);
+        m_World.Register(cat);
+    }
+
+    ApplyInitialFormation();
+}
+
+void LevelTwoScene::ApplyInitialFormation() const {
+    const float spawnY = kRoomFloorY + PlayerCat::kHalfHeight;
+    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
+        const auto& pb = m_Players[i];
+        if (pb.cat == nullptr) continue;
+
+        const float x = -570.0f + static_cast<float>(i) * 38.0f;
+        pb.cat->SetPosition({x, spawnY});
+    }
+}
+
+void LevelTwoScene::SetupPlanks(int playerCount) {
+    m_PlankBodies.clear();
+    m_PlankTargetX.assign(static_cast<size_t>(kPlankCount), 0.0f);
+
+    const int initialExtended = std::clamp(8 - playerCount, 0, kPlankCount);
+
+    glm::vec2 plankHalf = {24.0f, 12.0f};
+    if (!m_PlankSprites.empty() && m_PlankSprites[0] != nullptr) {
+        const glm::vec2 size = glm::abs(m_PlankSprites[0]->GetScaledSize());
+        if (size.x > 1.0f && size.y > 1.0f) {
+            plankHalf = size * 0.5f;
+        }
+    }
+
+    const float plankWidth = plankHalf.x * 2.0f;
+    const float plankPitch = std::max(1.0f, plankWidth - (kPlankSeamInsetPx * 2.0f));
+    const float plankY     = kRoomFloorY - plankHalf.y;
+
+    float rightFloorCenterX = kRightFloorCenterX;
+    float rightFloorHalfW   = (kRightFloorMaxX - kRightFloorMinX) * 0.5f;
+    if (m_RightFloorSprite) {
+        rightFloorCenterX = m_RightFloorSprite->GetPosition().x;
+        const float spriteHalfW = std::abs(m_RightFloorSprite->GetScaledSize().x) * 0.5f;
+        if (spriteHalfW > 1.0f) rightFloorHalfW = spriteHalfW;
+    }
+    const float rightFloorLeftX = rightFloorCenterX - rightFloorHalfW;
+    const float collapsedX = rightFloorCenterX;
+
+    m_PlankBodies.reserve(kPlankCount);
+
+    for (int i = 0; i < kPlankCount; ++i) {
+        const float finalTargetX = rightFloorLeftX - plankPitch * (static_cast<float>(i) + 0.5f);
+        const bool isInitiallyExtended = i < initialExtended;
+        const float startX = isInitiallyExtended ? finalTargetX : collapsedX;
+
+        auto body = std::make_shared<MovingPlankBody>(glm::vec2{startX, plankY}, plankHalf, kPlankMoveSpeed);
+        body->SetTargetX(startX); // Stay fixed until button is pressed.
+
+        m_PlankBodies.push_back(body);
+        m_PlankTargetX[static_cast<size_t>(i)] = finalTargetX;
+        m_World.Register(body);
+    }
+
+    SyncPlankSprites();
+}
+
+void LevelTwoScene::SyncPlankSprites() const {
+    const int count = std::min(static_cast<int>(m_PlankSprites.size()), static_cast<int>(m_PlankBodies.size()));
+    for (int i = 0; i < count; ++i) {
+        if (m_PlankSprites[i] == nullptr || m_PlankBodies[i] == nullptr) continue;
+        m_PlankSprites[i]->SetPosition(m_PlankBodies[i]->GetPosition());
+    }
+}
+
+void LevelTwoScene::OnEnter() {
+    const int playerCount = std::clamp(m_Session.GetSelectedPlayerCount(), 2, 8);
+    m_Session.SetSelectedPlayerCount(playerCount);
+
+    m_PlayerEntered.assign(static_cast<size_t>(playerCount), false);
+    m_EnteredCount = 0;
+    m_ClearDone = false;
+
+    m_World.Clear();
+    m_ElapsedSec = 0.0f;
+    m_ButtonPressed = false;
+    m_KeyCarrierIdx = -1;
+    m_DoorOpened = false;
+
+    if (m_Actors.Header()) m_Actors.Header()->SetVisible(false);
+    if (m_Actors.Floor()) m_Actors.Floor()->SetVisible(false);
+    if (m_Actors.TestBox()) {
+        m_Actors.TestBox()->SetVisible(false);
+        if (m_Actors.TestBox()->GetTextObject()) {
+            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
+        }
+    }
+
+    if (m_Actors.Door()) {
+        m_Actors.Door()->SetVisible(true);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+        m_Actors.Door()->SetPosition({480.0f, kRoomFloorY + kDoorHalf.y});
+    }
+
+    for (auto& cat : m_Actors.StartupCats()) {
+        if (cat) cat->SetVisible(false);
+    }
+
+    // Keep all local surfaces aligned on the same floor surface Y.
+    if (m_LeftFloorSprite) {
+        const float halfH = m_LeftFloorSprite->GetScaledSize().y * 0.5f;
+        m_LeftFloorSprite->SetPosition({-330.0f, kRoomFloorY - halfH});
+    }
+    if (m_RightFloorSprite) {
+        const float halfH = m_RightFloorSprite->GetScaledSize().y * 0.5f;
+        m_RightFloorSprite->SetPosition({kRightFloorCenterX, kRoomFloorY - halfH});
+    }
+    if (m_CeilingSprite) {
+        const float halfH = m_CeilingSprite->GetScaledSize().y * 0.5f;
+        m_CeilingSprite->SetPosition({271.0f, kRoomTopY + halfH});
+    }
+
+    m_LeftWallSprite->SetPosition({kRoomLeftX, 0.0f});
+    m_RightWallSprite->SetPosition({kRoomRightX, 0.0f});
+
+    m_KeySprite->SetVisible(true);
+    m_KeySprite->SetPosition({480.0f, kRoomFloorY + kDoorHalf.y + 90.0f});
+
+    const float buttonY = kRoomFloorY + kButtonTriggerHalfH;
+    m_ButtonSprite->SetImage(GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/ButtonUp.png");
+    m_ButtonSprite->SetPosition({430.0f, buttonY-11.0f});
+
+    m_Actors.Root().AddChild(m_LeftFloorSprite);
+    m_Actors.Root().AddChild(m_RightFloorSprite);
+    m_Actors.Root().AddChild(m_CeilingSprite);
+    m_Actors.Root().AddChild(m_LeftWallSprite);
+    m_Actors.Root().AddChild(m_RightWallSprite);
+    m_Actors.Root().AddChild(m_KeySprite);
+    m_Actors.Root().AddChild(m_ButtonSprite);
+
+    for (const auto& plank : m_PlankSprites) {
+        m_Actors.Root().AddChild(plank);
+    }
+
+    m_Actors.Root().AddChild(m_TimerText);
+    UpdateTimerText();
+
+    SpawnPlayers(playerCount);
+    SetupStaticBoundaries();
+    SetupPlanks(playerCount);
+
+    LOG_INFO("LevelTwoScene::OnEnter players={}", playerCount);
+}
+
+void LevelTwoScene::OnExit() {
+    for (auto& pb : m_Players) {
+        if (pb.cat) m_Actors.Root().RemoveChild(pb.cat);
+    }
+    m_Players.clear();
+
+    m_World.UnfreezeAll();
+    m_World.Clear();
+
+    m_Actors.Root().RemoveChild(m_LeftFloorSprite);
+    m_Actors.Root().RemoveChild(m_RightFloorSprite);
+    m_Actors.Root().RemoveChild(m_CeilingSprite);
+    m_Actors.Root().RemoveChild(m_LeftWallSprite);
+    m_Actors.Root().RemoveChild(m_RightWallSprite);
+    m_Actors.Root().RemoveChild(m_KeySprite);
+    m_Actors.Root().RemoveChild(m_ButtonSprite);
+    m_Actors.Root().RemoveChild(m_TimerText);
+
+    for (const auto& plank : m_PlankSprites) {
+        m_Actors.Root().RemoveChild(plank);
+    }
+    m_PlankBodies.clear();
+    m_PlankTargetX.clear();
+
+    if (m_Actors.Header()) m_Actors.Header()->SetVisible(false);
+    if (m_Actors.Floor()) m_Actors.Floor()->SetVisible(false);
+
+    if (m_Actors.TestBox()) {
+        m_Actors.TestBox()->SetVisible(false);
+        if (m_Actors.TestBox()->GetTextObject()) {
+            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
+        }
+    }
+
+    if (m_Actors.Door()) {
+        m_Actors.Door()->SetVisible(false);
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
+    }
+
+    for (auto& cat : m_Actors.StartupCats()) {
+        if (cat) cat->SetVisible(true);
+    }
+}
+
+void LevelTwoScene::PauseGameplay() {
+    m_World.FreezeAll();
+}
+
+void LevelTwoScene::ResumeGameplay() {
+    m_World.UnfreezeAll();
+}
+
+void LevelTwoScene::HandlePlayerInput() const {
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr || !pb.cat->IsActive() || !pb.cat->GetInputEnabled()) continue;
+
+        int moveDir = 0;
+        const bool goLeft  = (pb.key.left != k::UNKNOWN) && ip::IsKeyPressed(pb.key.left);
+        const bool goRight = (pb.key.right != k::UNKNOWN) && ip::IsKeyPressed(pb.key.right);
+
+        if (goLeft && !goRight) moveDir = -1;
+        else if (goRight && !goLeft) moveDir = 1;
+
+        pb.cat->SetMoveDir(moveDir);
+
+        const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
+        if (pb.cat->IsGrounded() && wantJump) {
+            pb.cat->Jump();
+        }
+    }
+}
+
+void LevelTwoScene::UpdateTimerText() const {
+    m_TimerText->SetText("TIME " + SaveManager::FormatTime(m_ElapsedSec));
+}
+
+void LevelTwoScene::TryActivateButton() {
+    if (m_ButtonPressed) return;
+
+    const glm::vec2 buttonPos = m_ButtonSprite->GetPosition();
+    const glm::vec2 buttonHalf = {kButtonTriggerHalfW, kButtonTriggerHalfH};
+
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr || !pb.cat->IsActive()) continue;
+
+        if (!AabbOverlap(pb.cat->GetPosition(), pb.cat->GetHalfSize(), buttonPos, buttonHalf)) {
+            continue;
+        }
+
+        m_ButtonPressed = true;
+        m_ButtonSprite->SetImage(GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/ButtonDown.png");
+
+        for (int i = 0; i < static_cast<int>(m_PlankBodies.size()); ++i) {
+            if (m_PlankBodies[i] == nullptr) continue;
+            m_PlankBodies[i]->SetTargetX(m_PlankTargetX[static_cast<size_t>(i)]);
+        }
+        LOG_INFO("LevelTwoScene: button pressed, extending bridge");
+        break;
+    }
+}
+
+void LevelTwoScene::UpdateFallenPlayers() {
+    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
+        auto& cat = m_Players[i].cat;
+        if (cat == nullptr || !cat->IsActive()) continue;
+
+        if (cat->GetPosition().y >= kFallTeleportThresholdY) continue;
+
+        cat->SetPosition(kTeleportPos);
+        cat->SetVisible(true);
+
+        LOG_INFO("LevelTwoScene: player {} teleported after fall", i);
+    }
+}
+
+void LevelTwoScene::TryPickKey() {
+    if (m_KeyCarrierIdx >= 0) return;
+
+    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
+        if (m_Players[i].cat == nullptr || !m_Players[i].cat->IsActive()) continue;
+
+        if (AabbOverlap(m_Players[i].cat->GetPosition(), m_Players[i].cat->GetHalfSize(),
+                        m_KeySprite->GetPosition(), kKeyHalf)) {
+            m_KeyCarrierIdx = i;
+            return;
+        }
+    }
+}
+
+void LevelTwoScene::UpdateKeyFollow() const {
+    if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
+
+    const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
+    if (carrier == nullptr || !carrier->IsActive()) return;
+
+    m_KeySprite->SetPosition(carrier->GetPosition() + glm::vec2{-28.0f, 28.0f});
+}
+
+void LevelTwoScene::TryOpenDoorAndClear() {
+    if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
+    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
+
+    const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
+    if (carrier == nullptr || !carrier->IsActive()) return;
+
+    const glm::vec2 doorPos  = m_Actors.Door()->GetPosition();
+    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
+
+    const bool carrierTouchDoor = AabbOverlap(
+        carrier->GetPosition(), carrier->GetHalfSize(),
+        doorPos, doorHalf);
+
+    if (carrierTouchDoor) {
+        m_DoorOpened = true;
+        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+        m_KeySprite->SetVisible(false);
+    }
+}
+
+void LevelTwoScene::UpdateDoorEntryAndClear() {
+    if (!m_DoorOpened || m_Actors.Door() == nullptr) return;
+
+    const glm::vec2 doorPos  = m_Actors.Door()->GetPosition();
+    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
+    const int totalPlayers   = static_cast<int>(m_Players.size());
+
+    for (int i = 0; i < totalPlayers; ++i) {
+        if (i >= static_cast<int>(m_PlayerEntered.size())) break;
+        if (m_PlayerEntered[static_cast<size_t>(i)]) continue;
+
+        auto& pb = m_Players[i];
+        auto& cat = pb.cat;
+        if (cat == nullptr || !cat->IsActive()) continue;
+
+        const bool touchingDoor = AabbOverlap(
+            cat->GetPosition(), cat->GetHalfSize(),
+            doorPos, doorHalf);
+
+        const bool pressedUp = (pb.key.up != k::UNKNOWN) && ip::IsKeyDown(pb.key.up);
+
+        if (!(touchingDoor && pressedUp)) continue;
+
+        m_PlayerEntered[static_cast<size_t>(i)] = true;
+        ++m_EnteredCount;
+
+        cat->SetVisible(false);
+        cat->SetInputEnabled(false);
+        cat->SetActive(false);
+        cat->SetPosition({640.0f, -360.0f});
+    }
+
+    if (!m_ClearDone && m_EnteredCount == totalPlayers) {
+        SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
+        m_ClearDone = true;
+    }
+}
+
+void LevelTwoScene::Update() {
+    if (ip::IsKeyDown(k::ESCAPE)) {
+        RequestSceneOp({SceneOpType::PushOverlay, SceneId::LevelExit});
+        return;
+    }
+
+    HandlePlayerInput();
+    m_World.Update();
+    SyncPlankSprites();
+
+    m_ElapsedSec += Util::Time::GetDeltaTimeMs() / 1000.0f;
+    UpdateTimerText();
+
+    UpdateFallenPlayers();
+    TryActivateButton();
+
+    TryPickKey();
+    UpdateKeyFollow();
+    TryOpenDoorAndClear();
+    UpdateDoorEntryAndClear();
+
+    if (m_ClearDone) {
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
+        return;
+    }
+}
+</file>
+
 <file path="LocalPlayGameScene.cpp">
 #include "LocalPlayGameScene.hpp"
 #include "BoundaryFactory.hpp"
@@ -5655,31 +7496,56 @@ void PhysicsWorld::StepPhysicsUpdate() const {
 }
 
 void PhysicsWorld::DetectRiding(std::vector<BodyInfo>& infos) {
+    constexpr float kPlatformSupportBias = 2.0f;
     const int n = static_cast<int>(infos.size());
     for (int i = 0; i < n; ++i) {
         // Kinematic bodies do not ride anything (they define their own path).
         if (infos[i].body->IsKinematic()) continue;
+        // Do not attach support while actively moving upward (jumping).
+        if (infos[i].desired.y > 0.0f) continue;
 
         const glm::vec2 aPos   = infos[i].body->GetPosition();
         const glm::vec2 aHalf  = infos[i].body->GetHalfSize();
         const float     aBot   = aPos.y - aHalf.y;
+        float bestDist = kRidingTolerance + 1.0f;
+        int bestIdx = -1;
+        bool bestIsMovingPlatform = false;
 
         for (int j = 0; j < n; ++j) {
             if (i == j) continue;
             if (!infos[j].body->IsSolid()) continue;
+            if (infos[j].body->GetBodyType() == BodyType::PATROL_ENEMY) continue;
 
             const glm::vec2 bPos  = infos[j].body->GetPosition();
             const glm::vec2 bHalf = infos[j].body->GetHalfSize();
             const float     bTop  = bPos.y + bHalf.y;
 
-            const bool vertOk  = std::abs(aBot - bTop) < kRidingTolerance;
-            const bool horizOk = std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) * 0.85f;
+            const bool fromAbove = (aPos.y >= bPos.y);
+            const bool vertOk = (aBot >= bTop - kRidingTolerance) &&
+                                (aBot <= bTop + kRidingTolerance);
+            const bool horizOk = std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) * 0.75f;
 
-            if (vertOk && horizOk) {
-                infos[i].supportIdx = j;
-                break;
+            if (fromAbove && vertOk && horizOk) {
+                const float dist = std::abs(aBot - bTop);
+                const bool candidateIsMovingPlatform =
+                    infos[j].body->GetBodyType() == BodyType::MOVING_PLATFORM;
+                const bool betterDistance = dist < (bestDist - 0.001f);
+                const bool tieBreakToPlatform =
+                    std::abs(dist - bestDist) <= 0.001f &&
+                    candidateIsMovingPlatform && !bestIsMovingPlatform;
+                const bool biasToPlatform =
+                    candidateIsMovingPlatform && !bestIsMovingPlatform &&
+                    dist <= (bestDist + kPlatformSupportBias);
+
+                if (betterDistance || tieBreakToPlatform || biasToPlatform) {
+                    bestDist = dist;
+                    bestIdx = j;
+                    bestIsMovingPlatform = candidateIsMovingPlatform;
+                }
             }
         }
+
+        infos[i].supportIdx = bestIdx;
     }
 }
 
@@ -5712,16 +7578,60 @@ glm::vec2 PhysicsWorld::ResolveBody(int idx, glm::vec2 desired,
             const glm::vec2 otherHalf = infos[j].body->GetHalfSize();
             const glm::vec2 delta     = testPos - otherPos;
             const glm::vec2 overlap   = (selfHalf + otherHalf) - glm::abs(delta);
+            const bool isMovingPlatform =
+                infos[j].body->GetBodyType() == BodyType::MOVING_PLATFORM;
+            const glm::vec2 otherDelta = infos[j].resolvedFlag ? infos[j].resolved : infos[j].desired;
+            const bool platformRising = otherDelta.y > 0.05f;
+            const bool unsupportedUpwardJump = desired.y > 0.0f && self.supportIdx != j;
+            // Prevent lateral ejection when the player starts a jump on an ascending lift.
+            const bool skipHardHorizontalSeparation =
+                isMovingPlatform && platformRising && unsupportedUpwardJump;
 
             if (overlap.x > 0.f && overlap.y > 0.f) {
-                // Horizontal overlap: push self out horizontally.
-                const float sign = (delta.x >= 0.f) ? 1.f : -1.f;
-                resolved.x = (otherPos.x + (selfHalf.x + otherHalf.x) * sign) - selfPos.x;
-                testPos.x  = selfPos.x + resolved.x;
+                if (skipHardHorizontalSeparation) {
+                    continue;
+                }
 
-                // Record contact (take the most recent collision; usually one matters).
-                self.collidedH = infos[j].body.get();
-                self.normalH   = {sign, 0.f};
+                // Choose the nearest separating edge among left / right / top.
+                // Top is only allowed when this body is above the other body.
+                const float sumHalfX = selfHalf.x + otherHalf.x;
+                const float corrLeft = (otherPos.x - sumHalfX) - testPos.x;
+                const float corrRight = (otherPos.x + sumHalfX) - testPos.x;
+
+                float bestCorr = corrLeft;
+                float bestAbs = std::abs(corrLeft);
+                bool chooseTop = false;
+
+                if (std::abs(corrRight) < bestAbs) {
+                    bestCorr = corrRight;
+                    bestAbs = std::abs(corrRight);
+                }
+
+                const bool fromAbove = testPos.y >= otherPos.y;
+                const bool allowTopSeparation = fromAbove &&
+                                                (desired.y <= 0.0f || self.supportIdx == j);
+                if (allowTopSeparation) {
+                    const float targetTopY = otherPos.y + otherHalf.y + selfHalf.y;
+                    const float corrTop = targetTopY - testPos.y;
+                    if (corrTop >= 0.f && std::abs(corrTop) < bestAbs) {
+                        bestCorr = corrTop;
+                        chooseTop = true;
+                    }
+                }
+
+                if (chooseTop) {
+                    resolved.y += bestCorr;
+                    testPos.y   = selfPos.y + resolved.y;
+                    self.collidedV = infos[j].body.get();
+                    self.normalV   = {0.f, 1.f};
+                } else {
+                    resolved.x += bestCorr;
+                    testPos.x   = selfPos.x + resolved.x;
+
+                    // Record contact (take the most recent collision; usually one matters).
+                    self.collidedH = infos[j].body.get();
+                    self.normalH   = {(bestCorr >= 0.f) ? 1.f : -1.f, 0.f};
+                }
             }
         }
     }
@@ -5729,19 +7639,104 @@ glm::vec2 PhysicsWorld::ResolveBody(int idx, glm::vec2 desired,
     // --- Vertical pass (using the resolved horizontal position) ---
     {
         glm::vec2 testPos = selfPos + glm::vec2{resolved.x, resolved.y};
+        bool snappedToMovingPlatform = false;
+        constexpr float kContactEps = 0.6f;
+        constexpr float kEndpointSnapIgnore = 2.5f;
+        constexpr float kMinPlatformRiseDy = 0.05f;
+        constexpr float kMaxPlatformSnapAdjust = 12.0f;
 
         for (int j = 0; j < n; ++j) {
             if (j == idx || !infos[j].body->IsSolid()) continue;
 
+            const glm::vec2 otherStart = infos[j].body->GetPosition();
+            const glm::vec2 otherDelta = infos[j].resolvedFlag ? infos[j].resolved : infos[j].desired;
+            const glm::vec2 otherFinal = otherStart + otherDelta;
+            const glm::vec2 otherHalf  = infos[j].body->GetHalfSize();
+
+            // Scheme 3: continuous vertical hit test for moving platforms.
+            if (infos[j].body->GetBodyType() == BodyType::MOVING_PLATFORM) {
+                const float sumHalfX = selfHalf.x + otherHalf.x;
+                const float selfX = selfPos.x + resolved.x;
+                const float dx0 = selfX - otherStart.x;
+                const float dx1 = selfX - otherFinal.x;
+                const float minAbsDx = (dx0 * dx1 <= 0.0f)
+                                           ? 0.0f
+                                           : std::min(std::abs(dx0), std::abs(dx1));
+
+                const float selfBot0 = selfPos.y - selfHalf.y;
+                const float selfBot1 = selfPos.y + resolved.y - selfHalf.y;
+                const float platTop0 = otherStart.y + otherHalf.y;
+                const float platTop1 = otherFinal.y + otherHalf.y;
+                const float rel0 = selfBot0 - platTop0;
+                const float rel1 = selfBot1 - platTop1;
+
+                const bool horizPathOverlap = minAbsDx < sumHalfX;
+                const bool fromAbove = rel0 >= -kContactEps;
+                const bool closing = rel1 < rel0;
+                const bool crosses = rel0 >= -kContactEps && rel1 <= kContactEps;
+                const bool isSupportedPlatform = (self.supportIdx == j);
+                const bool stickyContact =
+                    std::abs(rel0) <= kContactEps && rel1 <= kContactEps &&
+                    (desired.y <= 0.0f || isSupportedPlatform);
+                const bool platformRising = otherDelta.y > kMinPlatformRiseDy;
+                const bool jumpingUpAndUnsupported = desired.y > 0.0f && !isSupportedPlatform;
+                const bool allowPlatformSnap = !jumpingUpAndUnsupported &&
+                                               (platformRising || isSupportedPlatform || stickyContact);
+
+                const bool shouldSnapToPlatform = (crosses && closing) || stickyContact;
+                if (horizPathOverlap && fromAbove && shouldSnapToPlatform && allowPlatformSnap) {
+                    const float denom = rel0 - rel1;
+                    float toi = (denom > 1e-5f) ? (rel0 / denom) : 0.0f;
+                    toi = std::clamp(toi, 0.0f, 1.0f);
+
+                    const float platformYAtToi = otherStart.y + otherDelta.y * toi;
+                    const float platformYFinal = otherFinal.y;
+                    const float targetY = (stickyContact ? platformYFinal : platformYAtToi) +
+                                          selfHalf.y + otherHalf.y;
+                    float snappedY = targetY - selfPos.y;
+
+                    // Limit first-contact correction spikes to avoid visible teleport.
+                    if (!isSupportedPlatform) {
+                        const float adjust = snappedY - desired.y;
+                        if (adjust > kMaxPlatformSnapAdjust) {
+                            snappedY = desired.y + kMaxPlatformSnapAdjust;
+                        } else if (adjust < -kMaxPlatformSnapAdjust) {
+                            snappedY = desired.y - kMaxPlatformSnapAdjust;
+                        }
+                    }
+
+                    resolved.y = snappedY;
+                    testPos.y = selfPos.y + resolved.y;
+                    snappedToMovingPlatform = true;
+
+                    self.collidedV = infos[j].body.get();
+                    self.normalV = {0.f, 1.f};
+                    continue;
+                }
+            }
+
             glm::vec2 otherPos = infos[j].body->GetPosition();
             if (infos[j].resolvedFlag) otherPos += infos[j].resolved;
 
-            const glm::vec2 otherHalf = infos[j].body->GetHalfSize();
             const glm::vec2 delta     = testPos - otherPos;
             const glm::vec2 overlap   = (selfHalf + otherHalf) - glm::abs(delta);
 
             if (overlap.x > 0.f && overlap.y > 0.f) {
                 const float sign = (delta.y >= 0.f) ? 1.f : -1.f;
+
+                // If we already snapped to a moving platform this frame, ignore
+                // tiny upward corrections from static geometry at lift endpoints.
+                if (snappedToMovingPlatform &&
+                    infos[j].body->GetBodyType() == BodyType::STATIC_BOUNDARY &&
+                    sign > 0.f) {
+                    const float feetY = selfPos.y + resolved.y - selfHalf.y;
+                    const float otherTop = otherPos.y + otherHalf.y;
+                    const float upwardSnap = otherTop - feetY;
+                    if (upwardSnap >= 0.0f && upwardSnap <= kEndpointSnapIgnore) {
+                        continue;
+                    }
+                }
+
                 resolved.y = (otherPos.y + (selfHalf.y + otherHalf.y) * sign) - selfPos.y;
                 testPos.y  = selfPos.y + resolved.y;
 
@@ -5802,14 +7797,19 @@ void PhysicsWorld::StepResolveAndApply() const {
             // Compute the effective desired delta for this body.
             glm::vec2 effective = infos[i].desired;
 
-            // Stacking carry: inherit the support's horizontal motion.
-            // Static/kinematic supports have resolved = {0,0} (no carry needed).
-            if (supIdx >= 0 && !infos[supIdx].body->IsKinematic()) {
+            // Stacking carry: inherit support motion.
+            // Vertical carry is only applied for moving platforms and only when
+            // DetectRiding marks a valid top-contact support.
+            if (supIdx >= 0) {
                 effective.x += infos[supIdx].resolved.x;
+                if (infos[supIdx].body->GetBodyType() == BodyType::MOVING_PLATFORM) {
+                    effective.y += infos[supIdx].resolved.y;
+                }
             }
 
             // Resolve against all solid bodies.
             infos[i].resolved    = ResolveBody(i, effective, infos);
+
             infos[i].resolvedFlag = true;
             anyProgress           = true;
         }
@@ -5831,6 +7831,7 @@ void PhysicsWorld::StepResolveAndApply() const {
 
     // Fire OnCollision callbacks.
     StepCollisionCallbacks(infos);
+
 }
 
 void PhysicsWorld::StepCollisionCallbacks(const std::vector<BodyInfo>& infos) {
@@ -6043,6 +8044,9 @@ void PlayerCat::OnCollision(const CollisionInfo& info) {
     }
 
     if (std::abs(info.normal.x) > 0.5f && m_MoveDir != 0) {
+        if (info.other != nullptr && info.other->GetBodyType() == BodyType::PATROL_ENEMY) {
+            return;
+        }
         const bool movingRight  = (m_MoveDir > 0);
         const bool blockedRight = (info.normal.x < -0.5f);
         if (movingRight == blockedRight) {
@@ -6904,64 +8908,51 @@ void VisualThemeService::RestoreAppliedBackground() {
 
 ## Runtime Backbone
 
-- `main.cpp` drives `App` as a small state machine: `START -> UPDATE -> END`.
-- `App::Update()` order is fixed: `AudioService::UpdateBgm()` -> `SceneManager::UpdateCurrent()` -> quit gate (`SessionState`) -> `Renderer::Update()`.
-- `SceneManager` is the only transition executor; scenes only emit `SceneOp` intents.
+- `main.cpp` drives `App` through `START -> UPDATE -> END`.
+- `App::Update()` order is fixed: BGM tick -> active scene update/transition -> quit gate -> renderer tick.
+- Scene switching is intent-based: scenes publish `SceneOp`, `SceneManager` executes exactly one op after scene update.
 
 ## Composition Root (`App::Start`)
 
-- Builds long-lived services: `GlobalActors`, `SessionState`, `BGMPlayer`/`AudioService`, `VisualThemeService`, `SceneManager`.
-- Creates shared world actors once (background, floor, header, door, startup cats) and stores them in `GlobalActors`.
-- Registers all scenes, maps `SceneId::Level01` to `LevelOneScene`, then enters `SceneId::Title`.
+- Creates process-lifetime services: `GlobalActors`, `SessionState`, `BGMPlayer`/`AudioService`, `VisualThemeService`, `SceneManager`.
+- Builds shared visuals once: background, floor, header, door, startup cats.
+- Registers all shipped scenes, then enters `SceneId::Title`.
+- Current level registration is active for `Level01`, `Level02`, and `Level03`.
 
-## Scene Stack Model
+## Scene and Stack Model
 
-- Allowed stack shapes: one base scene, or base + one overlay.
-- `PushOverlay` pauses base (`PauseGameplay`) and enters overlay.
-- `PopOverlay` exits overlay and resumes base (`ResumeGameplay`).
-- `RestartUnderlying` exits overlay, restarts base (`OnExit` -> `OnEnter`), then resumes it.
-- `ClearToAndGoTo` clears overlay/base and enters target as new base.
+- `SceneManager` owns scene instances (`unique_ptr`) and a stack of `SceneId`.
+- Stack forms either a base scene or base + overlay (`LevelExitScene`).
+- Overlay protocol: `PushOverlay` pauses base, `PopOverlay` resumes base, `RestartUnderlying` recreates base scene state, `ClearToAndGoTo` resets stack.
 
 ## Ownership Boundaries
 
-- `App` owns process-lifetime objects and scene registry lifetime.
-- `SceneManager` owns scenes as `std::unique_ptr<Scene>`.
-- Each scene owns its transient gameplay objects (`PhysicsWorld`, local UI, level entities).
-- Scenes access shared visuals through `IGlobalActors` (non-owning) and shared mutable session data through `ISessionState`.
-- File persistence is centralized in `SaveManager`:
-  - `settings.json` for option + key config data
-  - `save_data.json` for level best-time data
+- `App` owns long-lived systems; each scene owns only local runtime objects (UI, actors, local `PhysicsWorld`).
+- Shared cross-scene access is interface-only via `SceneServices` (`IAudioService`, `IVisualThemeService`, `ISessionState`, `IGlobalActors`).
+- Persistence is centralized in `SaveManager`:
+  - `settings.json`: option values + keyboard mappings
+  - `save_data.json`: best time table per level (`2P`~`8P`)
 
-## Current Gameplay Topology
+## Active Gameplay Topology
 
-- Core route: `Title -> Menu -> LocalPlay -> LocalPlayGame -> LevelSelect -> Level01`.
-- `LevelOneScene` uses an overlay pause menu (`LevelExitScene`) via `PushOverlay`/`PopOverlay`/`RestartUnderlying`.
-- Only Level 1 is currently wired from level select; `Level02` to `Level10` ids exist but are not registered yet.
+- Primary route: `Title -> Menu -> LocalPlay -> LocalPlayGame -> LevelSelect -> (Level01 | Level02 | Level03)`.
+- `LevelSelectScene` keeps 10 slots; only mapped slots are enterable (`SceneId != None`).
+- `LevelOneScene`, `LevelTwoScene`, `LevelThreeScene` share the same pause overlay contract (`ESC` -> `LevelExitScene`).
 </file>
 
 <file path="CLASS_RELATIONSHIPS.md">
 # Class Relationships
 
-## Inheritance Map
+## Inheritance Skeleton
 
 ```text
 Util::GameObject
 ├─ Character
 │  ├─ UITriangleButton
-│  └─ PushableBox      (+ IPhysicsBody, + IPushable)
+│  └─ PushableBox            (+ IPhysicsBody, + IPushable)
 ├─ AnimatedCharacter
-│  └─ PlayerCat        (+ IPhysicsBody)
+│  └─ PlayerCat              (+ IPhysicsBody)
 └─ GameText
-```
-
-```text
-IPhysicsBody
-├─ PlayerCat
-├─ PushableBox
-└─ StaticBody
-
-IPushable
-└─ PushableBox
 ```
 
 ```text
@@ -6975,10 +8966,28 @@ Scene
 ├─ LocalPlayGameScene
 ├─ LevelSelectScene
 ├─ LevelExitScene
-└─ LevelOneScene
+├─ LevelOneScene
+├─ LevelTwoScene
+└─ LevelThreeScene
 ```
 
-## Interface Contracts
+## Physics Body Implementers
+
+```text
+IPhysicsBody
+├─ PlayerCat
+├─ PushableBox
+├─ StaticBody
+├─ LevelTwoScene::MovingPlankBody
+├─ LevelThreeScene::MovingLiftBody
+├─ LevelThreeScene::PatrolMobBody
+└─ LevelThreeScene::PipeMobBody
+
+IPushable
+└─ PushableBox
+```
+
+## Interface-to-Concrete Bindings
 
 ```text
 IAudioService       -> AudioService
@@ -6987,116 +8996,132 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-- `Scene` receives only interface references through `SceneServices`.
-- `App::Start()` is the composition root that binds concrete implementations.
+- `Scene` receives only interfaces through `SceneServices`; concrete wiring happens in `App::Start()`.
 
 ## Control and Ownership Links
 
-- `SceneManager` owns all scene objects and enforces transition semantics.
-- `Scene` owns one pending `SceneOp`; `SceneManager::UpdateCurrent()` consumes at most one op per frame.
-- Scenes never call other scenes directly; they communicate through `SceneOpType` commands.
+- `SceneManager` owns all scene instances and stack transitions.
+- Each scene owns one pending transition intent (`SceneOp`), consumed by manager post-update.
+- Scenes are decoupled from each other; routing happens through `SceneId` + `SceneOpType` only.
 
-## Physics-Side Coupling
+## State and Persistence Coupling
 
-- `PhysicsWorld` tracks participants by `weak_ptr<IPhysicsBody>` and owns only static boundaries (`StaticBody`).
-- `PushableBox` holds a non-owning `PhysicsWorld*` to query cooperative push counts and notify push animations.
-- `PlayerCat` and `PushableBox` are dual-role objects: render actor + physics body in one instance.
-
-## Persistence and Session Coupling
-
-- `OptionMenuScene` reads/writes option settings via `SaveManager` and previews through audio/theme services.
-- `KeyboardConfigScene` synchronizes key profiles to both `SaveManager` and `SessionState`.
-- `LevelOneScene` writes best times via `SaveManager::UpdateBestTime()` using current session player count.
+- `SessionState` is the runtime source for selected player count, cooperative push power, key configs, and quit flag.
+- `KeyboardConfigScene` writes key configs to both `SaveManager` and `SessionState`.
+- `OptionMenuScene` uses live service preview (audio/theme) and persists only on commit.
+- `LevelOneScene`, `LevelTwoScene`, and `LevelThreeScene` write clear-time records via `SaveManager::UpdateBestTime()`.
 </file>
 
 <file path="COMPONENT_INTERACTION.md">
 # Component Interaction
 
-## Per-Frame Execution Chain
+## Per-Frame Call Chain
 
-1. `AudioService::UpdateBgm()` advances BGM track switching.
-2. `SceneManager::UpdateCurrent()` runs scene logic and may execute one transition.
-3. `SessionState::ShouldQuit()` can switch `App` to `END`.
-4. `Renderer::Update()` processes the render tree.
+1. `AudioService::UpdateBgm()` advances track playback state.
+2. `SceneManager::UpdateCurrent()` runs top scene logic.
+3. `SceneManager` consumes at most one `SceneOp` and mutates stack.
+4. `SessionState::ShouldQuit()` gates `App` transition to `END`.
+5. `Renderer` updates and draws the current actor tree.
 
-## Scene Transition Handshake
+## Scene Transition Contract
 
-1. Active scene executes `Update()`.
-2. Scene returns intent via `ConsumeSceneOp()`.
-3. `SceneManager` applies stack operation (`PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`).
+1. Scene executes `Update()`.
+2. Scene emits intent via `RequestSceneOp(...)`.
+3. Manager reads `ConsumeSceneOp()` and executes one operation:
+   - `PushOverlay`
+   - `PopOverlay`
+   - `RestartUnderlying`
+   - `ClearToAndGoTo`
 
-Scenes never mutate manager state directly; they only emit operation requests.
+Scenes never call each other or mutate stack state directly.
 
-## Service and Data Flow
+## Shared Service Flows
 
-- `IGlobalActors`: shared visual nodes (`Root`, `Background`, `Floor`, `Door`, startup cats, test box).
-- `ISessionState`: runtime gameplay data (player count, key configs, cooperative value, quit flag).
-- `IAudioService` and `IVisualThemeService`: immediate preview paths used by option UI.
-- `SaveManager`: persistent storage boundary for options, key profiles, and level best times.
+- `IGlobalActors`: shared visual anchors and startup actors (`Root`, background/floor/header/door, startup cats).
+- `ISessionState`: selected player count, cooperative push power, key configs, quit signal.
+- `IAudioService` and `IVisualThemeService`: live preview path used by options UI.
+- `SaveManager`: persistent path for options, key configs, and per-level best times.
 
-## Key Interaction Scenarios
+## Key Runtime Scenarios
 
-- `ExitConfirmScene`: YES calls `RequestQuit()`; `App` exits on the next quit gate.
-- `OptionMenuScene`: applies pending theme/audio values immediately, commits only on OK, reverts on cancel/escape.
-- `KeyboardConfigScene`: edits one player profile, blocks conflicting save for non-1P profiles, then syncs to session.
-- `LocalPlayScene`: validates selected player count against configured key profiles before entering gameplay.
-- `LocalPlayGameScene`: tracks per-player door entry, then routes to `LevelSelectScene` when all entered.
+- `ExitConfirmScene`: confirm YES sets quit flag; app exits on next frame gate.
+- `OptionMenuScene`: pending values are previewed instantly; `OK` commits, `Cancel/ESC` restores applied values.
+- `KeyboardConfigScene`: updates per-player bindings, enforces conflict rule for non-1P, syncs to save + session.
+- `LocalPlayScene`: blocks start when selected player count exceeds configured key profiles.
+- `LocalPlayGameScene`: transitions to `LevelSelectScene` only after all active players enter the open door.
+- `LevelSelectScene`: enters only mapped level slots (`SceneId != None`).
 
-## `LevelOneScene` + `LevelExitScene` Overlay Cycle
+## Level and Overlay Coordination
 
-- `LevelOneScene` update order: player input -> `PhysicsWorld::Update()` -> timer -> key pickup/follow -> door unlock -> per-player entry.
-- Pressing ESC pushes `LevelExitScene` as overlay; base gameplay is frozen via `PauseGameplay()`.
-- Overlay actions:
-  - Return -> `PopOverlay` (resume)
-  - Retry -> `RestartUnderlying` (re-enter same level)
-  - Leave -> `ClearToAndGoTo(LevelSelect or Title)`
-- On full clear, `LevelOneScene` saves best time and returns to `LevelSelectScene`.
+- `LevelOneScene`, `LevelTwoScene`, and `LevelThreeScene` open `LevelExitScene` overlay on `ESC`.
+- Gameplay pause/resume is delegated to level scenes through `PauseGameplay()` / `ResumeGameplay()` (`PhysicsWorld::FreezeAll()` / `UnfreezeAll()`).
+- Overlay outcomes:
+  - Return -> `PopOverlay`
+  - Retry -> `RestartUnderlying`
+  - Level Select / Title -> `ClearToAndGoTo`
+- On clear, level scenes update best time via `SaveManager` before routing back to `LevelSelectScene`.
 </file>
 
 <file path="HPP_PURPOSE.md">
 # include/*.hpp 用途一覽（重點版）
 
-- `AnimatedCharacter.hpp`：動畫角色基底，封裝位置、縮放、朝向與動畫播放判定。
-- `App.hpp`：`App` 主流程宣告，管理 `START/UPDATE/END` 生命週期與核心服務。
-- `AppUtil.hpp`：UI 對齊、按鍵顯示字串、滑鼠矩形命中等共用工具。
-- `AudioService.hpp`：`IAudioService` 實作，轉接 `BGMPlayer` 控制介面。
-- `BGMPlayer.hpp`：BGM 播放器，管理曲目清單、音量、切歌與完成回呼。
-- `BoundaryFactory.hpp`：房間邊界工廠，依幾何預設快速建立地板/牆/天花碰撞體。
-- `CatAssets.hpp`：貓咪動畫資源路徑產生器，統一輸出 `CatAnimPaths`。
-- `Character.hpp`：靜態圖片物件，提供圖片切換、位置設定與滑鼠點擊判定。
-- `CharacterPhysicsSystem.hpp`：歷史物理常數集中區（現行邏輯多已移至 `PlayerCat/PhysicsWorld`）。
-- `ExitConfirmScene.hpp`：離開遊戲確認場景（YES/NO 選擇流程）。
-- `GameText.hpp`：文字物件，支援內容/顏色更新與滑鼠互動判定。
-- `GlobalActors.hpp`：`IGlobalActors` 實作，集中保存跨場景共用 Actor。
-- `IAudioService.hpp`：音訊服務抽象介面（播放、暫停、續播、更新、音量）。
-- `IGlobalActors.hpp`：共享 Actor 存取介面（Root、背景、地板、門、啟動貓等）。
-- `IPhysicsBody.hpp`：物理物件協定（移動意圖、解算套用、碰撞回呼、凍結/啟用）。
-- `IPushable.hpp`：可推動物件介面（最少推動需求）。
-- `ISessionState.hpp`：跨場景執行期資料介面（玩家數、鍵位、合作值、離開旗標）。
-- `IVisualThemeService.hpp`：視覺主題介面（背景套用、還原、索引夾取）。
-- `KeyboardConfigScene.hpp`：鍵位設定場景（多玩家配置、衝突檢查、預設鍵位）。
-- `LevelExitScene.hpp`：關卡暫停 Overlay（返回、重試、回關卡選單、回標題）。
-- `LevelOneScene.hpp`：第一關主場景（鑰匙、雙箱、開門、計時、通關）。
-- `LevelSelectScene.hpp`：關卡選擇場景（格子選取、最佳時間、皇冠顯示、路由）。
-- `LocalPlayGameScene.hpp`：本地多人遊玩場景（玩家生成、進門計數、物理解算）。
-- `LocalPlayScene.hpp`：本地玩家數選擇場景（人數切換與鍵位配置門檻檢查）。
-- `MenuScene.hpp`：主選單場景（選項切換與分流轉場）。
-- `OptionMenuScene.hpp`：選項場景（背景/BGM/SE/顯示設定、預覽、儲存）。
-- `PhysicsWorld.hpp`：場景內物理核心（註冊、兩階段更新、碰撞解算、推力統計）。
-- `PlayerCat.hpp`：玩家貓角色（動畫狀態機 + `IPhysicsBody` 實作）。
-- `PlayerKeyConfig.hpp`：玩家鍵位資料結構與鍵位集合工具 `AllKeys()`。
-- `PushableBox.hpp`：可推箱子（需求推力、重力、碰撞與缺口文字顯示）。
-- `SaveManager.hpp`：持久化存取 API（`settings.json`、`save_data.json`）。
-- `Scene.hpp`：場景抽象基底與 `SceneOp` 請求/消費通道。
-- `SceneId.hpp`：場景識別列舉。
-- `SceneManager.hpp`：場景註冊與堆疊切換管理（含 Overlay 操作）。
-- `SceneOp.hpp`：場景操作命令模型（`PushOverlay/PopOverlay/RestartUnderlying/ClearToAndGoTo`）。
-- `SceneServices.hpp`：場景建構注入服務聚合（Audio/Theme/Session/Actors）。
-- `SessionState.hpp`：`ISessionState` 實作，保存執行期共享狀態。
-- `StaticBody.hpp`：靜態碰撞體（地板、牆、天花等不可動邊界）。
-- `TitleScene.hpp`：標題場景（閃爍提示、啟動貓展示、進入主選單）。
-- `UITriangleButton.hpp`：三角按鈕元件（按下貼圖與短暫回彈狀態）。
-- `VisualThemeService.hpp`：`IVisualThemeService` 實作，管理背景主題套用。
+## 核心流程與場景框架
+
+- `App.hpp`：應用程式生命週期（`START/UPDATE/END`）與核心服務持有。
+- `Scene.hpp`：場景基底抽象（`OnEnter/OnExit/Update`、`SceneOp` 發送/消費）。
+- `SceneId.hpp`：場景 ID 列舉（目前已實作到 `Level03`）。
+- `SceneOp.hpp`：場景切換操作資料（Overlay push/pop、重開、清堆疊切換）。
+- `SceneManager.hpp`：場景註冊、堆疊管理、切換執行。
+- `SceneServices.hpp`：場景依賴注入包（Audio/Theme/Session/Actors）。
+
+## 服務與共享狀態
+
+- `IAudioService.hpp`：背景音樂控制介面。
+- `AudioService.hpp`：音樂服務實作，封裝 `BGMPlayer`。
+- `BGMPlayer.hpp`：BGM 播放、切歌、音量與結束回呼處理。
+- `IVisualThemeService.hpp`：視覺主題（背景）服務介面。
+- `VisualThemeService.hpp`：背景主題套用/還原實作。
+- `ISessionState.hpp`：跨場景執行期狀態介面（玩家數、鍵位、合作值、離開旗標）。
+- `SessionState.hpp`：`ISessionState` 具體實作。
+- `IGlobalActors.hpp`：全域共用 Actor 存取介面。
+- `GlobalActors.hpp`：全域 Actor 容器（背景、地板、門、啟動貓等）。
+- `SaveManager.hpp`：持久化存取（`settings.json`、`save_data.json`）。
+
+## 物理與角色
+
+- `IPhysicsBody.hpp`：物理物件協定（意圖位移、解算套用、碰撞回呼、凍結/啟用）。
+- `PhysicsWorld.hpp`：場景物理中樞（兩階段更新、碰撞解算、推力查詢）。
+- `StaticBody.hpp`：靜態碰撞體。
+- `IPushable.hpp`：可推物件介面（需求推動人數）。
+- `PushableBox.hpp`：可推箱子（重力、群推判定、缺口文字）。
+- `AnimatedCharacter.hpp`：動畫角色基底（位置、縮放、朝向與動畫存取）。
+- `PlayerCat.hpp`：玩家貓（動畫狀態機 + `IPhysicsBody`）。
+- `CatAssets.hpp`：貓咪動畫資源路徑工具。
+- `BoundaryFactory.hpp`：房間邊界預設與靜態邊界建立。
+- `CharacterPhysicsSystem.hpp`：舊版物理常數集合（目前以 `PlayerCat/PhysicsWorld` 為主）。
+
+## UI 與互動元件
+
+- `Character.hpp`：圖片物件（換圖、定位、滑鼠命中）。
+- `GameText.hpp`：文字物件（內容/顏色更新、滑鼠命中）。
+- `UITriangleButton.hpp`：左右三角按鈕（按壓貼圖與回彈）。
+- `AppUtil.hpp`：UI 對齊、鍵碼轉字串、矩形命中工具。
+- `PlayerKeyConfig.hpp`：玩家鍵位資料與 `AllKeys()` 聚合。
+
+## 場景實作
+
+- `TitleScene.hpp`：標題場景（提示閃爍、進入主選單）。
+- `MenuScene.hpp`：主選單（Exit/Option/Local Play 導流）。
+- `ExitConfirmScene.hpp`：離開確認（YES/NO）。
+- `OptionMenuScene.hpp`：選項設定（背景、音量、顯示、儲存/還原）。
+- `KeyboardConfigScene.hpp`：鍵位設定（1P~8P、衝突檢查、預設鍵）。
+- `LocalPlayScene.hpp`：玩家數選擇與配置檢查。
+- `LocalPlayGameScene.hpp`：多人暖身（玩家生成、進門計數、合作值更新）。
+- `LevelSelectScene.hpp`：選關（封面、最佳時間、皇冠、關卡路由）。
+- `LevelExitScene.hpp`：關卡暫停 Overlay（返回/重試/回選關/回標題）。
+- `LevelOneScene.hpp`：第一關（鑰匙、箱子、開門與通關計時）。
+- `LevelTwoScene.hpp`：第二關（按鈕啟動移動木板、掉落傳送、開門通關）。
+- `LevelThreeScene.hpp`：第三關（共識輸入、升降台、敵人危險區、檢查點與重生）。
 </file>
 
 <file path="PHYSICS_DESIGN.md">
@@ -7104,68 +9129,68 @@ Scenes never mutate manager state directly; they only emit operation requests.
 
 ## Scope
 
-- `PhysicsWorld` is scene-local and deterministic per frame.
-- Active body implementations: `PlayerCat`, `PushableBox`, `StaticBody`.
-- `PushableBox` is the only current `IPushable` implementation.
+- `PhysicsWorld` is scene-local and stepped once per frame.
+- Active body implementations: `PlayerCat`, `PushableBox`, `StaticBody`, `LevelTwoScene::MovingPlankBody`, `LevelThreeScene::MovingLiftBody`, `LevelThreeScene::PatrolMobBody`, `LevelThreeScene::PipeMobBody`.
+- `PushableBox` is the only `IPushable` type.
 
-## Body Contract
+## `IPhysicsBody` Contract
 
-- `PhysicsUpdate()` computes intended movement state.
-- `GetDesiredDelta()` exposes this frame's desired displacement.
-- `ApplyResolvedDelta()` applies world-resolved displacement.
-- `OnCollision(CollisionInfo)` receives contact normals after resolution.
-- `PostUpdate()` finalizes animation/state after physics.
-- `IsActive()` and `IsFrozen()` gate participation in simulation.
+- `PhysicsUpdate()` computes frame intent.
+- `GetDesiredDelta()` provides intended displacement.
+- `ApplyResolvedDelta()` applies solved displacement.
+- `OnCollision(CollisionInfo)` receives per-axis contact normals.
+- `PostUpdate()` handles post-physics state (for example animation).
+- `IsActive()` and `IsFrozen()` gate solver participation.
 
-## World Responsibilities
+## PhysicsWorld Responsibilities
 
 - Lifecycle: `Register`, `Unregister`, `Clear`.
-- Geometry ownership: `AddStaticBoundary()` allocates and owns `StaticBody` colliders.
-- Stepping: `Update()` (including periodic weak-pointer purge).
-- Pause support: `FreezeAll()` and `UnfreezeAll()`.
-- Cooperative-force query: `CountCharactersPushing()` with recursive chain traversal.
-- Rope APIs are metadata only (`AddRope`, `RemoveRope`, `GetRopesOf`); no solver step yet.
+- Static ownership: `AddStaticBoundary()` creates world-owned `StaticBody` colliders.
+- Pause control: `FreezeAll()` / `UnfreezeAll()`.
+- Push-force query: `CountCharactersPushing()` with recursive chain traversal.
+- Rope metadata APIs exist (`AddRope`, `RemoveRope`, `GetRopesOf`), but no rope force solve step yet.
 
 ## Frame Pipeline
 
-1. Purge expired weak references every `kPurgeInterval` frames.
+1. Periodically purge expired weak references (`kPurgeInterval = 60`).
 2. `StepPhysicsUpdate()` in two passes:
-   - non-box active, non-frozen bodies
-   - `PUSHABLE_BOX` bodies
+   - active non-frozen non-box bodies
+   - active non-frozen `PUSHABLE_BOX` bodies
 3. `StepResolveAndApply()`:
    - snapshot active bodies
-   - detect support links (`DetectRiding`, tolerance-based)
-   - resolve in support dependency order
+   - detect support links (`DetectRiding`)
+   - resolve by support dependency order
    - apply resolved deltas
-   - dispatch `OnCollision` callbacks
+   - dispatch collision callbacks
 4. Run `PostUpdate()` on active, non-frozen bodies.
 
-The two-pass update ensures box push evaluation sees same-frame player move intents.
+Two-pass update ensures `PushableBox` sees same-frame character move intent.
 
 ## Collision and Support Rules
 
-- Collision primitive: AABB overlap with strict `<` checks (edge-touch is not overlap).
-- Resolution order: horizontal pass, then vertical pass.
-- Riders inherit resolved horizontal movement from their support body.
-- Kinematic/frozen bodies are marked resolved first and treated as reference geometry.
-- Fallback path resolves any remaining unresolved body without support carry.
+- Primitive is strict AABB overlap (`<`), so edge-touch alone is non-overlap.
+- Solver order is horizontal pass then vertical pass.
+- Riding support is detected before movement and prefers moving platforms in near-tie cases.
+- Supported bodies inherit support X movement; Y carry is applied for moving-platform supports.
+- Kinematic/frozen bodies are marked resolved early and act as reference geometry.
+- Moving-platform vertical snap uses a continuous relative check to reduce missed contacts near endpoints.
 
-## Cooperative Push Mechanics
+## Cooperative Push and Box Behavior
 
-- `PushableBox::PhysicsUpdate()` computes `net = rightPushers - leftPushers` from world queries.
-- Box moves only when `abs(net) >= requiredPushers`; otherwise only gravity applies.
-- Recursive counting allows force transmission through chained characters/boxes.
-- Box maintains an in-world deficit label: `max(0, requiredPushers - abs(net))`.
-- Adjacent qualifying characters receive `NotifyPush()` to drive push animation state.
+- `PushableBox` computes `net = pushRight - pushLeft` from world queries.
+- Box moves horizontally only when `abs(net) >= requiredPushers`; gravity always applies.
+- Recursive push counting propagates force through character/box chains.
+- Box count text displays deficit: `max(0, requiredPushers - abs(net))`.
+- Adjacent active pushers get `NotifyPush()` for push animation feedback.
 
 ## Scene Integration Pattern
 
-- Physics-backed scenes: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`.
-- Typical lifecycle:
-  - `OnEnter`: clear world, register dynamic bodies, build static room boundaries
-  - `Update`: set movement intents, call `m_World.Update()` once
-  - `OnExit`: clear world
-- `LevelOneScene` maps overlay pause/resume directly to freeze/unfreeze world state.
+- Physics-backed scenes: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`, `LevelTwoScene`, `LevelThreeScene`.
+- Common lifecycle:
+  - `OnEnter`: clear world, register dynamics, add static boundaries
+  - `Update`: write input intent, call `m_World.Update()` once
+  - `OnExit`: unfreeze (if needed) then clear world
+- Level scenes map pause overlay to freeze/unfreeze through `PauseGameplay()` and `ResumeGameplay()`.
 </file>
 
 <file path="Image/Level_Cover/LevelOneScene/關卡敘述.txt">
@@ -7176,6 +9201,24 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
 5. 按下Esc會進入尚未實作的LevelExitScene,目前還不需要實作,可以先用nullptr取代
 6. 箱子中央還需要顯示"剩下幾人能夠推動此箱子",比如上述的箱子A在無人推動的情況下就會顯示1,而箱子B在無人推動的情況下就顯示P,當有一人以上推動箱子A,箱子A就會顯示0,但如果只有一人推動箱子B,則箱子B顯示P-1
 7. 其餘我沒說到的物件(比如BGM)不需要操作,但需要告訴我哪些物件正在運作但沒被操作到
+</file>
+
+<file path="Image/Level_Cover/LevelThreeScene/filelist.txt">
+filelist.txt
+Flag.png 36*68
+GamePad.png 164*84
+LFloor.png 356*28
+LHighFloor.png 612*36
+LLift.png 120*20
+LMidFloor.png 548*35
+MidBlock.png 35*36
+Mob1.png 59*45
+Mob2.png 52*30
+Pipe.png 68*68
+RFloor.png 580*28
+RHighFloor.png 354*36
+RLift.png 119*20
+RMidFloor.png 196*36
 </file>
 
 <file path="Save/save_data.json">
@@ -7191,12 +9234,11 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": true,
       "levelId": 1
     },
     {
       "bestTimes": {
-        "2": -1.0,
+        "2": 21.440929412841797,
         "3": -1.0,
         "4": -1.0,
         "5": -1.0,
@@ -7204,12 +9246,11 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 2
     },
     {
       "bestTimes": {
-        "2": -1.0,
+        "2": 34.13201141357422,
         "3": -1.0,
         "4": -1.0,
         "5": -1.0,
@@ -7217,7 +9258,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 3
     },
     {
@@ -7230,7 +9270,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 4
     },
     {
@@ -7243,7 +9282,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 5
     },
     {
@@ -7256,7 +9294,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 6
     },
     {
@@ -7269,7 +9306,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 7
     },
     {
@@ -7282,7 +9318,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 8
     },
     {
@@ -7295,7 +9330,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 9
     },
     {
@@ -7308,7 +9342,6 @@ The two-pass update ensures box push evaluation sees same-frame player move inte
         "7": -1.0,
         "8": -1.0
       },
-      "completed": false,
       "levelId": 10
     }
   ]
