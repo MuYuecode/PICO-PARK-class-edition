@@ -102,6 +102,8 @@ void SceneManager::RestartUnderlying() {
 
     base->OnExit();
     base->OnEnter();
+    // RETRY should leave the base scene playable immediately (same as PopOverlay path).
+    base->ResumeGameplay();
 }
 
 void SceneManager::ClearToAndGoTo(SceneId id) {
@@ -131,39 +133,34 @@ void SceneManager::ClearToAndGoTo(SceneId id) {
     target->OnEnter();
 }
 
-SceneId SceneManager::UpdateCurrent() {
+void SceneManager::UpdateCurrent() {
     Scene* current = GetCurrentScene();
     if (current == nullptr) {
-        return SceneId::None;
+        return;
     }
 
-    const SceneId next = current->Update();
+    current->Update();
     const auto op = current->ConsumeSceneOp();
 
-    if (op.has_value()) {
-        switch (op->type) {
-            case SceneOpType::PushOverlay:
-                PushOverlay(op->target);
-                break;
-            case SceneOpType::PopOverlay:
-                PopOverlay();
-                break;
-            case SceneOpType::RestartUnderlying:
-                RestartUnderlying();
-                break;
-            case SceneOpType::ClearToAndGoTo:
-                ClearToAndGoTo(op->target);
-                break;
-            case SceneOpType::None:
-                break;
-        }
-        return SceneId::None;
+    if (!op.has_value()) {
+        return;
     }
 
-    if (next != SceneId::None && next != GetCurrentId()) {
-        GoTo(next);
+    switch (op->type) {
+        case SceneOpType::PushOverlay:
+            PushOverlay(op->target);
+            break;
+        case SceneOpType::PopOverlay:
+            PopOverlay();
+            break;
+        case SceneOpType::RestartUnderlying:
+            RestartUnderlying();
+            break;
+        case SceneOpType::ClearToAndGoTo:
+            ClearToAndGoTo(op->target);
+            break;
+        case SceneOpType::None:
+            break;
     }
-
-    return next;
 }
 

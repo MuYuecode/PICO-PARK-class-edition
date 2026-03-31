@@ -1,54 +1,53 @@
-# Component Interaction and Runtime Flow
+# Component Interaction
 
-This document describes verified runtime collaboration between core systems.
+## Per-Frame Flow
 
-## Frame Pipeline
-
-`App::Update()` runs:
+`App::Update()` executes:
 
 1. `IAudioService::UpdateBgm()`
 2. `SceneManager::UpdateCurrent()`
-3. if `ISessionState::ShouldQuit()` then `App::State = END`
-4. `Renderer::Update()`
+3. quit check (`ISessionState::ShouldQuit()`)
+4. `m_Root.Update()`
 
-## SceneManager Update Contract
+## Scene Transition Handshake
 
-`SceneManager::UpdateCurrent()` does:
+Current scene interaction is strictly:
 
-1. call top scene `Update()` and capture returned `SceneId`
-2. consume pending `SceneOp` from that scene
-3. if `SceneOp` exists, execute it (priority over `SceneId`)
-4. otherwise process normal `SceneId` transition via `GoTo`
+1. `SceneManager` calls `current->Update()`
+2. scene may call `RequestSceneOp(...)`
+3. `SceneManager` reads `current->ConsumeSceneOp()`
+4. manager executes the operation if present
 
-Overlay operations:
+There is no `SceneId` return-based transition path in scene `Update()`.
 
-- `PushOverlay`: pause base scene, push overlay, call overlay `OnEnter()`
-- `PopOverlay`: overlay `OnExit()`, pop, resume base scene
-- `RestartUnderlying`: overlay `OnExit()`, pop, then base `OnExit()` + `OnEnter()`
-- `ClearToAndGoTo`: clear stack and enter target scene
+## Overlay Stack Behavior
 
-## Shared Services and Actors
+- `PushOverlay`: pauses base scene (`PauseGameplay()`), pushes overlay, calls overlay `OnEnter()`.
+- `PopOverlay`: calls overlay `OnExit()`, pops stack, resumes base (`ResumeGameplay()`).
+- `RestartUnderlying`: exits overlay, then re-enters base (`OnExit()` -> `OnEnter()`).
+- `ClearToAndGoTo`: exits current stack and enters target scene as new base.
 
-- `IAudioService`: BGM control from scenes (`OptionMenuScene` updates volume preview/commit).
-- `IVisualThemeService`: background preview and apply/restore flow.
-- `ISessionState`: selected player count, key configs, cooperative value, quit request.
-- `IGlobalActors`: shared render root and reusable actors (`Background`, `Header`, `Floor`, `Door`, startup cats, optional test box).
+## Shared Services in Scene Logic
 
-## High-Impact Flows
+- `IAudioService`: BGM lifecycle and option preview/commit volume changes.
+- `IVisualThemeService`: background preview and apply/restore behavior.
+- `ISessionState`: selected player count, key bindings, cooperative values, quit flag.
+- `IGlobalActors`: shared root and reusable actors (background, header, floor, door, startup cats, optional test box).
 
-- `ExitConfirmScene`: YES triggers `m_Session.RequestQuit()`; app exits on next frame check.
-- `OptionMenuScene`: edits pending settings, previews via audio/theme services, saves with `SaveManager` on OK.
-- `KeyboardConfigScene`: edits per-player bindings, validates conflicts, saves via `SaveManager`, syncs into `ISessionState`.
-- `LocalPlayScene`: blocks entry when selected players exceed configured keyboard profiles.
-- `LevelSelectScene`: reads level save data, shows best times/crowns, routes to mapped level `SceneId`.
+## Key Runtime Interaction Paths
 
-## Level Gameplay + Overlay Flow
+- `ExitConfirmScene`: YES calls `RequestQuit()`, app exits in later frame gate.
+- `OptionMenuScene`: edits pending settings, previews theme/audio, persists on OK; `seVolume` and `dispNumber` are currently UI/persistence-focused.
+- `KeyboardConfigScene`: edits per-player bindings, conflict-gates save, syncs to session.
+- `LocalPlayScene`: compares selected player count with configured profiles before entering gameplay.
+- `LevelSelectScene`: loads save data, updates best-time/crown UI, routes to mapped level scene.
 
-- `LevelOneScene` update order: input -> `PhysicsWorld::Update()` -> timer -> key/door logic -> clear check.
-- `ESC` in `LevelOneScene` emits `SceneOpType::PushOverlay` to `SceneId::LevelExit`.
-- `LevelOneScene::PauseGameplay()` freezes world; `ResumeGameplay()` unfreezes it.
-- `LevelExitScene` maps actions to scene ops:
-  - RETURN GAME / ESC / exit button -> `PopOverlay`
-  - RETRY -> `RestartUnderlying`
-  - LEVEL SELECT -> `ClearToAndGoTo(LevelSelect)`
-  - TITLE -> `ClearToAndGoTo(Title)`
+## Gameplay + Overlay Example (`LevelOne`)
+
+- `LevelOneScene::Update()` order: input -> `PhysicsWorld::Update()` -> timer -> key/door logic -> clear gate.
+- ESC emits `PushOverlay(LevelExit)`.
+- `LevelOneScene::PauseGameplay()` / `ResumeGameplay()` map to `PhysicsWorld::FreezeAll()` / `UnfreezeAll()`.
+- `LevelExitScene` confirmation emits:
+  - return game: `PopOverlay`
+  - retry: `RestartUnderlying`
+  - level select/title: `ClearToAndGoTo(...)`

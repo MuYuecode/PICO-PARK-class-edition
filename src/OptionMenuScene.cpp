@@ -26,12 +26,15 @@ const vector<string> OptionMenuScene::s_BgColorPaths = {
     GA_RESOURCE_DIR "/Image/Background/dark_background.png",
 };
 
-OptionMenuScene::OptionMenuScene(SceneServices services,
-                                 shared_ptr<Character> exitGameButton)
+OptionMenuScene::OptionMenuScene(SceneServices services)
     : Scene(services)
-    , m_ExitGameButton(std::move(exitGameButton))
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
+
+    m_ExitGameButton = make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Button/ExitButton.png");
+    m_ExitGameButton->SetZIndex(30);
+    m_ExitGameButton->SetPosition({331.0f, -14.0f});
 
     m_OptionMenuFrame = make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Option_Menu_Frame.png");
@@ -232,7 +235,7 @@ void OptionMenuScene::OnExit() {
     m_Actors.Root().RemoveChild(m_ExitGameButton);
 }
 
-SceneId OptionMenuScene::Update() {
+void OptionMenuScene::Update() {
     m_BgColorLeftBtn->UpdateButton();
     m_BgColorRightBtn->UpdateButton();
     m_BgmVolumeLeftBtn->UpdateButton();
@@ -248,11 +251,13 @@ SceneId OptionMenuScene::Update() {
     {
         m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
         m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-        return SceneId::Menu;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        return;
     }
 
     if (m_KbConfigOpen->IsLeftClicked()) {
-        return SceneId::KeyboardConfig;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::KeyboardConfig});
+        return;
     }
     if (m_OkText->IsLeftClicked()) {
         m_Applied = m_Pending;
@@ -268,7 +273,8 @@ SceneId OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
         }
-        return SceneId::Menu;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        return;
     }
 
     if (Util::Input::IsKeyDown(Util::Keycode::W) || Util::Input::IsKeyDown(Util::Keycode::UP)) {
@@ -323,7 +329,8 @@ SceneId OptionMenuScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         switch (m_SelectedRow) {
         case 0:
-            return SceneId::KeyboardConfig;
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::KeyboardConfig});
+            return;
         case 5:
             m_Applied = m_Pending;
             m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
@@ -338,17 +345,17 @@ SceneId OptionMenuScene::Update() {
             };
             SaveManager::SaveOptionSettings(toSave);
             }
-            return SceneId::Menu;
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+            return;
         case 6:
             m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
             m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
-            return SceneId::Menu;
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+            return;
         default:
             break;
         }
     }
-
-    return SceneId::None;
 }
 
 void OptionMenuScene::DecrementRow() {

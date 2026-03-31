@@ -20,7 +20,7 @@ public:
 
     void   OnEnter() override;
     void   OnExit()  override;
-    SceneId Update()  override;
+    void Update()  override;
 
     void SetLevelSceneId(int levelIdx, SceneId sceneId) {
         if (levelIdx >= 0 && levelIdx < LEVEL_COUNT)

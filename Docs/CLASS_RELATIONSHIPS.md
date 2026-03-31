@@ -1,8 +1,6 @@
 # Class Relationships
 
-This file records the current dependency graph and key coupling points.
-
-## Inheritance Map
+## Core Inheritance
 
 ```text
 Util::GameObject
@@ -38,7 +36,7 @@ Scene
 └─ LevelOneScene
 ```
 
-## Service Contracts
+## Service and Runtime Contracts
 
 ```text
 IAudioService       -> AudioService
@@ -47,28 +45,27 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-`Scene` stores only interface references (`m_Audio`, `m_Theme`, `m_Session`, `m_Actors`).
+- `Scene` stores only interface references from `SceneServices`.
+- `SceneManager` is the sole executor of `SceneOp` emitted by scenes.
 
-## Scene Control Contracts
+## Scene Control Relationships
 
 ```text
-SceneOpType/SceneOp -> consumed by SceneManager
-SceneManager        -> owns scene registry and stack ids
+Scene::Update() -> RequestSceneOp(...) -> Scene::ConsumeSceneOp() -> SceneManager::UpdateCurrent()
 ```
 
-- Scene output channels:
-  - `SceneId` for normal route changes
-  - `SceneOp` for overlay stack operations
+- Transition output is single-channel (`SceneOp`) with four active operations:
+  - `PushOverlay`, `PopOverlay`, `RestartUnderlying`, `ClearToAndGoTo`.
 
-## Ownership and Lifetime
+## Ownership Model
 
-- `App` owns services, `GlobalActors`, and `SceneManager`.
-- `SceneManager` owns all scenes (`std::unique_ptr`).
-- `GlobalActors` owns shared render actors (background/header/floor/door/startup cats/test box).
-- Physics scenes own local `PhysicsWorld`; `PhysicsWorld` keeps weak body refs and owns created `StaticBody` boundaries.
+- `App` owns global systems and application lifetime.
+- `SceneManager` owns scene instances (`std::unique_ptr<Scene>`).
+- `GlobalActors` owns reusable world/UI actors shared across scenes.
+- Scene-local gameplay systems (for example `PhysicsWorld`) are owned by each scene instance.
 
-## Practical Couplings
+## Intentional Couplings
 
-- `LocalPlayScene` keeps a raw `KeyboardConfigScene*` to validate configured player count before entering gameplay.
-- `PushableBox` keeps a non-owning `PhysicsWorld*` for cooperative push queries.
-- Scene persistence is centralized through static `SaveManager` calls (`OptionMenuScene`, `KeyboardConfigScene`, `LevelSelectScene`, `LevelOneScene`).
+- `LocalPlayScene` references `KeyboardConfigScene*` to validate configured player count.
+- `PushableBox` references `PhysicsWorld*` (non-owning) for cooperative push counting.
+- Persistence flows are centralized in `SaveManager` calls from option/key/level scenes.

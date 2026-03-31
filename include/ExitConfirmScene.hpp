@@ -7,14 +7,12 @@
 
 class ExitConfirmScene : public Scene {
 public:
-    ExitConfirmScene(SceneServices services,
-                     std::shared_ptr<Character> menuFrame,
-                     std::shared_ptr<Character> exitGameButton);
+    explicit ExitConfirmScene(SceneServices services);
     ~ExitConfirmScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    SceneId Update()  override;
+    void Update()  override;
 
 private:
     std::shared_ptr<GameText>  m_ExitGame1Text;

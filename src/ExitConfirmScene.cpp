@@ -3,14 +3,20 @@
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 
-ExitConfirmScene::ExitConfirmScene(SceneServices services,
-                                   std::shared_ptr<Character> menuFrame,
-                                   std::shared_ptr<Character> exitGameButton)
+ExitConfirmScene::ExitConfirmScene(SceneServices services)
     : Scene(services)
-    , m_MenuFrame(std::move(menuFrame))
-    , m_ExitGameButton(std::move(exitGameButton))
 {
     const Util::Color black = Util::Color::FromRGB(0, 0, 0, 255);
+
+    m_MenuFrame = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
+    m_MenuFrame->SetZIndex(10);
+    m_MenuFrame->SetPosition({0.f, -105.f});
+
+    m_ExitGameButton = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Button/ExitButton.png");
+    m_ExitGameButton->SetZIndex(30);
+    m_ExitGameButton->SetPosition({331.f, -14.f});
 
     m_ExitGame1Text = std::make_shared<GameText>("EXIT GAME ?", 65, black);
     m_ExitGame1Text->SetZIndex(25);
@@ -41,7 +47,9 @@ void ExitConfirmScene::OnEnter() {
     m_Actors.Root().AddChild(m_ChoiceFrame);
 
     m_MenuFrame->SetScale({408.0f / 695.0f, 287.0f / 218.0f});
+    m_MenuFrame->SetVisible(true);
     m_ExitGameButton->SetPosition({188.0f, 15.5f});
+    m_ExitGameButton->SetVisible(true);
 
     m_IsYesSelected = true;
     UpdateChoiceFramePosition();
@@ -61,7 +69,7 @@ void ExitConfirmScene::OnExit() {
     m_Actors.Root().RemoveChild(m_ExitGameButton);
 }
 
-SceneId ExitConfirmScene::Update() {
+void ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::A) ||
         Util::Input::IsKeyDown(Util::Keycode::D)) {
         m_IsYesSelected = !m_IsYesSelected;
@@ -80,7 +88,8 @@ SceneId ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("ExitConfirmScene: cancelled, back to MenuScene");
-        return SceneId::Menu;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        return;
     }
 
     const bool confirmByKeyboard = Util::Input::IsKeyDown(Util::Keycode::RETURN);
@@ -88,16 +97,15 @@ SceneId ExitConfirmScene::Update() {
     const bool confirmByMouseNo  = m_NoText->IsLeftClicked() ;
 
     if ((confirmByKeyboard || confirmByMouseYes) && m_IsYesSelected) {
-        LOG_INFO("ExitConfirmScene: YES confirmed → ShouldQuit");
+        LOG_INFO("ExitConfirmScene: YES confirmed -> ShouldQuit");
         m_Session.RequestQuit();
-        return SceneId::None;
+        return;
     }
     if ((confirmByKeyboard || confirmByMouseNo) && !m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
-        return SceneId::Menu;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        return;
     }
-
-    return SceneId::None;
 }
 
 void ExitConfirmScene::UpdateChoiceFramePosition() const {

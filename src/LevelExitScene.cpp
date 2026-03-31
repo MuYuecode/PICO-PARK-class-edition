@@ -77,7 +77,7 @@ void LevelExitScene::OnExit() {
     m_Actors.Root().RemoveChild(m_TitleText);
 }
 
-SceneId LevelExitScene::Update() {
+void LevelExitScene::Update() {
     using ip = Util::Input;
     using k = Util::Keycode;
 
@@ -115,12 +115,12 @@ SceneId LevelExitScene::Update() {
 
     if (m_ExitButton->IsLeftClicked()) {
         RequestSceneOp({SceneOpType::PopOverlay, SceneId::None});
-        return SceneId::None;
+        return;
     }
 
     if (!m_WaitEscRelease && ip::IsKeyDown(k::ESCAPE)) {
         RequestSceneOp({SceneOpType::PopOverlay, SceneId::None});
-        return SceneId::None;
+        return;
     }
 
     bool confirmed = false;
@@ -151,7 +151,7 @@ SceneId LevelExitScene::Update() {
         ConfirmSelection();
     }
 
-    return SceneId::None;
+    return;
 }
 
 void LevelExitScene::UpdateChoiceFrame() const {

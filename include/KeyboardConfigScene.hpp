@@ -16,13 +16,12 @@
 
 class KeyboardConfigScene : public Scene {
 public:
-    KeyboardConfigScene(SceneServices services,
-                        std::shared_ptr<Character> exitGameButton);
+    explicit KeyboardConfigScene(SceneServices services);
     ~KeyboardConfigScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    SceneId Update()  override;
+    void Update()  override;
 
     static const PlayerKeyConfig k_Default1P;
     static const PlayerKeyConfig k_Default2P;

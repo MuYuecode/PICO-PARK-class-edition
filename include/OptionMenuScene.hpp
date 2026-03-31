@@ -15,13 +15,12 @@
 
 class OptionMenuScene : public Scene {
 public:
-    OptionMenuScene(SceneServices services,
-                    std::shared_ptr<Character> exitGameButton);
+    explicit OptionMenuScene(SceneServices services);
     ~OptionMenuScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    SceneId Update()  override;
+    void Update()  override;
 
     struct Settings {
         int  bgColorIndex = 0;

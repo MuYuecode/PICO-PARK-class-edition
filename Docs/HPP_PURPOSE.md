@@ -1,43 +1,43 @@
-# include/*.hpp 用途一覽
+# include/*.hpp 用途一覽（重點版）
 
-- `AnimatedCharacter.hpp`：定義可切換與播放動畫的角色基底。
-- `App.hpp`：定義 `App` 主迴圈狀態與核心資源成員。
-- `AppUtil.hpp`：提供 UI 對齊、輸入判定與字串轉換等工具函式。
-- `AudioService.hpp`：`IAudioService` 的實作，封裝 BGM 播放控制。
-- `BGMPlayer.hpp`：管理背景音樂清單、播放狀態與音量。
+- `AnimatedCharacter.hpp`：動畫角色基底，負責切換與播放動畫。
+- `App.hpp`：應用程式狀態機與核心成員（START/UPDATE/END）。
+- `AppUtil.hpp`：UI 對齊、滑鼠判定、鍵碼轉字串等工具函式。
+- `AudioService.hpp`：`IAudioService` 實作，封裝 BGM 播放控制。
+- `BGMPlayer.hpp`：BGM 清單、播放索引與音量管理。
 - `CatAssets.hpp`：集中產生各色貓咪動畫資源路徑。
-- `Character.hpp`：定義靜態圖片物件與滑鼠互動能力。
-- `CharacterPhysicsSystem.hpp`：集中定義角色運動用物理常數。
-- `ExitConfirmScene.hpp`：定義離開確認場景的 UI 與選項狀態。
-- `GameText.hpp`：定義文字物件與文字互動判定。
-- `GlobalActors.hpp`：`IGlobalActors` 的實作，集中管理共享場景物件。
+- `Character.hpp`：圖片型可渲染物件，含滑鼠互動判定。
+- `CharacterPhysicsSystem.hpp`：角色物理常數與參數集中定義。
+- `ExitConfirmScene.hpp`：離開確認場景（YES/NO）邏輯。
+- `GameText.hpp`：文字顯示與文字互動物件。
+- `GlobalActors.hpp`：`IGlobalActors` 實作，管理共享背景/地板/門/貓等物件。
 - `IAudioService.hpp`：音訊服務抽象介面。
-- `IGlobalActors.hpp`：全域共享角色與渲染根節點抽象介面。
-- `IPhysicsBody.hpp`：物理世界可更新/碰撞物件的抽象介面與 `BodyType`。
-- `IPushable.hpp`：可推動物件需求人數的抽象介面。
-- `ISessionState.hpp`：跨場景會話狀態抽象介面。
-- `IVisualThemeService.hpp`：視覺主題（背景）服務抽象介面。
-- `KeyboardConfigScene.hpp`：定義鍵位設定場景與輸入綁定流程。
-- `LevelExitScene.hpp`：定義關卡中斷 overlay 場景（返回/重試/離開）。
-- `LevelOneScene.hpp`：定義第一關遊戲流程、互動物件與過關邏輯。
-- `LevelSelectScene.hpp`：定義關卡選擇、最佳時間與皇冠顯示。
-- `LocalPlayGameScene.hpp`：定義本地多人遊戲場景與入門關流程。
-- `LocalPlayScene.hpp`：定義本地多人玩家數選擇場景。
-- `MenuScene.hpp`：定義主選單場景與項目切換。
-- `OptionMenuScene.hpp`：定義選項場景（背景、音量、顯示）。
-- `PhysicsWorld.hpp`：定義物理世界註冊、更新與碰撞解算流程。
-- `PlayerCat.hpp`：定義玩家貓動畫狀態與角色物理行為。
-- `PlayerKeyConfig.hpp`：定義玩家按鍵配置資料結構。
-- `PushableBox.hpp`：定義可推箱子行為、需求推力與提示文字。
-- `SaveManager.hpp`：定義設定與關卡紀錄的讀寫 API。
-- `Scene.hpp`：定義所有場景共用生命週期與 `SceneOp` 通道。
-- `SceneId.hpp`：定義場景識別列舉。
-- `SceneManager.hpp`：定義場景註冊、切換、stack/overlay 管理。
-- `SceneOp.hpp`：定義場景操作命令（Push/Pop/Restart/ClearToAndGoTo）。
-- `SceneServices.hpp`：定義場景注入服務聚合結構。
-- `SessionState.hpp`：`ISessionState` 的實作，保存共享執行狀態。
-- `StaticBody.hpp`：定義靜態碰撞體（地板、牆、天花板）。
-- `TitleScene.hpp`：定義標題場景與進入遊戲流程。
-- `UITriangleButton.hpp`：定義可按壓狀態切換的三角按鈕元件。
-- `VisualThemeService.hpp`：`IVisualThemeService` 的實作，套用背景主題。
+- `IGlobalActors.hpp`：共享場景物件抽象介面。
+- `IPhysicsBody.hpp`：物理物件抽象介面與 `BodyType` 列舉。
+- `IPushable.hpp`：可推物件推力需求抽象介面。
+- `ISessionState.hpp`：跨場景共享狀態抽象介面。
+- `IVisualThemeService.hpp`：背景主題服務抽象介面。
+- `KeyboardConfigScene.hpp`：鍵位設定場景與衝突檢查流程。
+- `LevelExitScene.hpp`：關卡暫停 overlay（返回/重試/離開）。
+- `LevelOneScene.hpp`：第一關玩法、計時、鑰匙與出門流程。
+- `LevelSelectScene.hpp`：關卡選擇與最佳時間/皇冠顯示。
+- `LocalPlayGameScene.hpp`：本地多人遊玩場景與入門流程。
+- `LocalPlayScene.hpp`：玩家人數選擇與進場條件檢查。
+- `MenuScene.hpp`：主選單項目切換與轉場入口。
+- `OptionMenuScene.hpp`：選項場景（背景、音量、顯示設定）。
+- `PhysicsWorld.hpp`：場景內物理世界（更新、解算、碰撞回呼）。
+- `PlayerCat.hpp`：玩家貓角色行為、動畫狀態與物理介面實作。
+- `PlayerKeyConfig.hpp`：玩家按鍵配置資料結構。
+- `PushableBox.hpp`：可推箱子邏輯（需求推力、提示數字）。
+- `SaveManager.hpp`：設定與關卡紀錄讀寫 API。
+- `Scene.hpp`：場景基底，提供生命週期與 `SceneOp` 轉場通道。
+- `SceneId.hpp`：場景識別列舉。
+- `SceneManager.hpp`：場景註冊、堆疊管理與 `SceneOp` 執行。
+- `SceneOp.hpp`：場景操作命令定義（Push/Pop/Restart/ClearToAndGoTo）。
+- `SceneServices.hpp`：場景建構時注入的服務聚合。
+- `SessionState.hpp`：`ISessionState` 實作，保存執行期共享資料。
+- `StaticBody.hpp`：靜態碰撞體（地板/牆/天花板等）。
+- `TitleScene.hpp`：標題場景與進入主選單流程。
+- `UITriangleButton.hpp`：三角按鈕元件（按壓與回彈狀態）。
+- `VisualThemeService.hpp`：`IVisualThemeService` 實作，套用背景主題。
 

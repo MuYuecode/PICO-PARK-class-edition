@@ -81,9 +81,7 @@ void PlayerCat::PhysicsUpdate() {
     const float vx = static_cast<float>(m_MoveDir) * kGroundMoveSpeed;
     m_DesiredDelta = {vx, m_VelocityY};
 
-    const float faceScale = std::abs(m_Transform.scale.x);
-    if      (m_MoveDir < 0) m_Transform.scale.x = -faceScale;
-    else if (m_MoveDir > 0) m_Transform.scale.x =  faceScale;
+    SetFacingByDirection(m_MoveDir);
 }
 
 

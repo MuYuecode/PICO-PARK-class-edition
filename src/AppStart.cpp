@@ -118,8 +118,7 @@ void App::Start() {
         cat->SetPosition({x, spawnY});
         cat->SetZIndex(15.0f + static_cast<float>(i) * 0.01f);
 
-        const float faceScale = abs(cat->m_Transform.scale.x);
-        cat->m_Transform.scale.x = isLeftSide ? faceScale : -faceScale;
+        cat->SetFacingByDirection(isLeftSide ? 1 : -1);
     }
 
     SceneServices services{*m_AudioService, *m_ThemeService, *m_SessionState, *m_GlobalActors};
@@ -128,26 +127,14 @@ void App::Start() {
 
     auto menuScene = make_unique<MenuScene>(services);
 
-    auto exitConfirmScene = make_unique<ExitConfirmScene>(
-        services,
-        menuScene->GetMenuFrame(),
-        menuScene->GetExitGameButton());
+    auto exitConfirmScene = make_unique<ExitConfirmScene>(services);
 
-    auto optionMenuScene = make_unique<OptionMenuScene>(
-        services,
-        menuScene->GetExitGameButton());
+    auto optionMenuScene = make_unique<OptionMenuScene>(services);
 
-    auto kbConfigScene = make_unique<KeyboardConfigScene>(
-        services,
-        menuScene->GetExitGameButton());
+    auto kbConfigScene = make_unique<KeyboardConfigScene>(services);
 
     auto localPlayScene = make_unique<LocalPlayScene>(
         services,
-        menuScene->GetMenuFrame(),
-        menuScene->GetExitGameButton(),
-        menuScene->GetLeftTriButton(),
-        menuScene->GetRightTriButton(),
-        menuScene->GetBlueCatRunImg(),
         kbConfigScene.get());
 
     auto localPlayGameScene = make_unique<LocalPlayGameScene>(services);

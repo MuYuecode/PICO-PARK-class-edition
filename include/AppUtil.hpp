@@ -18,9 +18,9 @@ namespace AppUtil {
 
     Util::Keycode GetAnyKeyDown();
 
-    bool IsMouseHovering(const Util::GameObject& obj);
+    bool IsMouseHoveringByRect(const glm::vec2& center, const glm::vec2& size);
 
-    bool IsLeftClicked(const Util::GameObject& obj);
+    bool IsLeftClickedByRect(const glm::vec2& center, const glm::vec2& size);
 
 }
 

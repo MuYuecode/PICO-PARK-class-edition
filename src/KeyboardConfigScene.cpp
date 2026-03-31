@@ -59,11 +59,14 @@ std::vector<Keycode> PlayerKeyConfig::AllKeys() const {
     return result;
 }
 
-KeyboardConfigScene::KeyboardConfigScene(SceneServices services,
-                                         std::shared_ptr<Character> exitGameButton)
+KeyboardConfigScene::KeyboardConfigScene(SceneServices services)
     : Scene(services)
-    , m_ExitGameButton(std::move(exitGameButton))
 {
+    m_ExitGameButton = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Button/ExitButton.png");
+    m_ExitGameButton->SetZIndex(30);
+    m_ExitGameButton->SetPosition({331.0f, -14.0f});
+
     m_Applied[0] = k_Default1P;
     m_Applied[1] = k_Default2P;
 
@@ -227,7 +230,7 @@ void KeyboardConfigScene::OnExit() {
     m_Actors.Root().RemoveChild(m_ExitGameButton);
 }
 
-SceneId KeyboardConfigScene::Update() {
+void KeyboardConfigScene::Update() {
     m_PlayerLeftBtn->UpdateButton();
     m_PlayerRightBtn->UpdateButton();
 
@@ -240,13 +243,14 @@ SceneId KeyboardConfigScene::Update() {
             m_WaitingForKey = false;
             UpdateValueTexts();
         }
-        return SceneId::None;
+        return;
     }
 
     if (Input::IsKeyDown(Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked() ||
         m_CancelText->IsLeftClicked()) {
-        return SceneId::OptionMenu;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
+        return;
     }
 
     if (Input::IsKeyDown(Keycode::W) ||
@@ -313,11 +317,13 @@ SceneId KeyboardConfigScene::Update() {
             }
             else {
                 CommitPending();
-                return SceneId::OptionMenu;
+                RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
+                return;
             }
         }
         else if (m_SelectedRow == ROW_CANCEL) {
-            return SceneId::OptionMenu;
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
+            return;
         }
         else if (m_SelectedRow == ROW_DEFAULT) {
             ApplyDefault();
@@ -336,15 +342,14 @@ SceneId KeyboardConfigScene::Update() {
     if (m_OkText->IsLeftClicked()) {
         if (!(m_CurrentPlayer >= 1 && HasConflicts())) {
             CommitPending();
-            return SceneId::OptionMenu;
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
+            return;
         }
     }
     if (m_DefaultText->IsLeftClicked()) {
         ApplyDefault();
         UpdateValueTexts();
     }
-
-    return SceneId::None;
 }
 
 void KeyboardConfigScene::LoadPlayer(int playerIdx) {

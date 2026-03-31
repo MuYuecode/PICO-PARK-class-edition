@@ -98,12 +98,13 @@ void LevelSelectScene::OnExit() {
     }
 }
 
-SceneId LevelSelectScene::Update() {
+void LevelSelectScene::Update() {
     using ip = Util::Input ;
     using k  = Util::Keycode;
     if (ip::IsKeyDown(k::ESCAPE)) {
         LOG_INFO("LevelSelectScene: ESC → LocalPlayGameScene");
-        return SceneId::LocalPlayGame;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LocalPlayGame});
+        return;
     }
 
     int  newIdx     = m_SelectedIdx;
@@ -127,7 +128,7 @@ SceneId LevelSelectScene::Update() {
     }
 
     for (int i = 0; i < LEVEL_COUNT; ++i) {
-        if (AppUtil::IsMouseHovering(*m_LevelCover[i]) && newIdx != i) {
+        if (AppUtil::IsMouseHoveringByRect(m_LevelCover[i]->GetPosition(), m_LevelCover[i]->GetSize()) && newIdx != i) {
             newIdx     = i;
             idxChanged = true;
             break;
@@ -145,7 +146,7 @@ SceneId LevelSelectScene::Update() {
 
     if (!confirmed) {
         for (int i = 0; i < LEVEL_COUNT; ++i) {
-            if (AppUtil::IsLeftClicked(*m_LevelCover[i])) {
+            if (AppUtil::IsLeftClickedByRect(m_LevelCover[i]->GetPosition(), m_LevelCover[i]->GetSize())) {
                 m_SelectedIdx = i;
                 UpdateSelectorPos();
                 UpdateTitleText();
@@ -159,12 +160,11 @@ SceneId LevelSelectScene::Update() {
     if (confirmed) {
         if (m_LevelSceneIds[m_SelectedIdx] != SceneId::None) {
             LOG_INFO("LevelSelectScene: entering Level {}",m_SelectedIdx+1);
-            return m_LevelSceneIds[m_SelectedIdx];
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, m_LevelSceneIds[m_SelectedIdx]});
+            return;
         }
         LOG_INFO("LevelSelectScene: Level {} not implemented yet", m_SelectedIdx+1);
     }
-
-    return SceneId::None;
 }
 
 void LevelSelectScene::UpdateSelectorPos() const {

@@ -122,7 +122,7 @@ void TitleScene::OnExit() {
     m_World.Clear();
 }
 
-SceneId TitleScene::Update() {
+void TitleScene::Update() {
     m_FlashTimer += Util::Time::GetDeltaTimeMs();
     if (m_FlashTimer >= 1000.f) {
         m_PressEnterText->SetVisible(!m_PressEnterText->GetVisibility());
@@ -160,7 +160,7 @@ SceneId TitleScene::Update() {
 
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         LOG_INFO("TitleScene: ENTER pressed -> MenuScene");
-        return SceneId::Menu;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        return;
     }
-    return SceneId::None;
 }

@@ -30,9 +30,9 @@ void GameText::SetText(const std::string& text) const {
 }
 
 bool GameText::IsMouseHovering() const {
-    return AppUtil::IsMouseHovering(*this);
+    return AppUtil::IsMouseHoveringByRect(GetPosition(), GetSize());
 }
 
 bool GameText::IsLeftClicked() const {
-    return AppUtil::IsLeftClicked(*this);
+    return AppUtil::IsLeftClickedByRect(GetPosition(), GetSize());
 }

@@ -108,9 +108,10 @@ void LocalPlayGameScene::OnExit() {
     LOG_INFO("LocalPlayGameScene::OnExit");
 }
 
-SceneId LocalPlayGameScene::Update() {
+void LocalPlayGameScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
-        return SceneId::LocalPlay;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LocalPlay});
+        return;
     }
 
     for (auto& pb : m_Players) {
@@ -158,15 +159,14 @@ SceneId LocalPlayGameScene::Update() {
 
             if (m_EnteredCount == m_Session.GetSelectedPlayerCount()) {
                 LOG_INFO("LocalPlayGameScene: all players entered -> LevelSelectScene");
-                return SceneId::LevelSelect;
+                RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
+                return;
             }
         }
     }
 
     m_World.Update();
     UpdateCooperativePower();
-
-    return SceneId::None;
 }
 
 void LocalPlayGameScene::SpawnPlayers(int count) {
@@ -231,8 +231,7 @@ void LocalPlayGameScene::ApplyInitialFormation() {
 
         pb.cat->SetPosition({x, spawnY});
 
-        const float faceScale = std::abs(pb.cat->m_Transform.scale.x);
-        pb.cat->m_Transform.scale.x = isLeft ? faceScale : -faceScale;
+        pb.cat->SetFacingByDirection(isLeft ? 1 : -1);
     }
 }
 

@@ -16,7 +16,7 @@ public:
 
     void   OnEnter() override;
     void   OnExit()  override;
-    SceneId Update()  override;
+    void Update()  override;
 
 private:
     // One entry per active player.

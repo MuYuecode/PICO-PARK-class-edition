@@ -16,17 +16,12 @@ class KeyboardConfigScene;
 class LocalPlayScene : public Scene {
 public:
     LocalPlayScene(SceneServices services,
-                   std::shared_ptr<Character>          menuFrame,
-                   std::shared_ptr<Character>          exitGameButton,
-                   std::shared_ptr<UITriangleButton> leftTriButton,
-                   std::shared_ptr<UITriangleButton> rightTriButton,
-                   std::shared_ptr<Character>          blueCatRunImg,
                    KeyboardConfigScene* kbConfigScene);
     ~LocalPlayScene() override = default;
 
     void   OnEnter() override;
     void   OnExit()  override;
-    SceneId Update()  override;
+    void Update()  override;
 
     [[nodiscard]]int GetPlayerCount() const { return m_PlayerCount; }
 

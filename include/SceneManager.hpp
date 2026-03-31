@@ -20,7 +20,7 @@ public:
 
     void Register(SceneId id, std::unique_ptr<Scene> scene);
     void GoTo(SceneId id);
-    SceneId UpdateCurrent();
+    void UpdateCurrent();
 
     [[nodiscard]] SceneId GetCurrentId() const;
     [[nodiscard]] Scene* GetCurrentScene() const;

@@ -73,8 +73,8 @@ void LevelOneScene::SetupStaticBoundaries() {
     m_World.AddStaticBoundary({0.0f, ceilingSurfaceY + ceilHalfH}, {600.0f, ceilHalfH});
 
     // Side walls.
-    m_World.AddStaticBoundary({kRoomLeftX - wallHalfW,  0.0f}, {wallHalfW, wallHalfH});
-    m_World.AddStaticBoundary({kRoomRightX + wallHalfW, 0.0f}, {wallHalfW, wallHalfH});
+    m_World.AddStaticBoundary({kRoomLeftX-15.0f,  0.0f}, {wallHalfW, wallHalfH});
+    m_World.AddStaticBoundary({kRoomRightX+15.0f, 0.0f}, {wallHalfW, wallHalfH});
 }
 
 
@@ -174,6 +174,8 @@ void LevelOneScene::OnEnter() {
 
     m_LeftWallSprite->SetPosition({kRoomLeftX, 0.0f});
     m_RightWallSprite->SetPosition({kRoomRightX, 0.0f});
+    // Reset key visual state when re-entering level after a clear/retry.
+    m_KeySprite->SetVisible(true);
     m_KeySprite->SetPosition(m_KeyInitialPos);
 
     // Spawn boxes using real physics half height, no hardcoded magic number.
@@ -379,10 +381,10 @@ void LevelOneScene::UpdateDoorEntryAndClear() {
     }
 }
 
-SceneId LevelOneScene::Update() {
+void LevelOneScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
         RequestSceneOp({SceneOpType::PushOverlay, SceneId::LevelExit});
-        return SceneId::None;
+        return;
     }
 
     HandlePlayerInput();
@@ -396,8 +398,7 @@ SceneId LevelOneScene::Update() {
     TryOpenDoorAndClear();
     UpdateDoorEntryAndClear();
     if (m_ClearDone) {
-        return SceneId::LevelSelect;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
+        return;
     }
-
-    return SceneId::None;
 }

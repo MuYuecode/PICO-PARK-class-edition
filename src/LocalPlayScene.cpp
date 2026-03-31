@@ -15,20 +15,38 @@ using ip = Util::Input ;
 using k  = Util::Keycode ;
 
 LocalPlayScene::LocalPlayScene(SceneServices services,
-                               std::shared_ptr<Character>          menuFrame,
-                               std::shared_ptr<Character>          exitGameButton,
-                               std::shared_ptr<UITriangleButton> leftTriButton,
-                               std::shared_ptr<UITriangleButton> rightTriButton,
-                               std::shared_ptr<Character>          blueCatRunImg,
                                KeyboardConfigScene* kbConfigScene)
     : Scene(services)
-    , m_MenuFrame(std::move(menuFrame))
-    , m_ExitGameButton(std::move(exitGameButton))
-    , m_LeftTriButton(std::move(leftTriButton))
-    , m_RightTriButton(std::move(rightTriButton))
-    , m_BlueCatRunImg(std::move(blueCatRunImg))
     , m_KbConfigScene(kbConfigScene)
 {
+    m_MenuFrame = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Background/Menu_Frame.png");
+    m_MenuFrame->SetZIndex(10);
+    m_MenuFrame->SetPosition({0.0f, -105.0f});
+
+    m_ExitGameButton = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Button/ExitButton.png");
+    m_ExitGameButton->SetZIndex(30);
+    m_ExitGameButton->SetPosition({331.0f, -14.0f});
+
+    m_BlueCatRunImg = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Character/blue_cat/blue_cat_run_img.png");
+    m_BlueCatRunImg->SetZIndex(10);
+    m_BlueCatRunImg->SetScale({1.2f, 1.2f});
+    m_BlueCatRunImg->SetPosition({0.0f, -74.0f});
+
+    m_LeftTriButton = std::make_shared<UITriangleButton>(
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Left_Tri_Button_Full.png");
+    m_LeftTriButton->SetZIndex(15);
+    m_LeftTriButton->SetPosition({-305.0f, -153.0f});
+
+    m_RightTriButton = std::make_shared<UITriangleButton>(
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button.png",
+        GA_RESOURCE_DIR "/Image/Button/Right_Tri_Button_Full.png");
+    m_RightTriButton->SetZIndex(15);
+    m_RightTriButton->SetPosition({305.0f, -153.0f});
+
     m_PlayerCountText = std::make_shared<GameText>("2PLAYER GAME", 65, k_Black);
     m_PlayerCountText->SetZIndex(20);
     m_PlayerCountText->SetPosition({0.0f, -153.0f}); // -118
@@ -90,14 +108,15 @@ void LocalPlayScene::OnExit() {
     m_Actors.Root().RemoveChild(m_MenuFrame);
 }
 
-SceneId LocalPlayScene::Update() {
+void LocalPlayScene::Update() {
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
     if ( ip::IsKeyDown(k::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("LocalPlayScene: back to MenuScene");
-        return SceneId::Menu;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
+        return;
     }
 
     const bool pressedLeft  =  ip::IsKeyDown(k::A)    ||
@@ -132,14 +151,13 @@ SceneId LocalPlayScene::Update() {
         if (m_PlayerCount <= configuredCount) {
             m_Session.SetSelectedPlayerCount(m_PlayerCount);
             LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
-            return SceneId::LocalPlayGame;
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LocalPlayGame});
+            return;
         }
 
         LOG_INFO("LocalPlayScene: ENTER blocked, selected={} configured={}",
                  m_PlayerCount, configuredCount);
     }
-
-    return SceneId::None;
 }
 
 void LocalPlayScene::UpdateDisplay() const {

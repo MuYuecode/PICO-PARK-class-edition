@@ -14,13 +14,8 @@ public:
 
     void   OnEnter() override;
     void   OnExit()  override;
-    SceneId Update()  override;
+    void Update()  override;
 
-    [[nodiscard]] std::shared_ptr<Character>          GetMenuFrame()      const { return m_MenuFrame;      }
-    [[nodiscard]] std::shared_ptr<Character>          GetExitGameButton() const { return m_ExitGameButton; }
-    [[nodiscard]] std::shared_ptr<UITriangleButton>   GetLeftTriButton()  const { return m_LeftTriButton;  }
-    [[nodiscard]] std::shared_ptr<UITriangleButton>   GetRightTriButton() const { return m_RightTriButton; }
-    [[nodiscard]] std::shared_ptr<Character>          GetBlueCatRunImg()  const { return m_blue_cat_run_img; }
 
 private:
     void SetupStaticBoundaries();

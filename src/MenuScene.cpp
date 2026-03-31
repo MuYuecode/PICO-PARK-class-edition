@@ -124,14 +124,15 @@ void MenuScene::OnExit() {
     m_World.Clear();
 }
 
-SceneId MenuScene::Update() {
+void MenuScene::Update() {
     m_World.Update();
 
     m_LeftTriButton->UpdateButton();
     m_RightTriButton->UpdateButton();
 
     if (ip::IsKeyDown(k::ESCAPE) || m_ExitGameButton->IsLeftClicked()) {
-        return SceneId::Title;
+        RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Title});
+        return;
     }
 
     if (ip::IsKeyDown(k::A)) {
@@ -139,7 +140,7 @@ SceneId MenuScene::Update() {
         m_SelectedIndex = (m_SelectedIndex + 2) % 3;
         m_LeftTriButton->Press(75.f);
         ShowCurrentOption();
-        return SceneId::None;
+        return;
     }
 
     if (ip::IsKeyDown(k::D)) {
@@ -147,19 +148,25 @@ SceneId MenuScene::Update() {
         m_SelectedIndex = (m_SelectedIndex + 1) % 3;
         m_RightTriButton->Press(75.f);
         ShowCurrentOption();
-        return SceneId::None;
+        return;
     }
 
     if (ip::IsKeyDown(k::RETURN)) {
         switch (m_SelectedIndex) {
-        case 0: return SceneId::ExitConfirm;
-        case 1: return SceneId::OptionMenu;
-        case 2: return SceneId::LocalPlay;
+        case 0:
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::ExitConfirm});
+            return;
+        case 1:
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
+            return;
+        case 2:
+            RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LocalPlay});
+            return;
         default: break;
         }
     }
 
-    return SceneId::None;
+    return;
 }
 
 void MenuScene::ShowCurrentOption() const {

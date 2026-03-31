@@ -113,20 +113,18 @@ namespace AppUtil {
         return Util::Keycode::UNKNOWN;
     }
 
-    bool IsMouseHovering(const Util::GameObject& obj) {
-    const glm::vec2 mousePos   = Util::Input::GetCursorPosition();
-    const glm::vec2 myPos      = obj.m_Transform.translation;
-    const glm::vec2 mySize     = obj.GetScaledSize();
-    const float     halfWidth  = mySize.x / 2.0f;
-    const float     halfHeight = mySize.y / 2.0f;
+    bool IsMouseHoveringByRect(const glm::vec2& center, const glm::vec2& size) {
+        const glm::vec2 mousePos = Util::Input::GetCursorPosition();
+        const float halfWidth = size.x / 2.0f;
+        const float halfHeight = size.y / 2.0f;
 
-    return (mousePos.x >= myPos.x - halfWidth  &&
-            mousePos.x <= myPos.x + halfWidth  &&
-            mousePos.y >= myPos.y - halfHeight &&
-            mousePos.y <= myPos.y + halfHeight);
+        return (mousePos.x >= center.x - halfWidth  &&
+                mousePos.x <= center.x + halfWidth  &&
+                mousePos.y >= center.y - halfHeight &&
+                mousePos.y <= center.y + halfHeight);
     }
 
-    bool IsLeftClicked(const Util::GameObject& obj) {
-        return Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB) && IsMouseHovering(obj);
+    bool IsLeftClickedByRect(const glm::vec2& center, const glm::vec2& size) {
+        return Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB) && IsMouseHoveringByRect(center, size);
     }
 }
