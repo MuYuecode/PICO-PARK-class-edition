@@ -32,7 +32,10 @@ FetchContent_MakeAvailable(sdl2 sdl2_image sdl2_ttf sdl2_mixer spdlog glm google
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 file(GLOB_RECURSE HEADER_FILES include/*.hpp)
 
-add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES}
+set(PHYSICS_DECOMPOSITION_SOURCES
+)
+
+add_executable(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES} ${PHYSICS_DECOMPOSITION_SOURCES}
 )
 
 if(MSVC)
