@@ -224,7 +224,7 @@ void LevelTwoScene::SetupPlanks(int playerCount) {
 
     const float plankWidth = plankHalf.x * 2.0f;
     const float plankPitch = std::max(1.0f, plankWidth - (kPlankSeamInsetPx * 2.0f));
-    const float plankY     = kRoomFloorY - plankHalf.y;
+    const float plankY     = kRoomFloorY - plankHalf.y - 3.0f; // -3.0f avoid cat be moved
 
     float rightFloorCenterX = kRightFloorCenterX;
     float rightFloorHalfW   = (kRightFloorMaxX - kRightFloorMinX) * 0.5f;
