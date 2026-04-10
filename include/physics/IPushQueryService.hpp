@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "physics/body/IPhysicsBody.hpp"
+#include "physics/IPhysicsBody.hpp"
 
 class IPushQueryService {
 public:

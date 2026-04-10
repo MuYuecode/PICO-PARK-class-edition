@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "physics/body/IPhysicsBody.hpp"
+#include "physics/IPhysicsBody.hpp"
 
 struct BodyInfo {
     std::shared_ptr<IPhysicsBody> body;

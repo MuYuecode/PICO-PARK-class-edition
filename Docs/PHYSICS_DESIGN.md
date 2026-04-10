@@ -2,65 +2,72 @@
 
 ## Scope
 
-- `PhysicsWorld` is scene-local and stepped once per frame.
-- Active body implementations: `PlayerCat`, `PushableBox`, `StaticBody`, `LevelTwoScene::MovingPlankBody`, `LevelThreeScene::MovingLiftBody`, `LevelThreeScene::PatrolMobBody`, `LevelThreeScene::PipeMobBody`.
-- `PushableBox` is the only `IPushable` type.
+- Physics is scene-local (`PhysicsWorld` owned by each physics-enabled scene).
+- Active body implementations:
+  - `PlayerCat`
+  - `PushableBox`
+  - `StaticBody`
+  - `LevelTwoScene::MovingPlankBody`
+  - `LevelThreeScene::MovingLiftBody`
+  - `LevelThreeScene::PatrolMobBody`
+  - `LevelThreeScene::PipeMobBody`
+- `PushableBox` is the only `IPushable` implementation.
 
 ## `IPhysicsBody` Contract
 
-- `PhysicsUpdate()` computes frame intent.
-- `GetDesiredDelta()` provides intended displacement.
-- `ApplyResolvedDelta()` applies solved displacement.
-- `OnCollision(CollisionInfo)` receives per-axis contact normals.
-- `PostUpdate()` handles post-physics state (for example animation).
-- `IsActive()` and `IsFrozen()` gate solver participation.
+- Transform: `GetPosition/SetPosition/GetHalfSize`.
+- Material: `IsSolid`, `IsKinematic`.
+- Motion: `PhysicsUpdate`, `GetDesiredDelta`, `ApplyResolvedDelta`.
+- Collision callback: `OnCollision(CollisionInfo)`.
+- Push reaction: `GetMoveDir`, optional `NotifyPush`.
+- Lifecycle: `IsActive/SetActive`, `IsFrozen/Freeze/Unfreeze`, `PostUpdate`.
 
-## PhysicsWorld Responsibilities
+## `PhysicsWorld` Responsibilities
 
-- Lifecycle: `Register`, `Unregister`, `Clear`.
-- Static ownership: `AddStaticBoundary()` creates world-owned `StaticBody` colliders.
-- Pause control: `FreezeAll()` / `UnfreezeAll()`.
-- Push-force query: `CountCharactersPushing()` with recursive chain traversal.
-- Rope metadata APIs exist (`AddRope`, `RemoveRope`, `GetRopesOf`), but no rope force solve step yet.
+- Body lifecycle: `Register`, `Unregister`, `Clear`.
+- Static ownership: `AddStaticBoundary` creates world-owned `StaticBody` colliders.
+- Pause control: `FreezeAll` / `UnfreezeAll`.
+- Push query service: `CountCharactersPushing`, `GetBodiesOfType`.
+- Rope metadata exists (`AddRope`, `RemoveRope`, `GetRopesOf`) but rope force solving is not implemented.
 
 ## Frame Pipeline
 
-1. Periodically purge expired weak references (`kPurgeInterval = 60`).
-2. `StepPhysicsUpdate()` in two passes:
-   - active non-frozen non-box bodies
-   - active non-frozen `PUSHABLE_BOX` bodies
-3. `StepResolveAndApply()`:
-   - snapshot active bodies
-   - detect support links (`DetectRiding`)
-   - resolve by support dependency order
-   - apply resolved deltas
-   - dispatch collision callbacks
-4. Run `PostUpdate()` on active, non-frozen bodies.
+1. Optional weak reference purge every `kPurgeInterval` frames.
+2. `PhysicsUpdateScheduler::StepPhysicsUpdate(...)` in two passes:
+   - active, non-frozen, non-`PUSHABLE_BOX`
+   - active, non-frozen `PUSHABLE_BOX`
+3. `CollisionSolver::ResolveAndApply(...)`:
+   - snapshot active bodies and desired deltas
+   - detect supports (`SupportResolver::DetectRiding`)
+   - resolve in support-aware order
+   - apply deltas
+   - emit collision callbacks
+4. `PostUpdate()` for active, non-frozen bodies.
 
-Two-pass update ensures `PushableBox` sees same-frame character move intent.
+Two-pass update ensures box push queries see same-frame character intent.
 
 ## Collision and Support Rules
 
-- Primitive is strict AABB overlap (`<`), so edge-touch alone is non-overlap.
-- Solver order is horizontal pass then vertical pass.
-- Riding support is detected before movement and prefers moving platforms in near-tie cases.
-- Supported bodies inherit support X movement; Y carry is applied for moving-platform supports.
+- Broad primitive is strict AABB overlap (`<`), not edge-inclusive.
+- Resolution is horizontal pass then vertical pass.
+- Supports are computed pre-move; moving platforms are preferred in close ties.
+- Supported body inherits support X motion; support Y carry is applied only when support is `MOVING_PLATFORM`.
 - Kinematic/frozen bodies are marked resolved early and act as reference geometry.
-- Moving-platform vertical snap uses a continuous relative check to reduce missed contacts near endpoints.
+- Additional moving-platform vertical snap logic reduces missed contacts around platform endpoints.
 
-## Cooperative Push and Box Behavior
+## Cooperative Push Logic
 
 - `PushableBox` computes `net = pushRight - pushLeft` from world queries.
-- Box moves horizontally only when `abs(net) >= requiredPushers`; gravity always applies.
-- Recursive push counting propagates force through character/box chains.
-- Box count text displays deficit: `max(0, requiredPushers - abs(net))`.
-- Adjacent active pushers get `NotifyPush()` for push animation feedback.
+- Horizontal motion activates only when `abs(net) >= requiredPushers`; gravity is always applied.
+- Push counting is recursive through character/box chains (`PushForceResolver`).
+- Box text shows remaining deficit: `max(0, requiredPushers - abs(net))`.
+- Adjacent active pushers receive `NotifyPush()` for push animation feedback.
 
 ## Scene Integration Pattern
 
 - Physics-backed scenes: `TitleScene`, `MenuScene`, `LocalPlayGameScene`, `LevelOneScene`, `LevelTwoScene`, `LevelThreeScene`.
 - Common lifecycle:
-  - `OnEnter`: clear world, register dynamics, add static boundaries
-  - `Update`: write input intent, call `m_World.Update()` once
-  - `OnExit`: unfreeze (if needed) then clear world
-- Level scenes map pause overlay to freeze/unfreeze through `PauseGameplay()` and `ResumeGameplay()`.
+  - `OnEnter`: clear world, register dynamic bodies, add static boundaries
+  - `Update`: set movement intent, call `m_World.Update()` exactly once
+  - `OnExit`: unfreeze if needed, then clear world
+- Level pause overlay (`LevelExitScene`) maps to freeze/unfreeze via scene `PauseGameplay`/`ResumeGameplay`.

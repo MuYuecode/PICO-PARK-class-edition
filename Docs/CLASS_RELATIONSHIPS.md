@@ -1,6 +1,6 @@
 # Class Relationships
 
-## Inheritance Skeleton
+## Inheritance Map
 
 ```text
 Util::GameObject
@@ -44,7 +44,12 @@ IPushable
 └─ PushableBox
 ```
 
-## Interface-to-Concrete Bindings
+## Physics Interface Composition
+
+- `IPhysicsBody` composes: `IPhysicsTransform`, `IPhysicsMaterial`, `IPhysicsMotion`, `IPhysicsCollisionListener`, `IPhysicsPushReactive`, `IPhysicsLifecycle`.
+- `PhysicsBodyTraits` carries body category (`BodyType`) and behavior flags.
+
+## Interface to Concrete Wiring
 
 ```text
 IAudioService       -> AudioService
@@ -53,17 +58,11 @@ ISessionState       -> SessionState
 IGlobalActors       -> GlobalActors
 ```
 
-- `Scene` receives only interfaces through `SceneServices`; concrete wiring happens in `App::Start()`.
+- Scenes depend on interfaces via `SceneServices`; concrete objects are wired only in `App::Start()`.
 
-## Control and Ownership Links
+## Ownership and Runtime Links
 
-- `SceneManager` owns all scene instances and stack transitions.
-- Each scene owns one pending transition intent (`SceneOp`), consumed by manager post-update.
-- Scenes are decoupled from each other; routing happens through `SceneId` + `SceneOpType` only.
-
-## State and Persistence Coupling
-
-- `SessionState` is the runtime source for selected player count, cooperative push power, key configs, and quit flag.
-- `KeyboardConfigScene` writes key configs to both `SaveManager` and `SessionState`.
-- `OptionMenuScene` uses live service preview (audio/theme) and persists only on commit.
-- `LevelOneScene`, `LevelTwoScene`, and `LevelThreeScene` write clear-time records via `SaveManager::UpdateBestTime()`.
+- `SceneManager` owns scene instances and stack transitions.
+- `Scene` instances do not call each other directly; routing is only through `SceneOp` + `SceneId`.
+- Each level scene owns its own `PhysicsWorld` and local dynamic entities.
+- `SaveManager` is static/centralized and used by options, keyboard config, and level clear-time recording.

@@ -2,7 +2,7 @@
 #define APP_UTIL_HPP
 
 #include <string>
-#include "ui/text/GameText.hpp"
+#include "ui/GameText.hpp"
 #include "Util/Keycode.hpp"
 
 namespace AppUtil {
