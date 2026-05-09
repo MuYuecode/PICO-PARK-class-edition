@@ -33,7 +33,6 @@ private:
     void SetupSceneVisuals();
     void SetupStaticBoundaries();
     void SetupDynamicBodies();
-    void LogLayoutSnapshot() const;
 
     void BuildConsensusBindings(int playerCount);
     void HandleConsensusInput();
@@ -53,10 +52,8 @@ private:
     [[nodiscard]] bool IsStompCollision(const IPhysicsBody& mobBody) const;
     void TriggerStompBounce(const IPhysicsBody& mobBody) const;
     void StartDeath();
+    void UpdateDeathAnimation(float dtSec);
     void RespawnPlayer();
-
-    void UpdateShake();
-    void ResetShake() const;
 
     static constexpr int   kLevelIndex = 2;
     static constexpr float kRoomLeftX  = -624.0f;
@@ -69,8 +66,10 @@ private:
     static constexpr float kHighTopY   = 210.0f;
 
     static constexpr float kDeathRespawnDelaySec = 2.0f;
-    static constexpr float kShakeDurationSec = 0.35f;
-    static constexpr float kShakeAmplitudePx = 18.0f;
+    static constexpr float kDeathLaunchSpeed = 680.0f;
+    static constexpr float kDeathRiseGravity = -1500.0f;
+    static constexpr float kDeathFallGravity = -3200.0f;
+    static constexpr float kDeathTerminalVel = -1500.0f;
 
     PhysicsWorld m_World;
 
@@ -95,8 +94,8 @@ private:
     std::shared_ptr<Character> m_FlagSprite;
     std::shared_ptr<Character> m_KeySprite;
     std::shared_ptr<Character> m_DeadCatSprite;
-    std::vector<std::shared_ptr<Character>> m_GamePadBlocks; // 0~7 is up, 8~15 is left, 16~23 is right
-    std::vector<std::shared_ptr<Character>> m_GamePadCircles; // 0~7 fill
+    std::vector<std::shared_ptr<Character>> m_GamePadSquares; // [up, down, left, right]
+    std::shared_ptr<Character> m_GamePadCircle;
 
     std::shared_ptr<GameText> m_CheckText;
     std::shared_ptr<GameText> m_TimerText;
@@ -122,8 +121,7 @@ private:
 
     float m_ElapsedSec = 0.0f;
     float m_DeathWaitSec = 0.0f;
-    float m_ShakeTimerSec = 0.0f;
-    float m_ShakeSeed = 0.0f;
+    float m_DeathAnimVelY = 0.0f;
     bool  m_JumpConsensusLatched = false;
 };
 

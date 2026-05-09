@@ -9,7 +9,6 @@
 #include "services/SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
-#include "Util/Logger.hpp"
 #include "Util/Time.hpp"
 
 using ip = Util::Input;
@@ -54,6 +53,16 @@ LevelThreeScene::LevelThreeScene(SceneServices services)
     m_RightWallSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/Background_rwall.png");
 
     m_GamePadSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/GamePad.png");
+    for (int i = 0; i < 4; ++i) {
+        auto square = std::make_shared<Character>(
+            GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/GamePadSquare.png");
+        square->SetVisible(false);
+        m_GamePadSquares.push_back(square);
+    }
+    m_GamePadCircle = std::make_shared<Character>(
+        GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/GamePadCircle.png");
+    m_GamePadCircle->SetVisible(false);
+
     m_LFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/LFloor.png");
     m_RFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/RFloor.png");
     m_LMidFloorSprite = std::make_shared<Character>(GA_RESOURCE_DIR "/Image/Level_Cover/LevelThreeScene/LMidFloor.png");
@@ -81,6 +90,10 @@ LevelThreeScene::LevelThreeScene(SceneServices services)
     m_RightWallSprite->SetZIndex(4.1f);
 
     m_GamePadSprite->SetZIndex(4.3f);
+    for (const auto& square : m_GamePadSquares) {
+        if (square != nullptr) square->SetZIndex(4.4f);
+    }
+    if (m_GamePadCircle != nullptr) m_GamePadCircle->SetZIndex(4.4f);
 
     m_LFloorSprite->SetZIndex(6.0f);
     m_RFloorSprite->SetZIndex(6.0f);
@@ -131,12 +144,14 @@ void LevelThreeScene::BuildConsensusBindings(int playerCount) {
             if (cfg.right == k::UNKNOWN) cfg.right = d.right;
             if (cfg.jump  == k::UNKNOWN) cfg.jump = d.jump;
             if (cfg.up    == k::UNKNOWN) cfg.up = d.up;
+            if (cfg.down  == k::UNKNOWN) cfg.down = d.down;
         } else if (i == 1) {
             const auto& d = KeyboardConfigScene::k_Default2P;
             if (cfg.left  == k::UNKNOWN) cfg.left = d.left;
             if (cfg.right == k::UNKNOWN) cfg.right = d.right;
             if (cfg.jump  == k::UNKNOWN) cfg.jump = d.jump;
             if (cfg.up    == k::UNKNOWN) cfg.up = d.up;
+            if (cfg.down  == k::UNKNOWN) cfg.down = d.down;
         }
         m_ConsensusBindings.push_back(cfg);
     }
@@ -161,20 +176,42 @@ bool LevelThreeScene::IsAllPlayersHolding(Util::Keycode PlayerKeyConfig::* keyMe
 }
 
 void LevelThreeScene::HandleConsensusInput() {
+    auto hideIndicators = [&]() {
+        for (const auto& square : m_GamePadSquares) {
+            if (square != nullptr) square->SetVisible(false);
+        }
+        if (m_GamePadCircle != nullptr) m_GamePadCircle->SetVisible(false);
+    };
+
     if (m_Player == nullptr || !m_Player->IsActive() || !m_Player->GetInputEnabled()) {
+        hideIndicators();
         return;
     }
 
+    const bool allUp    = IsAllPlayersHolding(&PlayerKeyConfig::up);
+    const bool allDown  = IsAllPlayersHolding(&PlayerKeyConfig::down);
     const bool allLeft  = IsAllPlayersHolding(&PlayerKeyConfig::left);
     const bool allRight = IsAllPlayersHolding(&PlayerKeyConfig::right);
+    const bool allJumpHeld = IsAllPlayersHolding(&PlayerKeyConfig::jump);
+
+    if (m_GamePadSquares[0] != nullptr) m_GamePadSquares[0]->SetVisible(allUp);
+    if (m_GamePadSquares[1] != nullptr) m_GamePadSquares[1]->SetVisible(allDown);
+    if (m_GamePadSquares[2] != nullptr) m_GamePadSquares[2]->SetVisible(allLeft);
+    if (m_GamePadSquares[3] != nullptr) m_GamePadSquares[3]->SetVisible(allRight);
+    if (m_GamePadCircle != nullptr) {
+        m_GamePadCircle->SetVisible(allJumpHeld);
+    }
 
     int moveDir = 0;
-    if (allLeft && !allRight) moveDir = -1;
-    else if (allRight && !allLeft) moveDir = 1;
+    if (allLeft) {
+        if (!allRight) moveDir = -1;
+    }
+    else if (allRight) {
+        moveDir = 1 ;
+    }
 
     m_Player->SetMoveDir(moveDir);
 
-    const bool allJumpHeld = IsAllPlayersHolding(&PlayerKeyConfig::jump);
     const bool blockJumpForDoorEntry = IsPlayerInOpenDoorZone();
     if (allJumpHeld && !m_JumpConsensusLatched && m_Player->IsGrounded() && !blockJumpForDoorEntry) {
         m_Player->Jump();
@@ -211,6 +248,15 @@ void LevelThreeScene::SetupSceneVisuals() {
 
     // Slightly intersects ceiling while mostly below it.
     m_GamePadSprite->SetPosition({0.0f, kRoomTopY - 37.0f});
+    m_GamePadSquares[0]->SetPosition({-41.0f, kRoomTopY - 20.0f});
+    m_GamePadSquares[1]->SetPosition({-41.0f, kRoomTopY - 54.0f});
+    m_GamePadSquares[2]->SetPosition({-57.0f, kRoomTopY - 37.0f});
+    m_GamePadSquares[3]->SetPosition({-25.0f, kRoomTopY - 37.0f});
+    for (const auto& square : m_GamePadSquares) {
+        square->SetVisible(false);
+    }
+    m_GamePadCircle->SetPosition({47.0f, kRoomTopY - 37.0f});
+    m_GamePadCircle->SetVisible(false);
 
     // Bottom layer
     const float lFloorHalfW = SpriteHalfW(m_LFloorSprite, 178.0f);
@@ -218,7 +264,7 @@ void LevelThreeScene::SetupSceneVisuals() {
     PlaceSpriteTop(m_LFloorSprite, lFloorX, kBottomLayerTopY);
 
     const float rFloorHalfW = SpriteHalfW(m_RFloorSprite, 290.0f);
-    const float rFloorLeftX = -180.0f;
+    constexpr float rFloorLeftX = -180.0f;
     const float rFloorX = rFloorLeftX + rFloorHalfW;
     PlaceSpriteTop(m_RFloorSprite, rFloorX, kBottomLayerTopY);
 
@@ -353,43 +399,6 @@ void LevelThreeScene::SetupDynamicBodies() {
     m_Mob2Sprite->SetPosition(m_Mob2Body->GetPosition());
 }
 
-void LevelThreeScene::LogLayoutSnapshot() const {
-    const auto dump = [](const char* name, const std::shared_ptr<Character>& obj) {
-        if (obj == nullptr) {
-            LOG_INFO("L3_LAYOUT {}: null", name);
-            return;
-        }
-        const auto size = obj->GetScaledSize();
-        const auto pos = obj->GetPosition();
-        LOG_INFO("L3_LAYOUT {} pos=({}, {}) size=({}, {})", name, pos.x, pos.y, size.x, size.y);
-    };
-
-    dump("Ceiling", m_CeilingSprite);
-    dump("LWall", m_LeftWallSprite);
-    dump("RWall", m_RightWallSprite);
-    dump("LFloor", m_LFloorSprite);
-    dump("RFloor", m_RFloorSprite);
-    dump("LMidFloor", m_LMidFloorSprite);
-    dump("RMidFloor", m_RMidFloorSprite);
-    dump("LHighFloor", m_LHighFloorSprite);
-    dump("RHighFloor", m_RHighFloorSprite);
-    dump("LLift", m_LLiftSprite);
-    dump("RLift", m_RLiftSprite);
-    dump("MidBlockL", m_MidBlockLeftSprite);
-    dump("MidBlockR", m_MidBlockRightSprite);
-    dump("Pipe", m_PipeSprite);
-    dump("Mob1", m_Mob1Sprite);
-    dump("Mob2", m_Mob2Sprite);
-    dump("Flag", m_FlagSprite);
-    dump("Key", m_KeySprite);
-    if (m_Player != nullptr) {
-        const auto size = m_Player->GetScaledSize();
-        const auto pos = m_Player->GetPosition();
-        LOG_INFO("L3_LAYOUT Player pos=({}, {}) size=({}, {})", pos.x, pos.y, size.x, size.y);
-    }
-    if (m_Actors.Door() != nullptr) dump("Door", m_Actors.Door());
-}
-
 void LevelThreeScene::OnEnter() {
     const int playerCount = std::clamp(m_Session.GetSelectedPlayerCount(), 2, 8);
     m_Session.SetSelectedPlayerCount(playerCount);
@@ -399,7 +408,7 @@ void LevelThreeScene::OnEnter() {
 
     m_ElapsedSec = 0.0f;
     m_DeathWaitSec = 0.0f;
-    m_ShakeTimerSec = 0.0f;
+    m_DeathAnimVelY = 0.0f;
     m_PlayerDead = false;
     m_CheckpointReached = false;
     m_HasKey = false;
@@ -453,6 +462,10 @@ void LevelThreeScene::OnEnter() {
     m_Actors.Root().AddChild(m_LeftWallSprite);
     m_Actors.Root().AddChild(m_RightWallSprite);
     m_Actors.Root().AddChild(m_GamePadSprite);
+    for (const auto& square : m_GamePadSquares) {
+        if (square != nullptr) m_Actors.Root().AddChild(square);
+    }
+    if (m_GamePadCircle != nullptr) m_Actors.Root().AddChild(m_GamePadCircle);
 
     m_Actors.Root().AddChild(m_LFloorSprite);
     m_Actors.Root().AddChild(m_RFloorSprite);
@@ -482,11 +495,8 @@ void LevelThreeScene::OnEnter() {
 
     SetupStaticBoundaries();
     SetupDynamicBodies();
-    LogLayoutSnapshot();
 
     m_World.Register(m_Player);
-
-    LOG_INFO("LevelThreeScene::OnEnter players={} (consensus control)", playerCount);
 }
 
 void LevelThreeScene::OnExit() {
@@ -497,6 +507,10 @@ void LevelThreeScene::OnExit() {
     m_Actors.Root().RemoveChild(m_LeftWallSprite);
     m_Actors.Root().RemoveChild(m_RightWallSprite);
     m_Actors.Root().RemoveChild(m_GamePadSprite);
+    for (const auto& square : m_GamePadSquares) {
+        if (square != nullptr) m_Actors.Root().RemoveChild(square);
+    }
+    if (m_GamePadCircle != nullptr) m_Actors.Root().RemoveChild(m_GamePadCircle);
 
     m_Actors.Root().RemoveChild(m_LFloorSprite);
     m_Actors.Root().RemoveChild(m_RFloorSprite);
@@ -539,7 +553,6 @@ void LevelThreeScene::OnExit() {
         if (cat) cat->SetVisible(true);
     }
 
-    ResetShake();
 }
 
 void LevelThreeScene::PauseGameplay() {
@@ -681,6 +694,12 @@ void LevelThreeScene::StartDeath() {
 
     m_PlayerDead = true;
     m_DeathWaitSec = kDeathRespawnDelaySec;
+    m_DeathAnimVelY = kDeathLaunchSpeed;
+
+    for (const auto& square : m_GamePadSquares) {
+        if (square != nullptr) square->SetVisible(false);
+    }
+    if (m_GamePadCircle != nullptr) m_GamePadCircle->SetVisible(false);
 
     m_DeadCatSprite->SetPosition(m_Player->GetPosition());
     m_DeadCatSprite->SetVisible(true);
@@ -689,9 +708,18 @@ void LevelThreeScene::StartDeath() {
     m_Player->SetActive(false);
     m_Player->SetInputEnabled(false);
     m_Player->SetMoveDir(0);
+}
 
-    m_ShakeTimerSec = kShakeDurationSec;
-    m_ShakeSeed += 0.137f;
+void LevelThreeScene::UpdateDeathAnimation(float dtSec) {
+    if (m_Player == nullptr || !m_PlayerDead || m_DeadCatSprite == nullptr) return;
+
+    const float gravity = (m_DeathAnimVelY > 0.0f) ? kDeathRiseGravity : kDeathFallGravity;
+    m_DeathAnimVelY += gravity * dtSec;
+    m_DeathAnimVelY = std::max(m_DeathAnimVelY, kDeathTerminalVel);
+
+    glm::vec2 pos = m_DeadCatSprite->GetPosition();
+    pos.y += m_DeathAnimVelY * dtSec;
+    m_DeadCatSprite->SetPosition(pos);
 }
 
 void LevelThreeScene::RespawnPlayer() {
@@ -708,6 +736,7 @@ void LevelThreeScene::RespawnPlayer() {
     m_Player->SetCatAnimState(CatAnimState::STAND);
     m_PlayerPrevPos = m_RespawnPoint;
     m_JumpConsensusLatched = false;
+    m_DeathAnimVelY = 0.0f;
 
     m_DeadCatSprite->SetVisible(false);
 }
@@ -715,8 +744,11 @@ void LevelThreeScene::RespawnPlayer() {
 void LevelThreeScene::HandleHazardsAndRespawn() {
     if (m_Player == nullptr) return;
 
+    const float dtSec = Util::Time::GetDeltaTimeMs() / 1000.0f;
+
     if (m_PlayerDead) {
-        m_DeathWaitSec -= Util::Time::GetDeltaTimeMs() / 1000.0f;
+        UpdateDeathAnimation(dtSec);
+        m_DeathWaitSec -= dtSec;
         if (m_DeathWaitSec <= 0.0f) {
             RespawnPlayer();
         }
@@ -758,24 +790,6 @@ void LevelThreeScene::HandleHazardsAndRespawn() {
     checkMob(m_Mob2Body);
 }
 
-void LevelThreeScene::UpdateShake() {
-    if (m_ShakeTimerSec <= 0.0f) {
-        ResetShake();
-        return;
-    }
-
-    const float dtSec = Util::Time::GetDeltaTimeMs() / 1000.0f;
-    m_ShakeTimerSec = std::max(0.0f, m_ShakeTimerSec - dtSec);
-
-    // Screen-shake hook disabled by request; keep timer decay for future reuse.
-    (void)kShakeAmplitudePx;
-    (void)m_ShakeSeed;
-}
-
-void LevelThreeScene::ResetShake() const {
-    // Screen-shake hook disabled by request.
-}
-
 void LevelThreeScene::Update() {
     if (ip::IsKeyDown(k::ESCAPE)) {
         RequestSceneOp({SceneOpType::PushOverlay, SceneId::LevelExit});
@@ -807,12 +821,8 @@ void LevelThreeScene::Update() {
 
     m_ElapsedSec += Util::Time::GetDeltaTimeMs() / 1000.0f;
     UpdateTimerText();
-    UpdateShake();
 
     if (m_ClearDone) {
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
     }
 }
-
-
-
