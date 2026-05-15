@@ -9,6 +9,7 @@ enum class BodyType {
     CONDITIONAL_PLATFORM,
     ROPE_ENDPOINT,
     BULLET,
+    JAR,
     STATIC_BOUNDARY,
 };
 

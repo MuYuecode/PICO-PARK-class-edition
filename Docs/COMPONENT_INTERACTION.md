@@ -3,46 +3,81 @@
 ## Frame Execution Chain
 
 1. `AudioService::UpdateBgm()` advances music state.
-2. `SceneManager::UpdateCurrent()` updates current top scene.
-3. Top scene may emit one `SceneOp`; manager executes at most one stack mutation.
-4. `App` checks `SessionState::ShouldQuit()`.
-5. `Renderer` updates and draws the current actor graph.
+2. `SceneManager::UpdateCurrent()` updates the top scene.
+3. The top scene may emit one `SceneOp`.
+4. `SceneManager` applies at most one stack mutation.
+5. `App` checks `SessionState::ShouldQuit()`.
+6. `Renderer` draws the current actor graph.
 
 ## Scene Transition Contract
 
-1. Scene performs local logic in `Update()`.
-2. Scene requests transition via `RequestSceneOp(...)`.
-3. `SceneManager` consumes via `ConsumeSceneOp()` and executes:
-   - `PushOverlay`
-   - `PopOverlay`
-   - `RestartUnderlying`
-   - `ClearToAndGoTo`
+Scenes do not call each other directly. A scene requests navigation through `RequestSceneOp(...)`.
 
-Scenes do not directly call other scenes or mutate scene stacks.
+Supported operations:
 
-## Shared Service Flows
+- `PushOverlay`
+- `PopOverlay`
+- `RestartUnderlying`
+- `ClearToAndGoTo`
 
-- `IGlobalActors`: shared root and global visuals (`Background`, `Floor`, `Header`, `Door`, startup cats; optional `TestBox`).
-- `ISessionState`: selected player count, cooperative push power, applied key configs, quit flag.
-- `IAudioService`: BGM playback, volume, per-frame update.
-- `IVisualThemeService`: background theme apply/restore with bounded index.
-- `SaveManager`: option settings, keyboard mappings, level best times.
+`SceneManager` is the only component that mutates the scene stack.
 
-## Key Runtime Scenarios
+## Shared Services
 
-- `ExitConfirmScene`: `YES` sets quit flag (`RequestQuit`), app exits on frame gate.
-- `OptionMenuScene`: pending values preview live (theme/audio); `OK` commits + saves, `Cancel/ESC` reverts to applied values.
-- `KeyboardConfigScene`: edits per-player bindings, enforces conflict rule for non-1P, syncs to both save file and session state.
-- `LocalPlayScene`: blocks start when selected player count exceeds configured keyboard profiles.
-- `LocalPlayGameScene`: all active players must enter open door with their `up` key before routing to `LevelSelect`.
-- `LevelSelectScene`: enters only mapped slots (`SceneId != None`), displays per-player-count best time and crowns.
+- `IGlobalActors`: shared root and shared visuals, including background, floor, header, door, startup cats, and optional test box.
+- `ISessionState`: selected player count, cooperative push power, applied keyboard configs, and quit flag.
+- `IAudioService`: BGM playback, BGM update, and volume control.
+- `IVisualThemeService`: background theme selection and restore.
+- `SaveManager`: settings, keyboard mappings, and level best-time persistence.
 
-## Level and Overlay Coordination
+## Input and Configuration Flow
 
-- `LevelOneScene`, `LevelTwoScene`, `LevelThreeScene` open `LevelExitScene` overlay on `ESC`.
-- Pause/resume is delegated to levels (`PauseGameplay`/`ResumeGameplay`) and implemented by `PhysicsWorld::FreezeAll()`/`UnfreezeAll()`.
-- Overlay actions:
-  - Return: `PopOverlay`
-  - Retry: `RestartUnderlying`
-  - Level Select / Title: `ClearToAndGoTo`
-- On clear, each implemented level writes best time through `SaveManager::UpdateBestTime(...)` before returning to `LevelSelect`.
+- `KeyboardConfigScene` edits per-player key bindings and writes them to `SaveManager`.
+- `SessionState` keeps the currently applied key configs for gameplay scenes.
+- `LocalPlayScene` checks whether the selected player count has enough configured keyboard profiles.
+- Level scenes read `SessionState::GetSelectedPlayerCount()` and `GetAppliedKeyConfigs()` on entry.
+
+## Local Play Flow
+
+`LocalPlayGameScene` is the free-play cooperative room:
+
+- It spawns selected players.
+- It uses the global door actor.
+- Players must enter the open door with their own `up` key.
+- Completion routes to `LevelSelect`.
+
+## Level Flow
+
+All implemented level scenes follow the same broad lifecycle:
+
+- `OnEnter`: hide or reposition shared actors, create local visuals, clear physics, register bodies, and reset state.
+- `Update`: handle input intent, run the local physics world, update gameplay state, update timer text, and request transitions.
+- `OnExit`: remove local actors, clear physics, restore shared actors as needed.
+
+Level-specific behavior:
+
+- `LevelOneScene`: cooperative box pushing and door clear.
+- `LevelTwoScene`: button activation, moving planks, key pickup, door open, and all-player entry.
+- `LevelThreeScene`: consensus controls, moving lifts, mobs, checkpoint, key pickup, door open, and clear.
+- `LevelFourScene`: shooter spawns `BulletBody`, bullet collisions are reported by the physics model, Jar progresses through three states, then key pickup and door clear become available.
+
+## Overlay Coordination
+
+Implemented levels open `LevelExitScene` on `ESC` through `PushOverlay`.
+
+Overlay actions:
+
+- Return: `PopOverlay`
+- Retry: `RestartUnderlying`
+- Level Select: `ClearToAndGoTo(LevelSelect)`
+- Title: `ClearToAndGoTo(Title)`
+
+Pause and resume are delegated to the underlying scene. Physics-enabled levels freeze and unfreeze their local `PhysicsWorld`.
+
+## Level Completion
+
+When a level clears:
+
+1. The level writes best time through `SaveManager::UpdateBestTime(...)`.
+2. The level requests `ClearToAndGoTo(LevelSelect)`.
+3. `LevelSelectScene` reloads saved level data and updates crown/best-time display.

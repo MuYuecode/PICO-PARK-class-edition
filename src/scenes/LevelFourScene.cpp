@@ -61,7 +61,7 @@ float LevelFourScene::FloorTopY() const {
 void LevelFourScene::SetupSceneVisuals() {
     m_CeilingSprite->SetPosition({
         0.0f,
-        AppUtil::AlignSpriteTop(*m_CeilingSprite, kViewTopY)+2
+        AppUtil::AlignSpriteTop(*m_CeilingSprite, kViewTopY)+1
     });
 
     m_FloorSprite->SetPosition({
@@ -71,7 +71,7 @@ void LevelFourScene::SetupSceneVisuals() {
 
     m_LHighWallSprite->SetPosition({
         AppUtil::AlignSpriteLeft(*m_LHighWallSprite, kViewLeftX)-1,
-        AppUtil::AlignSpriteBelow(*m_LHighWallSprite, *m_CeilingSprite)+3
+        AppUtil::AlignSpriteBelow(*m_LHighWallSprite, *m_CeilingSprite)+2
     });
 
     m_LMidWallSprite->SetPosition({
@@ -81,7 +81,7 @@ void LevelFourScene::SetupSceneVisuals() {
 
     m_RHighWallSprite->SetPosition({
         AppUtil::AlignSpriteRight(*m_RHighWallSprite, kViewRightX)+1,
-        AppUtil::AlignSpriteBelow(*m_RHighWallSprite, *m_CeilingSprite)+3
+        AppUtil::AlignSpriteBelow(*m_RHighWallSprite, *m_CeilingSprite)+2
     });
 
     m_RMidWallSprite->SetPosition({
@@ -130,7 +130,7 @@ void LevelFourScene::SetupStaticBoundaries() {
         m_JarBody = m_World.AddStaticBoundary(
             m_JarSprite->GetPosition(),
             glm::abs(m_JarSprite->GetScaledSize()) * 0.5f,
-            BodyType::STATIC_BOUNDARY);
+            BodyType::JAR);
     }
     if (m_ShooterSprite != nullptr) {
         m_ShooterBody = m_World.AddStaticBoundary(
@@ -221,6 +221,7 @@ void LevelFourScene::SpawnBullet() {
 
     m_BulletBody->SetPosition({spawnX, spawnY});
     m_BulletBody->SetSpeed(CurrentBulletSpeed());
+    (void)m_BulletBody->ConsumeHitType();
     m_BulletBody->SetActive(true);
     m_BulletActive = true;
 
@@ -257,42 +258,23 @@ void LevelFourScene::UpdateBulletSpawner(float dtSec) {
 void LevelFourScene::HandleBulletHits() {
     if (!m_BulletActive || m_BulletBody == nullptr || !m_BulletBody->IsActive()) return;
 
-    const glm::vec2 bulletPos = m_BulletBody->GetPosition();
-
-    for (const auto& pb : m_Players) {
-        if (pb.cat == nullptr || !pb.cat->IsActive()) continue;
-        if (AabbOverlap(bulletPos, kBulletHalf, pb.cat->GetPosition(), pb.cat->GetHalfSize())) {
+    const BulletBody::HitType hitType = m_BulletBody->ConsumeHitType();
+    switch (hitType) {
+        case BulletBody::HitType::None:
+            break;
+        case BulletBody::HitType::Jar:
+            if (m_JarState != JarState::Gone) {
+                AdvanceJarState();
+            }
             DeactivateBullet();
             return;
-        }
-    }
-
-    if (m_JarState != JarState::Gone) {
-        const glm::vec2 jarHalf = glm::abs(m_JarSprite->GetScaledSize()) * 0.5f;
-        if (AabbOverlap(bulletPos, kBulletHalf, m_JarSprite->GetPosition(), jarHalf)) {
-            AdvanceJarState();
+        case BulletBody::HitType::Character:
+        case BulletBody::HitType::Solid:
             DeactivateBullet();
             return;
-        }
     }
 
-    const auto bulletHitSprite = [&](const std::shared_ptr<Character>& sprite) {
-        if (sprite == nullptr) return false;
-        const glm::vec2 half = glm::abs(sprite->GetScaledSize()) * 0.5f;
-        return AabbOverlap(bulletPos, kBulletHalf, sprite->GetPosition(), half);
-    };
-
-    if (bulletHitSprite(m_CeilingSprite) ||
-        bulletHitSprite(m_FloorSprite) ||
-        bulletHitSprite(m_LHighWallSprite) ||
-        bulletHitSprite(m_LMidWallSprite) ||
-        bulletHitSprite(m_RHighWallSprite) ||
-        bulletHitSprite(m_RMidWallSprite)) {
-        DeactivateBullet();
-        return;
-    }
-
-    if (bulletPos.x + kBulletHalf.x < kViewLeftX) {
+    if (m_BulletBody->GetPosition().x + kBulletHalf.x < kViewLeftX) {
         DeactivateBullet();
     }
 }

@@ -70,7 +70,7 @@ private:
 
     static constexpr glm::vec2 kKeyHalf = {20.0f, 26.0f};
     static constexpr glm::vec2 kBulletHalf = {9.0f, 9.0f};
-    static constexpr float kBulletBaseSpeed = 240.0f;
+    static constexpr float kBulletBaseSpeed = 300.0f;
     static constexpr float kBulletRespawnDelaySec = 0.8f;
     static constexpr float kInitialBulletDelaySec = 1.0f;
 

@@ -31,7 +31,7 @@ bool BulletBody::IsSolid() const {
 }
 
 bool BulletBody::IsKinematic() const {
-    return true;
+    return false;
 }
 
 int BulletBody::GetMoveDir() const {
@@ -40,6 +40,12 @@ int BulletBody::GetMoveDir() const {
 
 void BulletBody::SetSpeed(float speed) {
     m_Speed = std::max(0.0f, speed);
+}
+
+BulletBody::HitType BulletBody::ConsumeHitType() {
+    const HitType hitType = m_HitType;
+    m_HitType = HitType::None;
+    return hitType;
 }
 
 void BulletBody::PhysicsUpdate() {
@@ -55,6 +61,29 @@ void BulletBody::ApplyResolvedDelta(const glm::vec2& delta) {
     m_Pos += delta;
 }
 
-void BulletBody::OnCollision(const CollisionInfo& /*info*/) {}
+void BulletBody::OnCollision(const CollisionInfo& info) {
+    if (info.other == nullptr) {
+        if (m_HitType == HitType::None) {
+            m_HitType = HitType::Solid;
+        }
+        return;
+    }
+
+    switch (info.other->GetPhysicsTraits().type) {
+        case BodyType::CHARACTER:
+            m_HitType = HitType::Character;
+            break;
+        case BodyType::JAR:
+            if (m_HitType != HitType::Character) {
+                m_HitType = HitType::Jar;
+            }
+            break;
+        default:
+            if (m_HitType == HitType::None) {
+                m_HitType = HitType::Solid;
+            }
+            break;
+    }
+}
 
 void BulletBody::PostUpdate() {}

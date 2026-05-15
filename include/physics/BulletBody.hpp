@@ -5,6 +5,13 @@
 
 class BulletBody final : public IPhysicsBody {
 public:
+    enum class HitType {
+        None,
+        Solid,
+        Jar,
+        Character,
+    };
+
     BulletBody(const glm::vec2& pos, const glm::vec2& half);
 
     [[nodiscard]] const PhysicsBodyTraits& GetPhysicsTraits() const override;
@@ -17,6 +24,7 @@ public:
     [[nodiscard]] int GetMoveDir() const override;
 
     void SetSpeed(float speed);
+    [[nodiscard]] HitType ConsumeHitType();
 
     void PhysicsUpdate() override;
     [[nodiscard]] glm::vec2 GetDesiredDelta() const override;
@@ -28,6 +36,7 @@ private:
     glm::vec2 m_Pos;
     glm::vec2 m_Half;
     glm::vec2 m_Desired = {0.0f, 0.0f};
+    HitType m_HitType = HitType::None;
     float m_Speed = 0.0f;
 };
 

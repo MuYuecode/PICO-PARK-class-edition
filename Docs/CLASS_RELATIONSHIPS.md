@@ -1,68 +1,97 @@
 # Class Relationships
 
-## Inheritance Map
+## Game Object Hierarchy
 
 ```text
 Util::GameObject
-├─ Character
-│  ├─ UITriangleButton
-│  └─ PushableBox            (+ IPhysicsBody, + IPushable)
-├─ AnimatedCharacter
-│  └─ PlayerCat              (+ IPhysicsBody)
-└─ GameText
+  Character
+    PushableBox (+ IPhysicsBody, + IPushable)
+    UITriangleButton
+  AnimatedCharacter
+    PlayerCat (+ IPhysicsBody)
+  GameText
 ```
+
+Notes:
+
+- `Character` is the base visual actor for image-backed gameplay objects.
+- `AnimatedCharacter` is a separate animated `GameObject` base, not a `Character` subclass.
+- `PlayerCat` is both an animated actor and a physics body.
+- `PushableBox` is both a renderable actor and the only `IPushable` implementation.
+- `GameText` is text-backed UI/gameplay display.
+
+## Scene Hierarchy
 
 ```text
 Scene
-├─ TitleScene
-├─ MenuScene
-├─ ExitConfirmScene
-├─ OptionMenuScene
-├─ KeyboardConfigScene
-├─ LocalPlayScene
-├─ LocalPlayGameScene
-├─ LevelSelectScene
-├─ LevelExitScene
-├─ LevelOneScene
-├─ LevelTwoScene
-└─ LevelThreeScene
+  TitleScene
+  MenuScene
+  ExitConfirmScene
+  OptionMenuScene
+  KeyboardConfigScene
+  LocalPlayScene
+  LocalPlayGameScene
+  LevelSelectScene
+  LevelExitScene
+  LevelOneScene
+  LevelTwoScene
+  LevelThreeScene
+  LevelFourScene
 ```
+
+Every scene implements at least `OnEnter()`, `OnExit()`, and `Update()`. Gameplay scenes that can be paused by `LevelExitScene` also override `PauseGameplay()` and `ResumeGameplay()`.
 
 ## Physics Body Implementers
 
 ```text
 IPhysicsBody
-├─ PlayerCat
-├─ PushableBox
-├─ StaticBody
-├─ LevelTwoScene::MovingPlankBody
-├─ LevelThreeScene::MovingLiftBody
-├─ LevelThreeScene::PatrolMobBody
-└─ LevelThreeScene::PipeMobBody
-
-IPushable
-└─ PushableBox
+  PlayerCat
+  PushableBox
+  StaticBody
+  BulletBody
+  LevelTwoScene::MovingPlankBody
+  LevelThreeScene::MovingLiftBody
+  LevelThreeScene::PatrolMobBody
+  LevelThreeScene::PipeMobBody
 ```
 
-## Physics Interface Composition
+`IPhysicsBody` is composed from smaller interfaces:
 
-- `IPhysicsBody` composes: `IPhysicsTransform`, `IPhysicsMaterial`, `IPhysicsMotion`, `IPhysicsCollisionListener`, `IPhysicsPushReactive`, `IPhysicsLifecycle`.
-- `PhysicsBodyTraits` carries body category (`BodyType`) and behavior flags.
+- `IPhysicsTransform`
+- `IPhysicsMaterial`
+- `IPhysicsMotion`
+- `IPhysicsCollisionListener`
+- `IPhysicsPushReactive`
+- `IPhysicsLifecycle`
 
-## Interface to Concrete Wiring
+`PhysicsBodyTraits` gives each body a `BodyType` plus behavior flags. The current `BodyType` values are:
+
+- `CHARACTER`
+- `PUSHABLE_BOX`
+- `PATROL_ENEMY`
+- `MOVING_PLATFORM`
+- `CONDITIONAL_PLATFORM`
+- `ROPE_ENDPOINT`
+- `BULLET`
+- `JAR`
+- `STATIC_BOUNDARY`
+
+## Services
 
 ```text
-IAudioService       -> AudioService
-IVisualThemeService -> VisualThemeService
-ISessionState       -> SessionState
-IGlobalActors       -> GlobalActors
+IAudioService          -> AudioService
+IVisualThemeService    -> VisualThemeService
+ISessionState          -> SessionState
+IGlobalActors          -> GlobalActors
 ```
 
-- Scenes depend on interfaces via `SceneServices`; concrete objects are wired only in `App::Start()`.
+Scenes receive these through `SceneServices`.
 
-## Ownership and Runtime Links
+## Runtime Ownership
 
-- `SceneManager` owns scene instances and stack transitions.
-- `Scene` instances do not call each other directly; routing is only through `SceneOp` + `SceneId`.
-- Each level scene owns its own `PhysicsWorld` and local dynamic entities.
-- `SaveManager` is static/centralized and used by options, keyboard config, and level clear-time recording.
+- `SceneManager` owns all scene objects and their stack state.
+- Each physics-enabled scene owns one `PhysicsWorld`.
+- `PhysicsWorld` owns `StaticBody` instances created by `AddStaticBoundary()`.
+- Dynamic physics bodies are owned by scenes or gameplay objects and registered into the local `PhysicsWorld`.
+- Shared actors such as background, floor, header, door, and startup cats are owned by `GlobalActors`.
+- `SaveManager` is static and centralizes JSON persistence.
