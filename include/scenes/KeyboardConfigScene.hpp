@@ -28,13 +28,6 @@ public:
 
     static constexpr int MAX_PLAYERS = 8;
 
-    [[nodiscard]] PlayerKeyConfig GetAppliedConfig(int playerIdx) const {
-        if (playerIdx < 0 || playerIdx >= MAX_PLAYERS) {
-            return PlayerKeyConfig{};
-        }
-        return m_Applied[playerIdx];
-    }
-
 private:
     std::shared_ptr<Character> m_ExitGameButton;
     std::shared_ptr<Character> m_Frame;

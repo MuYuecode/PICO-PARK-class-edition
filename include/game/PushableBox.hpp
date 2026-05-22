@@ -10,11 +10,10 @@
 
 #include "game/Character.hpp"
 #include "systems/IPhysicsBody.hpp"
-#include "game/IPushable.hpp"
 #include "game/GameText.hpp"
 #include "systems/IPushQueryService.hpp"
 
-class PushableBox : public Character, public IPhysicsBody, public IPushable {
+class PushableBox : public Character, public IPhysicsBody {
 public:
     static constexpr float kGravity   = 0.5f;
     static constexpr float kPushSpeed = 2.0f;
@@ -24,12 +23,10 @@ public:
     void SetPushQuery(const IPushQueryService* query) { m_PushQuery = query; }
     void SetRequiredPushers(int requiredPushers);
 
-    [[nodiscard]] int GetRequiredPushers() const override { return m_RequiredPushers; }
-
     [[nodiscard]] std::shared_ptr<GameText> GetTextObject() const { return m_CountText; }
 
     [[nodiscard]] const PhysicsBodyTraits& GetPhysicsTraits() const override {
-        static const PhysicsBodyTraits kTraits{BodyType::PUSHABLE_BOX, false, true};
+        static const PhysicsBodyTraits kTraits{BodyType::PUSHABLE_BOX};
         return kTraits;
     }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }

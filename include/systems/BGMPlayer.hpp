@@ -27,8 +27,6 @@ private:
 
     std::vector<std::unique_ptr<Util::BGM>> m_BGMs ;
     std::size_t m_CurrentIndex = 0;
-
-    static inline BGMPlayer* s_Instance = nullptr;
 };
 
 

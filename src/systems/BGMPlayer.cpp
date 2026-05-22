@@ -7,8 +7,6 @@
 #include "Util/Logger.hpp"
 
 BGMPlayer::BGMPlayer() {
-    s_Instance = this;
-
     m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/ppc.mp3"));
     m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/pp1.mp3"));
     m_BGMs.emplace_back(std::make_unique<Util::BGM>(GA_RESOURCE_DIR "/BGM/pp2.mp3"));

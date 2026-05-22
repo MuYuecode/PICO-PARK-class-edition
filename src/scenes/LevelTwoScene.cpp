@@ -20,7 +20,7 @@ public:
         : m_Pos(pos), m_Half(glm::abs(half)), m_Speed(std::max(0.0f, speed)) {}
 
     [[nodiscard]] const PhysicsBodyTraits& GetPhysicsTraits() const override {
-        static const PhysicsBodyTraits kTraits{BodyType::MOVING_PLATFORM, false, false};
+        static const PhysicsBodyTraits kTraits{BodyType::MOVING_PLATFORM};
         return kTraits;
     }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }

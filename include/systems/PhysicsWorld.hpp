@@ -9,14 +9,6 @@
 #include "systems/IPushQueryService.hpp"
 #include "systems/PhysicsSnapshot.hpp"
 
-struct RopeConstraint {
-    IPhysicsBody* bodyA   = nullptr;
-    IPhysicsBody* bodyB   = nullptr;
-    float         maxLen  = 200.f;
-    float         friction = 0.5f;
-    // TODO implement force resolution in StepRopes().
-};
-
 // ------------------------------------------------------------
 // PhysicsWorld
 // Central coordinator for the two-phase physics pipeline:
@@ -64,7 +56,7 @@ public:
     // Remove a specific body (matched by pointer identity).
     void Unregister(const IPhysicsBody* body);
 
-    // Unregister all bodies and remove all rope constraints.
+    // Unregister all bodies.
     // Owned StaticBodies created via AddStaticBoundary are also cleared.
     void Clear();
 
@@ -72,12 +64,6 @@ public:
     // Returns a raw non-owning pointer for identification if needed.
     StaticBody* AddStaticBoundary(glm::vec2 center, glm::vec2 halfSize,
                                    BodyType type = BodyType::STATIC_BOUNDARY);
-
-    // Rope constraints (structural wiring only; step not yet implemented).
-    void AddRope(IPhysicsBody* a, IPhysicsBody* b,
-                 float maxLen = 200.f, float friction = 0.5f);
-    void RemoveRope(IPhysicsBody* a, IPhysicsBody* b);
-    std::vector<RopeConstraint*> GetRopesOf(const IPhysicsBody* body);
 
     // Run one complete physics step (Phase 1 -> resolve -> apply -> callbacks).
     void Update();
@@ -105,7 +91,6 @@ private:
 
     std::vector<std::weak_ptr<IPhysicsBody>> m_Bodies;
     std::vector<std::shared_ptr<StaticBody>> m_OwnedStatics; // owned by world
-    std::vector<RopeConstraint>              m_Ropes;
 
     int m_FrameCount = 0;
     static constexpr int kPurgeInterval = 60;

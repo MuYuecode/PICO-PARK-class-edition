@@ -29,7 +29,6 @@ private:
     void SetupStaticBoundaries();
     void SpawnPlayers(int count);
     void ApplyInitialFormation();
-    void UpdateCooperativePower() const;
     void UpdateDoorCountText() const;
 
     std::shared_ptr<GameText> m_DoorCountText;

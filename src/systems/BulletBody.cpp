@@ -10,7 +10,7 @@ BulletBody::BulletBody(const glm::vec2& pos, const glm::vec2& half)
 }
 
 const PhysicsBodyTraits& BulletBody::GetPhysicsTraits() const {
-    static const PhysicsBodyTraits kTraits{BodyType::BULLET, false, false};
+    static const PhysicsBodyTraits kTraits{BodyType::BULLET};
     return kTraits;
 }
 

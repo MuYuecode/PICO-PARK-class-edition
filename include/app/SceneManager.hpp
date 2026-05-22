@@ -22,7 +22,6 @@ public:
     void GoTo(SceneId id);
     void UpdateCurrent();
 
-    [[nodiscard]] SceneId GetCurrentId() const;
     [[nodiscard]] Scene* GetCurrentScene() const;
 
 private:

@@ -10,9 +10,6 @@ public:
     int GetSelectedPlayerCount() const override { return m_SelectedPlayerCount; }
     void SetSelectedPlayerCount(int count) override { m_SelectedPlayerCount = count; }
 
-    int GetCooperativePushPower() const override { return m_CooperativePushPower; }
-    void SetCooperativePushPower(int power) override { m_CooperativePushPower = power; }
-
     const std::array<PlayerKeyConfig, 8>& GetAppliedKeyConfigs() const override {
         return m_AppliedKeyConfigs;
     }
@@ -37,7 +34,6 @@ public:
 
 private:
     int m_SelectedPlayerCount = 2;
-    int m_CooperativePushPower = 1;
     std::array<PlayerKeyConfig, 8> m_AppliedKeyConfigs{};
     bool m_ShouldQuit = false;
 };

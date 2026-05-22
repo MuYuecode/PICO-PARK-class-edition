@@ -62,7 +62,7 @@ public:
     void SetScale(const glm::vec2& scale) { m_Transform.scale = scale; }
 
     [[nodiscard]] const PhysicsBodyTraits& GetPhysicsTraits() const override {
-        static const PhysicsBodyTraits kTraits{BodyType::CHARACTER, true, true};
+        static const PhysicsBodyTraits kTraits{BodyType::CHARACTER};
         return kTraits;
     }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Transform.translation; }

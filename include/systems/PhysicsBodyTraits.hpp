@@ -6,8 +6,6 @@ enum class BodyType {
     PUSHABLE_BOX,
     PATROL_ENEMY,
     MOVING_PLATFORM,
-    CONDITIONAL_PLATFORM,
-    ROPE_ENDPOINT,
     BULLET,
     JAR,
     STATIC_BOUNDARY,
@@ -15,8 +13,6 @@ enum class BodyType {
 
 struct PhysicsBodyTraits {
     BodyType type;
-    bool supportsPush;
-    bool emitsCollisionCallbacks;
 };
 
 #endif // PHYSICS_BODY_TRAITS_HPP

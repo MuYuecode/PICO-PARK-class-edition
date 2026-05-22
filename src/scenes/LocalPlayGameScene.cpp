@@ -37,7 +37,6 @@ void LocalPlayGameScene::OnEnter() {
         LocalPlayScene::MAX_PLAYERS);
 
     m_Session.SetSelectedPlayerCount(playerCount);
-    m_Session.SetCooperativePushPower(1);
 
     for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) {
@@ -152,7 +151,6 @@ void LocalPlayGameScene::Update() {
     }
 
     m_World.Update();
-    UpdateCooperativePower();
 }
 
 void LocalPlayGameScene::SpawnPlayers(int count) {
@@ -219,44 +217,6 @@ void LocalPlayGameScene::ApplyInitialFormation() {
 
         pb.cat->SetFacingByDirection(isLeft ? 1 : -1);
     }
-}
-
-void LocalPlayGameScene::UpdateCooperativePower() const {
-    int bestGroup = 1;
-
-    for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
-        const auto& pi = m_Players[i];
-        if (pi.entered || pi.cat == nullptr) continue;
-        if (pi.cat->GetMoveDir() == 0) continue;
-
-        int group = 1;
-
-        for (int j = 0; j < static_cast<int>(m_Players.size()); ++j) {
-            if (i == j) continue;
-            const auto& pj = m_Players[j];
-            if (pj.entered || pj.cat == nullptr) continue;
-
-            const bool sameDir = (pi.cat->GetMoveDir() == pj.cat->GetMoveDir());
-
-            const glm::vec2 posI = pi.cat->GetPosition();
-            const glm::vec2 posJ = pj.cat->GetPosition();
-
-            const float halfWI = std::max(16.f,
-                                          std::abs(pi.cat->GetScaledSize().x) * 0.5f);
-            const float halfWJ = std::max(16.f,
-                                          std::abs(pj.cat->GetScaledSize().x) * 0.5f);
-
-            const bool touching =
-                std::abs(posI.x - posJ.x) <= (halfWI + halfWJ) * 1.02f &&
-                std::abs(posI.y - posJ.y) <= 40.f;
-
-            if (sameDir && touching) ++group;
-        }
-
-        bestGroup = std::max(bestGroup, group);
-    }
-
-    m_Session.SetCooperativePushPower(bestGroup);
 }
 
 void LocalPlayGameScene::UpdateDoorCountText() const {

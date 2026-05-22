@@ -24,13 +24,6 @@ Scene* SceneManager::GetCurrentScene() const {
     return ResolveScene(m_StackIds.back());
 }
 
-SceneId SceneManager::GetCurrentId() const {
-    if (m_StackIds.empty()) {
-        return SceneId::None;
-    }
-    return m_StackIds.back();
-}
-
 void SceneManager::GoTo(SceneId id) {
     Scene* target = ResolveScene(id);
     if (target == nullptr) {

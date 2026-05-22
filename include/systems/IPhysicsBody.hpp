@@ -32,9 +32,6 @@ public:
 
     [[nodiscard]] virtual const PhysicsBodyTraits& GetPhysicsTraits() const = 0;
 
-    [[deprecated("Use GetPhysicsTraits().type")]]
-    [[nodiscard]] virtual BodyType GetBodyType() const { return GetPhysicsTraits().type; }
-
     virtual void NotifyPush() override {}
 
     [[nodiscard]] bool IsFrozen() const override { return m_Frozen; }

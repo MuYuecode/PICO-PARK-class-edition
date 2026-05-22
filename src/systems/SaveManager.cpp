@@ -7,6 +7,7 @@
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
+#include <cmath>
 #include <nlohmann/json.hpp>
 #include "Util/Logger.hpp"
 
@@ -88,13 +89,22 @@ bool SaveManager::LoadOptionSettings(OptionSettingsData& outOpts) {
     if (j.empty()) return false;
 
     bool any = false;
-    auto tryLoad = [&](const char* key, auto& dst) {
-        if (j.contains(key)) { dst = j[key].get<decay_t<decltype(dst)>>(); any = true; }
+    auto tryLoadInt = [&](const char* key, int& dst) {
+        if (j.contains(key) && j[key].is_number_integer()) {
+            dst = j[key].get<int>();
+            any = true;
+        }
     };
-    tryLoad("bgColorIndex", outOpts.bgColorIndex);
-    tryLoad("bgmVolume",    outOpts.bgmVolume);
-    tryLoad("seVolume",     outOpts.seVolume);
-    tryLoad("dispNumber",   outOpts.dispNumber);
+    auto tryLoadBool = [&](const char* key, bool& dst) {
+        if (j.contains(key) && j[key].is_boolean()) {
+            dst = j[key].get<bool>();
+            any = true;
+        }
+    };
+    tryLoadInt("bgColorIndex", outOpts.bgColorIndex);
+    tryLoadInt("bgmVolume",    outOpts.bgmVolume);
+    tryLoadInt("seVolume",     outOpts.seVolume);
+    tryLoadBool("dispNumber",  outOpts.dispNumber);
     return any;
 }
 
@@ -140,9 +150,14 @@ bool SaveManager::LoadKeyConfigs(array<KeyConfigData, MAX_PLAYERS>& outKeys) {
     bool  any = false;
     for (int i = 0; i < MAX_PLAYERS && i < static_cast<int>(arr.size()); ++i) {
         auto& kj = arr[i];
+        if (!kj.is_object()) continue;
+
         auto& k  = outKeys[i];
         auto tryLoad = [&](const char* key, int& dst) {
-            if (kj.contains(key)) { dst = kj[key].get<int>(); any = true; }
+            if (kj.contains(key) && kj[key].is_number_integer()) {
+                dst = kj[key].get<int>();
+                any = true;
+            }
         };
         tryLoad("up",      k.up);
         tryLoad("down",    k.down);

@@ -12,9 +12,6 @@ public:
     virtual int GetSelectedPlayerCount() const = 0;
     virtual void SetSelectedPlayerCount(int count) = 0;
 
-    virtual int GetCooperativePushPower() const = 0;
-    virtual void SetCooperativePushPower(int power) = 0;
-
     virtual const std::array<PlayerKeyConfig, 8>& GetAppliedKeyConfigs() const = 0;
     virtual std::array<PlayerKeyConfig, 8>& MutableAppliedKeyConfigs() = 0;
     virtual int GetConfiguredPlayerCount() const = 0;

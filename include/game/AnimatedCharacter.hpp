@@ -16,11 +16,7 @@ public:
     [[nodiscard]] glm::vec2 GetPosition() const;
     void SetPosition(const glm::vec2& position);
 
-    [[nodiscard]] glm::vec2 GetScale() const;
     void SetScale(const glm::vec2& scale);
-
-    [[nodiscard]] float GetScaleX() const;
-    void SetScaleX(float scaleX);
 
     void SetFacingByDirection(int dir);
 

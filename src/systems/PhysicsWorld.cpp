@@ -23,7 +23,6 @@ void PhysicsWorld::Unregister(const IPhysicsBody* body) {
 void PhysicsWorld::Clear() {
     m_Bodies.clear();
     m_OwnedStatics.clear();
-    m_Ropes.clear();
 }
 
 StaticBody* PhysicsWorld::AddStaticBoundary(glm::vec2 center, glm::vec2 halfSize,
@@ -33,29 +32,6 @@ StaticBody* PhysicsWorld::AddStaticBoundary(glm::vec2 center, glm::vec2 halfSize
     m_OwnedStatics.push_back(sb);
     Register(sb);
     return raw;
-}
-
-void PhysicsWorld::AddRope(IPhysicsBody* a, IPhysicsBody* b,
-                            float maxLen, float friction) {
-    m_Ropes.push_back({a, b, maxLen, friction});
-}
-
-void PhysicsWorld::RemoveRope(IPhysicsBody* a, IPhysicsBody* b) {
-    m_Ropes.erase(
-        std::remove_if(m_Ropes.begin(), m_Ropes.end(),
-            [a, b](const RopeConstraint& r) {
-                return (r.bodyA == a && r.bodyB == b) ||
-                       (r.bodyA == b && r.bodyB == a);
-            }),
-        m_Ropes.end());
-}
-
-std::vector<RopeConstraint*> PhysicsWorld::GetRopesOf(const IPhysicsBody* body) {
-    std::vector<RopeConstraint*> result;
-    for (auto& r : m_Ropes) {
-        if (r.bodyA == body || r.bodyB == body) result.push_back(&r);
-    }
-    return result;
 }
 
 void PhysicsWorld::FreezeAll() const {

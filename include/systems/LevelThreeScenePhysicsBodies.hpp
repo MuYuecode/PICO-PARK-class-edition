@@ -17,7 +17,7 @@ public:
           m_Speed(std::max(1.0f, speed)) {}
 
     [[nodiscard]] const PhysicsBodyTraits& GetPhysicsTraits() const override {
-        static const PhysicsBodyTraits kTraits{BodyType::MOVING_PLATFORM, false, false};
+        static const PhysicsBodyTraits kTraits{BodyType::MOVING_PLATFORM};
         return kTraits;
     }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }
@@ -82,7 +82,7 @@ public:
           m_Speed(std::max(1.0f, speed)) {}
 
     [[nodiscard]] const PhysicsBodyTraits& GetPhysicsTraits() const override {
-        static const PhysicsBodyTraits kTraits{BodyType::PATROL_ENEMY, false, false};
+        static const PhysicsBodyTraits kTraits{BodyType::PATROL_ENEMY};
         return kTraits;
     }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }
@@ -150,7 +150,7 @@ public:
     }
 
     [[nodiscard]] const PhysicsBodyTraits& GetPhysicsTraits() const override {
-        static const PhysicsBodyTraits kTraits{BodyType::PATROL_ENEMY, false, false};
+        static const PhysicsBodyTraits kTraits{BodyType::PATROL_ENEMY};
         return kTraits;
     }
     [[nodiscard]] glm::vec2 GetPosition() const override { return m_Pos; }

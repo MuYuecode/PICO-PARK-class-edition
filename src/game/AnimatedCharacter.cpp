@@ -14,20 +14,8 @@ void AnimatedCharacter::SetPosition(const glm::vec2& position) {
     m_Transform.translation = position;
 }
 
-glm::vec2 AnimatedCharacter::GetScale() const {
-    return m_Transform.scale;
-}
-
 void AnimatedCharacter::SetScale(const glm::vec2& scale) {
     m_Transform.scale = scale;
-}
-
-float AnimatedCharacter::GetScaleX() const {
-    return m_Transform.scale.x;
-}
-
-void AnimatedCharacter::SetScaleX(float scaleX) {
-    m_Transform.scale.x = scaleX;
 }
 
 void AnimatedCharacter::SetFacingByDirection(int dir) {
