@@ -138,21 +138,6 @@ void LevelThreeScene::BuildConsensusBindings(int playerCount) {
     const auto& allConfigs = m_Session.GetAppliedKeyConfigs();
     for (int i = 0; i < playerCount; ++i) {
         PlayerKeyConfig cfg = allConfigs[static_cast<size_t>(i)];
-        if (i == 0) {
-            const auto& d = KeyboardConfigScene::k_Default1P;
-            if (cfg.left  == k::UNKNOWN) cfg.left = d.left;
-            if (cfg.right == k::UNKNOWN) cfg.right = d.right;
-            if (cfg.jump  == k::UNKNOWN) cfg.jump = d.jump;
-            if (cfg.up    == k::UNKNOWN) cfg.up = d.up;
-            if (cfg.down  == k::UNKNOWN) cfg.down = d.down;
-        } else if (i == 1) {
-            const auto& d = KeyboardConfigScene::k_Default2P;
-            if (cfg.left  == k::UNKNOWN) cfg.left = d.left;
-            if (cfg.right == k::UNKNOWN) cfg.right = d.right;
-            if (cfg.jump  == k::UNKNOWN) cfg.jump = d.jump;
-            if (cfg.up    == k::UNKNOWN) cfg.up = d.up;
-            if (cfg.down  == k::UNKNOWN) cfg.down = d.down;
-        }
         m_ConsensusBindings.push_back(cfg);
     }
 }

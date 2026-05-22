@@ -6,8 +6,6 @@
 //   settings.json  — OptionMenuScene 設定 + KeyboardConfigScene 按鍵綁定
 //   save_data.json — 各關卡通關狀態與最佳時間紀錄
 //
-// 使用方式(各場景只需 #include 此標頭)：
-//
 //   // 儲存 Option 設定(在 OptionMenuScene OK 時呼叫)
 //   SaveManager::SaveOptionSettings(opts);
 //
