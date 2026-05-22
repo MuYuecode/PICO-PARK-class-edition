@@ -4,9 +4,9 @@
 #include <array>
 #include <memory>
 
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
-#include "core/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
+#include "app/Scene.hpp"
 
 class LevelExitScene : public Scene {
 public:

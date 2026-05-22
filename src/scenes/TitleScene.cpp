@@ -1,6 +1,6 @@
 #include "scenes/TitleScene.hpp"
 
-#include "gameplay/BoundaryFactory.hpp"
+#include "game/BoundaryFactory.hpp"
 
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"

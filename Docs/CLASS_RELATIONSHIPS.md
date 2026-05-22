@@ -1,6 +1,6 @@
-# Class Relationships
+# 類別關係
 
-## Game Object Hierarchy
+## 遊戲物件階層
 
 ```text
 Util::GameObject
@@ -12,15 +12,17 @@ Util::GameObject
   GameText
 ```
 
-Notes:
+說明：
 
-- `Character` is the base visual actor for image-backed gameplay objects.
-- `AnimatedCharacter` is a separate animated `GameObject` base, not a `Character` subclass.
-- `PlayerCat` is both an animated actor and a physics body.
-- `PushableBox` is both a renderable actor and the only `IPushable` implementation.
-- `GameText` is text-backed UI/gameplay display.
+- `Character` 是圖片型遊戲物件的基底。
+- `AnimatedCharacter` 是動畫型 `GameObject` 基底，不繼承 `Character`。
+- `PlayerCat` 同時是動畫角色與物理物件。
+- `PushableBox` 同時是可渲染物件、`IPhysicsBody` 與目前唯一的 `IPushable` 實作。
+- `GameText` 是文字顯示物件，用於 UI 與遊戲資訊。
 
-## Scene Hierarchy
+相關檔案集中在 `include/game/` 與 `src/game/`。
+
+## 場景階層
 
 ```text
 Scene
@@ -39,9 +41,11 @@ Scene
   LevelFourScene
 ```
 
-Every scene implements at least `OnEnter()`, `OnExit()`, and `Update()`. Gameplay scenes that can be paused by `LevelExitScene` also override `PauseGameplay()` and `ResumeGameplay()`.
+每個場景至少實作 `OnEnter()`、`OnExit()` 與 `Update()`。會被 `LevelExitScene` 暫停的遊戲場景，也會覆寫 `PauseGameplay()` 與 `ResumeGameplay()`。
 
-## Physics Body Implementers
+場景基底與場景管理器放在 `include/app/`，實際場景放在 `include/scenes/` 與 `src/scenes/`。
+
+## 物理物件實作
 
 ```text
 IPhysicsBody
@@ -55,7 +59,7 @@ IPhysicsBody
   LevelThreeScene::PipeMobBody
 ```
 
-`IPhysicsBody` is composed from smaller interfaces:
+`IPhysicsBody` 由數個較小的介面組成：
 
 - `IPhysicsTransform`
 - `IPhysicsMaterial`
@@ -64,7 +68,7 @@ IPhysicsBody
 - `IPhysicsPushReactive`
 - `IPhysicsLifecycle`
 
-`PhysicsBodyTraits` gives each body a `BodyType` plus behavior flags. The current `BodyType` values are:
+`PhysicsBodyTraits` 提供每個物理物件的 `BodyType` 與行為旗標。目前 `BodyType` 包含：
 
 - `CHARACTER`
 - `PUSHABLE_BOX`
@@ -76,22 +80,24 @@ IPhysicsBody
 - `JAR`
 - `STATIC_BOUNDARY`
 
-## Services
+物理相關檔案集中在 `include/systems/` 與 `src/systems/`。
+
+## 系統服務
 
 ```text
-IAudioService          -> AudioService
-IVisualThemeService    -> VisualThemeService
-ISessionState          -> SessionState
-IGlobalActors          -> GlobalActors
+IAudioService        -> AudioService
+IVisualThemeService  -> VisualThemeService
+ISessionState        -> SessionState
+IGlobalActors        -> GlobalActors
 ```
 
-Scenes receive these through `SceneServices`.
+場景透過 `SceneServices` 取得這些服務。這樣場景只需要知道抽象介面，不需要直接建立或擁有長生命週期系統。
 
-## Runtime Ownership
+## 執行期擁有關係
 
-- `SceneManager` owns all scene objects and their stack state.
-- Each physics-enabled scene owns one `PhysicsWorld`.
-- `PhysicsWorld` owns `StaticBody` instances created by `AddStaticBoundary()`.
-- Dynamic physics bodies are owned by scenes or gameplay objects and registered into the local `PhysicsWorld`.
-- Shared actors such as background, floor, header, door, and startup cats are owned by `GlobalActors`.
-- `SaveManager` is static and centralizes JSON persistence.
+- `SceneManager` 擁有所有場景物件與場景堆疊狀態。
+- 每個使用物理的場景擁有一個 `PhysicsWorld`。
+- `PhysicsWorld` 擁有透過 `AddStaticBoundary()` 建立的 `StaticBody`。
+- 動態物理物件由場景或遊戲物件擁有，再註冊到該場景的 `PhysicsWorld`。
+- 背景、地板、標題列、門與起始貓等共用物件由 `GlobalActors` 擁有。
+- `SaveManager` 是靜態工具，集中處理 JSON 持久化。

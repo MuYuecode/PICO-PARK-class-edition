@@ -4,13 +4,13 @@
 #include <memory>
 #include <vector>
 
-#include "core/Scene.hpp"
-#include "gameplay/Character.hpp"
-#include "gameplay/PlayerCat.hpp"
-#include "gameplay/PlayerKeyConfig.hpp"
-#include "physics/BulletBody.hpp"
-#include "physics/PhysicsWorld.hpp"
-#include "ui/GameText.hpp"
+#include "app/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/PlayerCat.hpp"
+#include "game/PlayerKeyConfig.hpp"
+#include "systems/BulletBody.hpp"
+#include "systems/PhysicsWorld.hpp"
+#include "game/GameText.hpp"
 
 class StaticBody;
 

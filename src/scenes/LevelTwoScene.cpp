@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <cmath>
 
-#include "gameplay/CatAssets.hpp"
+#include "game/CatAssets.hpp"
 #include "scenes/KeyboardConfigScene.hpp"
-#include "services/SaveManager.hpp"
+#include "systems/SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"

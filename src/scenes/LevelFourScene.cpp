@@ -4,10 +4,10 @@
 #include <cmath>
 
 #include "app/AppUtil.hpp"
-#include "gameplay/CatAssets.hpp"
-#include "physics/BulletBody.hpp"
+#include "game/CatAssets.hpp"
+#include "systems/BulletBody.hpp"
 #include "scenes/KeyboardConfigScene.hpp"
-#include "services/SaveManager.hpp"
+#include "systems/SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"

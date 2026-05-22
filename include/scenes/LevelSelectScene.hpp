@@ -8,10 +8,10 @@
 #include <array>
 #include <memory>
 
-#include "core/Scene.hpp"
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
-#include "services/SaveManager.hpp"
+#include "app/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
+#include "systems/SaveManager.hpp"
 
 class LevelSelectScene : public Scene {
 public:

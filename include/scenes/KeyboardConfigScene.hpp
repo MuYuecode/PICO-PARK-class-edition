@@ -7,11 +7,11 @@
 
 #include <array>
 #include <vector>
-#include "core/Scene.hpp"
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
-#include "ui/UITriangleButton.hpp"
-#include "gameplay/PlayerKeyConfig.hpp"
+#include "app/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
+#include "game/UITriangleButton.hpp"
+#include "game/PlayerKeyConfig.hpp"
 #include "Util/Keycode.hpp"
 
 class KeyboardConfigScene : public Scene {
@@ -27,8 +27,6 @@ public:
     static const PlayerKeyConfig k_Default2P;
 
     static constexpr int MAX_PLAYERS = 8;
-
-    [[nodiscard]] int GetConfiguredPlayerCount() const;
 
     [[nodiscard]] PlayerKeyConfig GetAppliedConfig(int playerIdx) const {
         if (playerIdx < 0 || playerIdx >= MAX_PLAYERS) {

@@ -1,6 +1,6 @@
 #include "app/App.hpp"
-#include "services/BGMPlayer.hpp"
-#include "gameplay/CatAssets.hpp"
+#include "systems/BGMPlayer.hpp"
+#include "game/CatAssets.hpp"
 
 #include "scenes/TitleScene.hpp"
 #include "scenes/MenuScene.hpp"
@@ -15,7 +15,7 @@
 #include "scenes/LevelTwoScene.hpp"
 #include "scenes/LevelThreeScene.hpp"
 #include "scenes/LevelFourScene.hpp"
-#include "core/SceneId.hpp"
+#include "app/SceneId.hpp"
 
 #include "Util/Logger.hpp"
 #include <array>

@@ -1,39 +1,51 @@
-# Architecture Overview
+# 架構總覽
 
-## Runtime Loop
+## 專案分類
 
-- `main.cpp` owns the process entry point and runs `App`.
-- `App` is a small state machine: `START -> UPDATE -> END`.
-- `App::Update()` frame order is:
+目前專案採用較簡化的小型遊戲結構，`include/` 與 `src/` 都維持相同的四個主要分類：
+
+- `app`：程式進入點、App 生命週期、場景系統與場景切換資料型別。
+- `scenes`：所有畫面與關卡，例如標題畫面、選單、設定、關卡選擇與 Level01 到 Level04。
+- `game`：遊戲物件與 UI 元件，例如角色、玩家貓、箱子、文字與三角按鈕。
+- `systems`：跨場景系統與物理系統，例如音樂、存檔、全域演員、Session 狀態、PhysicsWorld 與碰撞解算。
+
+這個分類的目標是降低跳檔成本。專案已完成主要遊戲內容，因此現在優先讓檔案位置直覺、容易維護，而不是保留過細的技術分層。
+
+## 執行流程
+
+- `src/app/main.cpp` 是程式進入點，負責建立並執行 `App`。
+- `App` 是一個簡單狀態機，流程為 `START -> UPDATE -> END`。
+- `App::Update()` 每一幀的順序為：
   1. `AudioService::UpdateBgm()`
   2. `SceneManager::UpdateCurrent()`
-  3. quit gate through `SessionState::ShouldQuit()`
+  3. 透過 `SessionState::ShouldQuit()` 檢查是否離開遊戲
   4. `Renderer::Update()`
-- Scene switching is intent-based. A scene requests one `SceneOp`; `SceneManager` consumes at most one op after the scene update.
 
-## Composition Root
+場景切換採用意圖式設計。場景只會提出一個 `SceneOp`，由 `SceneManager` 在場景更新後統一消化並套用。
 
-`App::Start()` wires process-lifetime systems:
+## 組合根
+
+`App::Start()` 會建立整個遊戲生命週期共用的系統：
 
 - `GlobalActors`
 - `SessionState`
 - `SceneManager`
-- `BGMPlayer` + `AudioService`
+- `BGMPlayer` 與 `AudioService`
 - `VisualThemeService`
 
-It also creates shared actors once and stores them in `GlobalActors`:
+它也會建立共用視覺物件並交給 `GlobalActors` 管理：
 
-- background
-- global floor
-- header
-- door
-- startup cats
+- 背景
+- 全域地板
+- 標題列
+- 門
+- 起始畫面的貓
 
-Scenes receive dependencies through `SceneServices`, so individual scenes depend on service interfaces instead of constructing global systems directly.
+場景透過 `SceneServices` 取得這些依賴，因此各場景不需要自行建立全域系統。
 
-## Registered Scenes
+## 已註冊場景
 
-`App::Start()` currently registers:
+`App::Start()` 目前註冊：
 
 - `Title`
 - `Menu`
@@ -49,60 +61,60 @@ Scenes receive dependencies through `SceneServices`, so individual scenes depend
 - `Level03`
 - `Level04`
 
-`SceneId::Level05` through `SceneId::Level10` exist as reserved IDs but are not registered yet.
+`SceneId::Level05` 到 `SceneId::Level10` 保留給未來擴充，目前沒有註冊。
 
-## Level Select
+## 關卡選擇
 
-`LevelSelectScene` exposes 10 slots.
+`LevelSelectScene` 顯示 10 個關卡格：
 
-- Slot 0 maps to `Level01`.
-- Slot 1 maps to `Level02`.
-- Slot 2 maps to `Level03`.
-- Slot 3 maps to `Level04`.
-- Remaining slots default to `SceneId::None` unless explicitly mapped.
+- 第 0 格對應 `Level01`。
+- 第 1 格對應 `Level02`。
+- 第 2 格對應 `Level03`。
+- 第 3 格對應 `Level04`。
+- 其餘格子預設為 `SceneId::None`，除非之後明確指定。
 
-The cover image list includes `LevelOne.png`, `LevelTwo.png`, `LevelThree.png`, and `LevelFour.png`.
+目前封面圖包含 `LevelOne.png`、`LevelTwo.png`、`LevelThree.png` 與 `LevelFour.png`。
 
-## Scene Stack Model
+## 場景堆疊模型
 
-`SceneManager` owns all scene instances and a stack of `SceneId`.
+`SceneManager` 擁有所有場景實例，並用 `SceneId` 堆疊管理目前流程。
 
-- `GoTo`: exits the full current stack, then enters the target scene.
-- `ClearToAndGoTo`: same stack-clearing behavior, used for level clear and menu routing.
-- `PushOverlay`: pauses the current top scene, pushes an overlay scene, then enters it.
-- `PopOverlay`: exits the overlay and resumes the underlying scene.
-- `RestartUnderlying`: exits the overlay, exits and re-enters the underlying scene, then resumes it.
+- `GoTo`：離開整個目前堆疊，進入目標場景。
+- `ClearToAndGoTo`：清空堆疊後前往目標場景，常用於過關與回選單。
+- `PushOverlay`：暫停目前場景，推入覆蓋場景。
+- `PopOverlay`：離開覆蓋場景，恢復底下場景。
+- `RestartUnderlying`：離開覆蓋場景，重啟底下場景。
 
-Scenes never mutate the stack directly. They only request a `SceneOp`.
+場景不會直接改動堆疊，只能透過 `RequestSceneOp(...)` 提出切換需求。
 
-## Ownership Boundaries
+## 權責邊界
 
-- `App` owns long-lived systems.
-- `SceneManager` owns scene instances.
-- Each level scene owns its own scene-local `PhysicsWorld`.
-- `GlobalActors` owns shared visual actors reused across scenes.
-- `SaveManager` centralizes persistence for settings and level times.
+- `App` 擁有長生命週期系統。
+- `SceneManager` 擁有場景實例與場景堆疊。
+- 每個關卡場景擁有自己的 `PhysicsWorld`。
+- `GlobalActors` 擁有跨場景共用的視覺物件。
+- `SaveManager` 集中處理設定、鍵位與最佳時間的 JSON 存取。
 
-## Gameplay Route
+## 遊戲路線
 
-Main route:
+主要流程：
 
 `Title -> Menu -> LocalPlay -> LocalPlayGame -> LevelSelect -> Level01/Level02/Level03/Level04`
 
-Implemented level behavior:
+已實作關卡：
 
-- `LevelOneScene`: cooperative push box level.
-- `LevelTwoScene`: button, moving planks, key, door, and multi-player door entry.
-- `LevelThreeScene`: shared-consensus control, lifts, mobs, checkpoint, key, and door clear.
-- `LevelFourScene`: bullet shooter, jar state progression, key unlock, door entry, and best-time save.
+- `LevelOneScene`：合作推箱關卡。
+- `LevelTwoScene`：按鈕、移動木板、鑰匙、門與多人進門。
+- `LevelThreeScene`：多人共識操作、升降平台、敵人、檢查點、鑰匙與過關。
+- `LevelFourScene`：子彈發射器、罐子狀態、鑰匙解鎖、進門與最佳時間保存。
 
-All implemented level scenes open `LevelExitScene` with `ESC`.
+所有已實作關卡都能用 `ESC` 開啟 `LevelExitScene`。
 
-## Persistence
+## 存檔
 
-`SaveManager` writes:
+`SaveManager` 寫入：
 
-- `Resources/Save/settings.json`: option settings and keyboard configuration.
-- `Resources/Save/save_data.json`: per-level best times for player counts 2P through 8P.
+- `Resources/Save/settings.json`：選項設定與鍵盤配置。
+- `Resources/Save/save_data.json`：2P 到 8P 的各關最佳時間。
 
-Each cleared level calls `SaveManager::UpdateBestTime(levelIndex, playerCount, elapsedSeconds)` before returning to `LevelSelect`.
+關卡完成時會先呼叫 `SaveManager::UpdateBestTime(levelIndex, playerCount, elapsedSeconds)`，再返回 `LevelSelect`。

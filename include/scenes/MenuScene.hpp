@@ -1,11 +1,11 @@
 #ifndef MENU_SCENE_HPP
 #define MENU_SCENE_HPP
 
-#include "core/Scene.hpp"
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
-#include "ui/UITriangleButton.hpp"
-#include "physics/PhysicsWorld.hpp"
+#include "app/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
+#include "game/UITriangleButton.hpp"
+#include "systems/PhysicsWorld.hpp"
 
 class MenuScene : public Scene {
 public:

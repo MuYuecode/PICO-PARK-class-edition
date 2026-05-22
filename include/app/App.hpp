@@ -3,13 +3,13 @@
 
 #include <memory>
 
-#include "services/AudioService.hpp"
-#include "services/BGMPlayer.hpp"
-#include "services/GlobalActors.hpp"
-#include "services/SessionState.hpp"
+#include "systems/AudioService.hpp"
+#include "systems/BGMPlayer.hpp"
+#include "systems/GlobalActors.hpp"
+#include "systems/SessionState.hpp"
 #include "Util/Renderer.hpp"
-#include "services/VisualThemeService.hpp"
-#include "core/SceneManager.hpp"
+#include "systems/VisualThemeService.hpp"
+#include "app/SceneManager.hpp"
 
 class App {
 public:

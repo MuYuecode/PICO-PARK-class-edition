@@ -1,12 +1,12 @@
 #include "scenes/LevelThreeScene.hpp"
-#include "physics/LevelThreeScenePhysicsBodies.hpp"
+#include "systems/LevelThreeScenePhysicsBodies.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "gameplay/CatAssets.hpp"
+#include "game/CatAssets.hpp"
 #include "scenes/KeyboardConfigScene.hpp"
-#include "services/SaveManager.hpp"
+#include "systems/SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Time.hpp"

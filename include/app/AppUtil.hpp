@@ -4,8 +4,8 @@
 #include <cmath>
 #include <string>
 
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
 #include "Util/Keycode.hpp"
 
 namespace AppUtil {

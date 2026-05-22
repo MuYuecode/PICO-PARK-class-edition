@@ -8,10 +8,10 @@
 #include <vector>
 #include <string>
 
-#include "core/Scene.hpp"
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
-#include "ui/UITriangleButton.hpp"
+#include "app/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
+#include "game/UITriangleButton.hpp"
 
 class OptionMenuScene : public Scene {
 public:

@@ -2,7 +2,7 @@
 // Created by cody2 on 2026/3/16.
 //
 
-#include "services/SaveManager.hpp"
+#include "systems/SaveManager.hpp"
 #include "app/AppUtil.hpp"
 #include "scenes/KeyboardConfigScene.hpp"
 #include "Util/Input.hpp"
@@ -480,12 +480,3 @@ void KeyboardConfigScene::UpdateChoiceFrame() const {
     m_ChoiceFrame->SetPosition({x, RowY(m_SelectedRow)});
 }
 
-int KeyboardConfigScene::GetConfiguredPlayerCount() const {
-    int count = 0;
-    for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (static_cast<int>(m_Applied[p].AllKeys().size()) >= 4) {
-            ++count;
-        }
-    }
-    return count;
-}

@@ -5,11 +5,11 @@
 #ifndef PICOPART_LOCALPLAYSCENE_HPP
 #define PICOPART_LOCALPLAYSCENE_HPP
 
-#include "core/Scene.hpp"
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
+#include "app/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
 
-#include "ui/UITriangleButton.hpp"
+#include "game/UITriangleButton.hpp"
 
 class LocalPlayScene : public Scene {
 public:

@@ -4,12 +4,12 @@
 #include <memory>
 #include <vector>
 
-#include "gameplay/Character.hpp"
-#include "ui/GameText.hpp"
-#include "physics/PhysicsWorld.hpp"
-#include "gameplay/PlayerCat.hpp"
-#include "gameplay/PlayerKeyConfig.hpp"
-#include "core/Scene.hpp"
+#include "game/Character.hpp"
+#include "game/GameText.hpp"
+#include "systems/PhysicsWorld.hpp"
+#include "game/PlayerCat.hpp"
+#include "game/PlayerKeyConfig.hpp"
+#include "app/Scene.hpp"
 
 class LevelTwoScene : public Scene {
 public:

@@ -3,9 +3,9 @@
 
 #include <vector>
 #include <memory>
-#include "core/Scene.hpp"
-#include "gameplay/PlayerCat.hpp"
-#include "physics/PhysicsWorld.hpp"
+#include "app/Scene.hpp"
+#include "game/PlayerCat.hpp"
+#include "systems/PhysicsWorld.hpp"
 #include "scenes/KeyboardConfigScene.hpp"
 
 

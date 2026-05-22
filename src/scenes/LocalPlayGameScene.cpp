@@ -1,8 +1,8 @@
 #include "scenes/LocalPlayGameScene.hpp"
-#include "gameplay/BoundaryFactory.hpp"
+#include "game/BoundaryFactory.hpp"
 #include "scenes/LocalPlayScene.hpp"
 #include "scenes/KeyboardConfigScene.hpp"
-#include "gameplay/CatAssets.hpp"
+#include "game/CatAssets.hpp"
 #include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 #include <algorithm>

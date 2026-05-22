@@ -1,83 +1,85 @@
-# Component Interaction
+# 元件互動
 
-## Frame Execution Chain
+## 每幀執行鏈
 
-1. `AudioService::UpdateBgm()` advances music state.
-2. `SceneManager::UpdateCurrent()` updates the top scene.
-3. The top scene may emit one `SceneOp`.
-4. `SceneManager` applies at most one stack mutation.
-5. `App` checks `SessionState::ShouldQuit()`.
-6. `Renderer` draws the current actor graph.
+1. `AudioService::UpdateBgm()` 更新音樂播放狀態。
+2. `SceneManager::UpdateCurrent()` 更新目前堆疊最上層的場景。
+3. 場景可以提出一個 `SceneOp`。
+4. `SceneManager` 最多套用一次場景堆疊變更。
+5. `App` 檢查 `SessionState::ShouldQuit()`。
+6. `Renderer` 繪製目前的演員樹。
 
-## Scene Transition Contract
+## 場景切換合約
 
-Scenes do not call each other directly. A scene requests navigation through `RequestSceneOp(...)`.
+場景之間不直接互相呼叫。場景需要切換畫面時，透過 `RequestSceneOp(...)` 送出請求。
 
-Supported operations:
+支援的操作：
 
 - `PushOverlay`
 - `PopOverlay`
 - `RestartUnderlying`
 - `ClearToAndGoTo`
 
-`SceneManager` is the only component that mutates the scene stack.
+只有 `SceneManager` 可以修改場景堆疊。
 
-## Shared Services
+## 共用系統
 
-- `IGlobalActors`: shared root and shared visuals, including background, floor, header, door, startup cats, and optional test box.
-- `ISessionState`: selected player count, cooperative push power, applied keyboard configs, and quit flag.
-- `IAudioService`: BGM playback, BGM update, and volume control.
-- `IVisualThemeService`: background theme selection and restore.
-- `SaveManager`: settings, keyboard mappings, and level best-time persistence.
+- `IGlobalActors`：共用 root 與共用視覺物件，包含背景、地板、標題列、門與起始貓。
+- `ISessionState`：玩家人數、合作推力、已套用鍵位與離開遊戲旗標。
+- `IAudioService`：BGM 播放、BGM 更新與音量設定。
+- `IVisualThemeService`：背景主題選擇。
+- `SaveManager`：選項、鍵盤配置與關卡最佳時間持久化。
 
-## Input and Configuration Flow
+上述檔案位於 `include/systems/` 與 `src/systems/`，場景透過 `include/app/SceneServices.hpp` 取得服務參考。
 
-- `KeyboardConfigScene` edits per-player key bindings and writes them to `SaveManager`.
-- `SessionState` keeps the currently applied key configs for gameplay scenes.
-- `LocalPlayScene` checks whether the selected player count has enough configured keyboard profiles.
-- Level scenes read `SessionState::GetSelectedPlayerCount()` and `GetAppliedKeyConfigs()` on entry.
+## 輸入與設定流程
 
-## Local Play Flow
+- `KeyboardConfigScene` 編輯每位玩家的鍵位，並寫入 `SaveManager`。
+- `SessionState` 保存目前已套用的鍵位設定。
+- `LocalPlayScene` 檢查目前選擇的玩家數是否都有足夠鍵位設定。
+- 關卡場景在進入時讀取 `SessionState::GetSelectedPlayerCount()` 與 `GetAppliedKeyConfigs()`。
 
-`LocalPlayGameScene` is the free-play cooperative room:
+## 本地遊玩流程
 
-- It spawns selected players.
-- It uses the global door actor.
-- Players must enter the open door with their own `up` key.
-- Completion routes to `LevelSelect`.
+`LocalPlayGameScene` 是進入關卡選擇前的合作房間：
 
-## Level Flow
+- 依玩家數生成玩家。
+- 使用全域門物件。
+- 玩家需要用自己的 `up` 鍵進入開啟的門。
+- 完成後切換到 `LevelSelect`。
 
-All implemented level scenes follow the same broad lifecycle:
+## 關卡流程
 
-- `OnEnter`: hide or reposition shared actors, create local visuals, clear physics, register bodies, and reset state.
-- `Update`: handle input intent, run the local physics world, update gameplay state, update timer text, and request transitions.
-- `OnExit`: remove local actors, clear physics, restore shared actors as needed.
+已實作關卡大致遵循以下生命週期：
 
-Level-specific behavior:
+- `OnEnter`：隱藏或重設共用物件、建立本地視覺物件、清空物理世界、註冊物理物件並重設狀態。
+- `Update`：處理輸入意圖、更新本地物理世界、更新遊戲狀態、更新計時文字並提出場景切換。
+- `OnExit`：移除本地物件、清空物理世界，必要時恢復共用物件。
 
-- `LevelOneScene`: cooperative box pushing and door clear.
-- `LevelTwoScene`: button activation, moving planks, key pickup, door open, and all-player entry.
-- `LevelThreeScene`: consensus controls, moving lifts, mobs, checkpoint, key pickup, door open, and clear.
-- `LevelFourScene`: shooter spawns `BulletBody`, bullet collisions are reported by the physics model, Jar progresses through three states, then key pickup and door clear become available.
+各關卡特色：
 
-## Overlay Coordination
+- `LevelOneScene`：合作推箱與進門過關。
+- `LevelTwoScene`：按鈕啟動、移動木板、撿鑰匙、開門與全員進門。
+- `LevelThreeScene`：多人共識控制、升降平台、敵人、檢查點、撿鑰匙、開門與過關。
+- `LevelFourScene`：發射器生成 `BulletBody`，子彈碰撞由物理模型回報，罐子經過三段狀態後開放鑰匙與過關流程。
 
-Implemented levels open `LevelExitScene` on `ESC` through `PushOverlay`.
+## 暫停覆蓋層
 
-Overlay actions:
+已實作關卡按下 `ESC` 時會透過 `PushOverlay` 開啟 `LevelExitScene`。
 
-- Return: `PopOverlay`
-- Retry: `RestartUnderlying`
-- Level Select: `ClearToAndGoTo(LevelSelect)`
-- Title: `ClearToAndGoTo(Title)`
+覆蓋層操作：
 
-Pause and resume are delegated to the underlying scene. Physics-enabled levels freeze and unfreeze their local `PhysicsWorld`.
+- 返回：`PopOverlay`
+- 重試：`RestartUnderlying`
+- 關卡選擇：`ClearToAndGoTo(LevelSelect)`
+- 標題畫面：`ClearToAndGoTo(Title)`
 
-## Level Completion
+暫停與恢復會委派給底下的場景。使用物理的關卡會呼叫 `PhysicsWorld::FreezeAll()` 與 `PhysicsWorld::UnfreezeAll()`。
 
-When a level clears:
+## 關卡完成
 
-1. The level writes best time through `SaveManager::UpdateBestTime(...)`.
-2. The level requests `ClearToAndGoTo(LevelSelect)`.
-3. `LevelSelectScene` reloads saved level data and updates crown/best-time display.
+關卡完成時：
+
+1. 關卡透過 `SaveManager::UpdateBestTime(...)` 寫入最佳時間。
+2. 關卡提出 `ClearToAndGoTo(LevelSelect)`。
+3. `LevelSelectScene` 重新載入存檔，更新皇冠與最佳時間顯示。

@@ -2,9 +2,9 @@
 #define PICOPART_TITLESCENE_HPP
 
 #include <memory>
-#include "core/Scene.hpp"
-#include "ui/GameText.hpp"
-#include "physics/PhysicsWorld.hpp"
+#include "app/Scene.hpp"
+#include "game/GameText.hpp"
+#include "systems/PhysicsWorld.hpp"
 
 
 class TitleScene : public Scene {
