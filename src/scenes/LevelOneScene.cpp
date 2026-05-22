@@ -133,13 +133,6 @@ void LevelOneScene::OnEnter() {
     if (m_Actors.Header()) m_Actors.Header()->SetVisible(false);
     if (m_Actors.Floor())  m_Actors.Floor()->SetVisible(false);
 
-    if (m_Actors.TestBox()) {
-        m_Actors.TestBox()->SetVisible(false);
-        if (m_Actors.TestBox()->GetTextObject()) {
-            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
-        }
-    }
-
     if (m_Actors.Door()) {
         m_Actors.Door()->SetVisible(true);
         m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");
@@ -242,14 +235,6 @@ void LevelOneScene::OnExit() {
 
     m_Actors.Header()->SetVisible(false);
     m_Actors.Floor()->SetVisible(false);
-    if (m_Actors.TestBox() != nullptr) {
-        m_Actors.TestBox()->SetVisible(false);
-        if (m_Actors.TestBox()->GetTextObject() != nullptr) {
-            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
-        }
-    }
-
-
     if (m_Actors.Door()) {
         m_Actors.Door()->SetVisible(false);
         m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_close.png");

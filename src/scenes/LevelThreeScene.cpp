@@ -405,12 +405,6 @@ void LevelThreeScene::OnEnter() {
 
     if (m_Actors.Header()) m_Actors.Header()->SetVisible(false);
     if (m_Actors.Floor()) m_Actors.Floor()->SetVisible(false);
-    if (m_Actors.TestBox()) {
-        m_Actors.TestBox()->SetVisible(false);
-        if (m_Actors.TestBox()->GetTextObject()) {
-            m_Actors.TestBox()->GetTextObject()->SetVisible(false);
-        }
-    }
     for (auto& cat : m_Actors.StartupCats()) {
         if (cat) cat->SetVisible(false);
     }

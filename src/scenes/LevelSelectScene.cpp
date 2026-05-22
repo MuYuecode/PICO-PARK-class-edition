@@ -66,9 +66,6 @@ void LevelSelectScene::OnEnter() {
     m_Actors.Header()->SetVisible(false);
     if (m_Actors.Floor() != nullptr) m_Actors.Floor()->SetVisible(false);
     if (m_Actors.Door() != nullptr)  m_Actors.Door()->SetVisible(false);
-    if (m_Actors.TestBox() != nullptr) {
-        m_Actors.TestBox()->SetVisible(false);
-    }
     for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) cat->SetVisible(false);
     }

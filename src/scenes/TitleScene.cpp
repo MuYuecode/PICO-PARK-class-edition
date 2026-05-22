@@ -56,12 +56,6 @@ void TitleScene::OnEnter() {
             m_Actors.Door()->SetPosition({0.0f, floorY + floorHalfH + doorHalfH});
         }
     }
-    if (m_Actors.TestBox() != nullptr) {
-        m_Actors.TestBox()->SetVisible(true);
-        if (m_Actors.TestBox()->GetTextObject() != nullptr) {
-            m_Actors.TestBox()->GetTextObject()->SetVisible(true);
-        }
-    }
     for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) {
             cat->SetVisible(true);
@@ -86,12 +80,6 @@ void TitleScene::OnEnter() {
         cat->SetCatAnimState(CatAnimState::STAND);
 
         m_World.Register(cat);
-    }
-
-    // Register the test pushable box if present.
-    if (m_Actors.TestBox() != nullptr) {
-        m_Actors.TestBox()->SetPushQuery(&m_World);
-        m_World.Register(m_Actors.TestBox());
     }
 
     // Register immovable boundary geometry derived from the visual Floor.
