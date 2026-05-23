@@ -89,10 +89,12 @@ void LevelExitScene::Update() {
 
     if (ip::IsKeyDown(k::W) || ip::IsKeyDown(k::UP)) {
         m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateChoiceFrame();
     }
     else if (ip::IsKeyDown(k::S) || ip::IsKeyDown(k::DOWN)) {
         m_SelectedRow = (m_SelectedRow + 1) % ROW_COUNT;
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateChoiceFrame();
     }
 
@@ -114,11 +116,13 @@ void LevelExitScene::Update() {
     }
 
     if (m_ExitButton->IsLeftClicked()) {
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::PopOverlay, SceneId::None});
         return;
     }
 
     if (!m_WaitEscRelease && ip::IsKeyDown(k::ESCAPE)) {
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::PopOverlay, SceneId::None});
         return;
     }
@@ -148,6 +152,7 @@ void LevelExitScene::Update() {
     }
 
     if (confirmed) {
+        m_Audio.PlaySe(SoundEffect::Button);
         ConfirmSelection();
     }
 

@@ -130,6 +130,7 @@ void TitleScene::Update() {
 
         if (cat->IsGrounded() && wantJump) {
             cat->Jump();
+            m_Audio.PlaySe(SoundEffect::Jump);
         }
     }
 
@@ -137,6 +138,7 @@ void TitleScene::Update() {
 
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         LOG_INFO("TitleScene: ENTER pressed -> MenuScene");
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
         return;
     }

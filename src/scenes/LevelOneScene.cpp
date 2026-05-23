@@ -269,6 +269,7 @@ void LevelOneScene::HandlePlayerInput() const {
         const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
         if (pb.cat->IsGrounded() && wantJump) {
             pb.cat->Jump();
+            m_Audio.PlaySe(SoundEffect::Jump);
         }
     }
 }
@@ -317,6 +318,7 @@ void LevelOneScene::TryOpenDoorAndClear() {
         m_DoorOpened = true;
         m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
         m_KeySprite->SetVisible(false);
+        m_Audio.PlaySe(SoundEffect::Door);
     }
 }
 
@@ -357,6 +359,7 @@ void LevelOneScene::UpdateDoorEntryAndClear() {
     if (!m_ClearDone && m_EnteredCount == totalPlayers) {
         SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
         m_ClearDone = true;
+        m_Audio.PlaySe(SoundEffect::Win);
     }
 }
 

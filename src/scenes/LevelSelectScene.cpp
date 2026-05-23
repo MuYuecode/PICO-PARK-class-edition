@@ -100,6 +100,7 @@ void LevelSelectScene::Update() {
     using k  = Util::Keycode;
     if (ip::IsKeyDown(k::ESCAPE)) {
         LOG_INFO("LevelSelectScene: ESC → LocalPlayGameScene");
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LocalPlayGame});
         return;
     }
@@ -157,6 +158,7 @@ void LevelSelectScene::Update() {
     if (confirmed) {
         if (m_LevelSceneIds[m_SelectedIdx] != SceneId::None) {
             LOG_INFO("LevelSelectScene: entering Level {}",m_SelectedIdx+1);
+            m_Audio.PlaySe(SoundEffect::Button);
             RequestSceneOp({SceneOpType::ClearToAndGoTo, m_LevelSceneIds[m_SelectedIdx]});
             return;
         }

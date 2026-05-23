@@ -395,6 +395,7 @@ void LevelTwoScene::HandlePlayerInput() const {
         const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
         if (pb.cat->IsGrounded() && wantJump) {
             pb.cat->Jump();
+            m_Audio.PlaySe(SoundEffect::Jump);
         }
     }
 }
@@ -418,6 +419,7 @@ void LevelTwoScene::TryActivateButton() {
 
         m_ButtonPressed = true;
         m_ButtonSprite->SetImage(GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/ButtonDown.png");
+        m_Audio.PlaySe(SoundEffect::Button);
 
         for (int i = 0; i < static_cast<int>(m_PlankBodies.size()); ++i) {
             if (m_PlankBodies[i] == nullptr) continue;
@@ -483,6 +485,7 @@ void LevelTwoScene::TryOpenDoorAndClear() {
         m_DoorOpened = true;
         m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
         m_KeySprite->SetVisible(false);
+        m_Audio.PlaySe(SoundEffect::Door);
     }
 }
 
@@ -521,6 +524,7 @@ void LevelTwoScene::UpdateDoorEntryAndClear() {
     if (!m_ClearDone && m_EnteredCount == totalPlayers) {
         SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
         m_ClearDone = true;
+        m_Audio.PlaySe(SoundEffect::Win);
     }
 }
 

@@ -155,6 +155,7 @@ OptionMenuScene::OptionMenuScene(SceneServices services)
     m_Applied.bgColorIndex = m_Theme.ClampBackgroundIndex(m_Applied.bgColorIndex);
     m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
     m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+    m_Audio.SetSeVolume(m_Applied.seVolume * 6);
 }
 
 void OptionMenuScene::OnEnter() {
@@ -254,6 +255,7 @@ void OptionMenuScene::Update() {
     }
 
     if (m_KbConfigOpen->IsLeftClicked()) {
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::KeyboardConfig});
         return;
     }
@@ -314,6 +316,7 @@ void OptionMenuScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::RETURN)) {
         switch (m_SelectedRow) {
         case 0:
+            m_Audio.PlaySe(SoundEffect::Button);
             RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::KeyboardConfig});
             return;
         case 5:
@@ -329,8 +332,10 @@ void OptionMenuScene::Update() {
 }
 
 void OptionMenuScene::CommitAndExit() {
+    m_Audio.PlaySe(SoundEffect::Button);
     m_Applied = m_Pending;
     m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+    m_Audio.SetSeVolume(m_Applied.seVolume * 6);
     m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
 
     OptionSettingsData toSave{
@@ -345,22 +350,27 @@ void OptionMenuScene::CommitAndExit() {
 }
 
 void OptionMenuScene::CancelAndRevert() {
+    m_Audio.PlaySe(SoundEffect::Button);
     m_Audio.SetBgmVolume(m_Applied.bgmVolume * 6);
+    m_Audio.SetSeVolume(m_Applied.seVolume * 6);
     m_Theme.ApplyBackgroundByIndex(m_Applied.bgColorIndex);
     RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
 }
 
 void OptionMenuScene::DecrementRow() {
+    m_Audio.PlaySe(SoundEffect::Button);
     m_SelectedRow = (m_SelectedRow + ROW_COUNT - 1) % ROW_COUNT;
     UpdateChoiceFrame();
 }
 
 void OptionMenuScene::IncrementRow() {
+    m_Audio.PlaySe(SoundEffect::Button);
     m_SelectedRow = (m_SelectedRow + 1) % ROW_COUNT;
     UpdateChoiceFrame();
 }
 
 void OptionMenuScene::SwapOkCancel() {
+    m_Audio.PlaySe(SoundEffect::Button);
     m_SelectedRow = (m_SelectedRow == 5) ? 6 : 5;
     UpdateChoiceFrame();
 }
@@ -371,12 +381,14 @@ void OptionMenuScene::AdjustLeft(int row) {
         m_Pending.bgColorIndex = (m_Pending.bgColorIndex
                           + static_cast<int>(s_BgColorOptions.size()) - 1)
                          % static_cast<int>(s_BgColorOptions.size());
+        m_Audio.PlaySe(SoundEffect::Button);
         m_BgColorLeftBtn->Press(75.0f);
         m_Theme.ApplyBackgroundByIndex(m_Pending.bgColorIndex);
         break;
     case 2:
         if (m_Pending.bgmVolume > 0) {
             --m_Pending.bgmVolume;
+            m_Audio.PlaySe(SoundEffect::Button);
             m_BgmVolumeLeftBtn->Press(75.0f);
             m_Audio.SetBgmVolume(m_Pending.bgmVolume * 6);
         }
@@ -384,12 +396,15 @@ void OptionMenuScene::AdjustLeft(int row) {
     case 3:
         if (m_Pending.seVolume > 0) {
             --m_Pending.seVolume;
+            m_Audio.SetSeVolume(m_Pending.seVolume * 6);
+            m_Audio.PlaySe(SoundEffect::Button);
             m_SeVolumeLeftBtn->Press(75.0f);
         }
         break;
     case 4:
         if (m_Pending.dispNumber) {
             m_Pending.dispNumber = false;
+            m_Audio.PlaySe(SoundEffect::Button);
             m_DispNumberLeftBtn->Press(75.0f);
         }
         break;
@@ -408,12 +423,14 @@ void OptionMenuScene::AdjustRight(int row) {
     case 1:
         m_Pending.bgColorIndex = (m_Pending.bgColorIndex + 1)
                          % static_cast<int>(s_BgColorOptions.size());
+        m_Audio.PlaySe(SoundEffect::Button);
         m_BgColorRightBtn->Press(75.0f);
         m_Theme.ApplyBackgroundByIndex(m_Pending.bgColorIndex);
         break;
     case 2:
         if (m_Pending.bgmVolume < 20) {
             ++m_Pending.bgmVolume;
+            m_Audio.PlaySe(SoundEffect::Button);
             m_BgmVolumeRightBtn->Press(75.0f);
             m_Audio.SetBgmVolume(m_Pending.bgmVolume * 6);
         }
@@ -421,12 +438,15 @@ void OptionMenuScene::AdjustRight(int row) {
     case 3:
         if (m_Pending.seVolume < 20) {
             ++m_Pending.seVolume;
+            m_Audio.SetSeVolume(m_Pending.seVolume * 6);
+            m_Audio.PlaySe(SoundEffect::Button);
             m_SeVolumeRightBtn->Press(75.0f);
         }
         break;
     case 4:
         if (!m_Pending.dispNumber) {
             m_Pending.dispNumber = true;
+            m_Audio.PlaySe(SoundEffect::Button);
             m_DispNumberRightBtn->Press(75.0f);
         }
         break;

@@ -200,6 +200,7 @@ void LevelThreeScene::HandleConsensusInput() {
     const bool blockJumpForDoorEntry = IsPlayerInOpenDoorZone();
     if (allJumpHeld && !m_JumpConsensusLatched && m_Player->IsGrounded() && !blockJumpForDoorEntry) {
         m_Player->Jump();
+        m_Audio.PlaySe(SoundEffect::Jump);
         m_JumpConsensusLatched = true;
     }
     if (!allJumpHeld) {
@@ -605,6 +606,7 @@ void LevelThreeScene::TryOpenDoor() {
     m_DoorOpened = true;
     m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
     m_KeySprite->SetVisible(false);
+    m_Audio.PlaySe(SoundEffect::Door);
 }
 
 void LevelThreeScene::TryClearLevel() {
@@ -638,6 +640,7 @@ void LevelThreeScene::TryClearLevel() {
 
     SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
     m_ClearDone = true;
+    m_Audio.PlaySe(SoundEffect::Win);
 }
 
 bool LevelThreeScene::IsStompCollision(const IPhysicsBody& mobBody) const {
@@ -666,6 +669,7 @@ void LevelThreeScene::TriggerStompBounce(const IPhysicsBody& mobBody) const {
     pos.y = mobPos.y + mobHalf.y + m_Player->GetHalfSize().y + 2.0f;
     m_Player->SetPosition(pos);
     m_Player->Jump();
+    m_Audio.PlaySe(SoundEffect::Jump);
 }
 
 void LevelThreeScene::StartDeath() {
@@ -687,6 +691,7 @@ void LevelThreeScene::StartDeath() {
     m_Player->SetActive(false);
     m_Player->SetInputEnabled(false);
     m_Player->SetMoveDir(0);
+    m_Audio.PlaySe(SoundEffect::Death);
 }
 
 void LevelThreeScene::UpdateDeathAnimation(float dtSec) {

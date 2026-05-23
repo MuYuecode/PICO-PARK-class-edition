@@ -73,6 +73,7 @@ void ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::A) ||
         Util::Input::IsKeyDown(Util::Keycode::D)) {
         m_IsYesSelected = !m_IsYesSelected;
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateChoiceFramePosition();
     }
 
@@ -88,6 +89,7 @@ void ExitConfirmScene::Update() {
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("ExitConfirmScene: cancelled, back to MenuScene");
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
         return;
     }
@@ -98,11 +100,13 @@ void ExitConfirmScene::Update() {
 
     if ((confirmByKeyboard || confirmByMouseYes) && m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: YES confirmed -> ShouldQuit");
+        m_Audio.PlaySe(SoundEffect::Button);
         m_Session.RequestQuit();
         return;
     }
     if ((confirmByKeyboard || confirmByMouseNo) && !m_IsYesSelected) {
         LOG_INFO("ExitConfirmScene: NO confirmed, back to MenuScene");
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
         return;
     }

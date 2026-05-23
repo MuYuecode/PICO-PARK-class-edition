@@ -120,6 +120,7 @@ void MenuScene::Update() {
     m_RightTriButton->UpdateButton();
 
     if (ip::IsKeyDown(k::ESCAPE) || m_ExitGameButton->IsLeftClicked()) {
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Title});
         return;
     }
@@ -128,6 +129,7 @@ void MenuScene::Update() {
         HideAllOptions();
         m_SelectedIndex = (m_SelectedIndex + 2) % 3;
         m_LeftTriButton->Press(75.f);
+        m_Audio.PlaySe(SoundEffect::Button);
         ShowCurrentOption();
         return;
     }
@@ -136,11 +138,13 @@ void MenuScene::Update() {
         HideAllOptions();
         m_SelectedIndex = (m_SelectedIndex + 1) % 3;
         m_RightTriButton->Press(75.f);
+        m_Audio.PlaySe(SoundEffect::Button);
         ShowCurrentOption();
         return;
     }
 
     if (ip::IsKeyDown(k::RETURN)) {
+        m_Audio.PlaySe(SoundEffect::Button);
         switch (m_SelectedIndex) {
         case 0:
             RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::ExitConfirm});

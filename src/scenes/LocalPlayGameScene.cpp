@@ -116,6 +116,7 @@ void LocalPlayGameScene::Update() {
         const bool wantJump = (key.jump != k::UNKNOWN) && ip::IsKeyDown(key.jump);
         if (pb.cat->IsGrounded() && wantJump) {
             pb.cat->Jump();
+            m_Audio.PlaySe(SoundEffect::Jump);
         }
     }
 
@@ -144,6 +145,7 @@ void LocalPlayGameScene::Update() {
 
             if (m_EnteredCount == m_Session.GetSelectedPlayerCount()) {
                 LOG_INFO("LocalPlayGameScene: all players entered -> LevelSelectScene");
+                m_Audio.PlaySe(SoundEffect::Win);
                 RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
                 return;
             }

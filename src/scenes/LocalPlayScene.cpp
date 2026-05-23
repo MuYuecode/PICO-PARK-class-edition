@@ -112,6 +112,7 @@ void LocalPlayScene::Update() {
     if ( ip::IsKeyDown(k::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked()) {
         LOG_INFO("LocalPlayScene: back to MenuScene");
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::Menu});
         return;
     }
@@ -129,6 +130,7 @@ void LocalPlayScene::Update() {
                          % (MAX_PLAYERS - MIN_PLAYERS + 1))
                         + MIN_PLAYERS;
         m_LeftTriButton->Press(75.0f);
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateDisplay();
     }
     else if (pressedRight) {
@@ -136,6 +138,7 @@ void LocalPlayScene::Update() {
                          % (MAX_PLAYERS - MIN_PLAYERS + 1))
                         + MIN_PLAYERS;
         m_RightTriButton->Press(75.0f);
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateDisplay();
     }
 
@@ -145,6 +148,7 @@ void LocalPlayScene::Update() {
         if (m_PlayerCount <= configuredCount) {
             m_Session.SetSelectedPlayerCount(m_PlayerCount);
             LOG_INFO("LocalPlayScene: ENTER confirmed with {} players", m_PlayerCount);
+            m_Audio.PlaySe(SoundEffect::Button);
             RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LocalPlayGame});
             return;
         }

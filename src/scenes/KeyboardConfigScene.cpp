@@ -242,6 +242,7 @@ void KeyboardConfigScene::Update() {
     if (Input::IsKeyDown(Keycode::ESCAPE) ||
         m_ExitGameButton->IsLeftClicked() ||
         m_CancelText->IsLeftClicked()) {
+        m_Audio.PlaySe(SoundEffect::Button);
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
         return;
     }
@@ -281,6 +282,7 @@ void KeyboardConfigScene::Update() {
         m_CurrentPlayer = next;
         LoadPlayer(next);
         m_PlayerLeftBtn->Press(75.0f);
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateValueTexts();
     }
     else if ((m_SelectedRow == ROW_PLAYER && pressedRight) || m_PlayerRightBtn->IsLeftClicked()) {
@@ -289,6 +291,7 @@ void KeyboardConfigScene::Update() {
         m_CurrentPlayer = next;
         LoadPlayer(next);
         m_PlayerRightBtn->Press(75.0f);
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateValueTexts();
     }
     else if (m_SelectedRow == ROW_OK) {
@@ -310,16 +313,19 @@ void KeyboardConfigScene::Update() {
             }
             else {
                 CommitPending();
+                m_Audio.PlaySe(SoundEffect::Button);
                 RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
                 return;
             }
         }
         else if (m_SelectedRow == ROW_CANCEL) {
+            m_Audio.PlaySe(SoundEffect::Button);
             RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
             return;
         }
         else if (m_SelectedRow == ROW_DEFAULT) {
             ApplyDefault();
+            m_Audio.PlaySe(SoundEffect::Button);
             UpdateValueTexts();
         }
         else if (m_SelectedRow >= ROW_BIND_0 && m_SelectedRow <= ROW_SUBMENU) {
@@ -328,6 +334,7 @@ void KeyboardConfigScene::Update() {
                 m_WaitingForKey = true;
                 int idx = m_SelectedRow - ROW_BIND_0;
                 m_BindValues[idx]->SetText("...");
+                m_Audio.PlaySe(SoundEffect::Button);
             }
         }
     }
@@ -335,12 +342,14 @@ void KeyboardConfigScene::Update() {
     if (m_OkText->IsLeftClicked()) {
         if (!(m_CurrentPlayer >= 1 && HasConflicts())) {
             CommitPending();
+            m_Audio.PlaySe(SoundEffect::Button);
             RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::OptionMenu});
             return;
         }
     }
     if (m_DefaultText->IsLeftClicked()) {
         ApplyDefault();
+        m_Audio.PlaySe(SoundEffect::Button);
         UpdateValueTexts();
     }
 }
