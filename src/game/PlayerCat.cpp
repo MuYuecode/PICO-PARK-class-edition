@@ -48,11 +48,25 @@ void PlayerCat::Jump() {
     m_Grounded  = false;
 }
 
+void PlayerCat::SetHackFlightEnabled(bool enabled) {
+    m_HackFlightEnabled = enabled;
+    if (enabled) {
+        m_VelocityY = 0.0f;
+        m_Grounded = false;
+    } else {
+        m_HackFlightVerticalDir = 0;
+    }
+}
+
 void PlayerCat::PhysicsUpdate() {
     m_PrevGrounded = m_Grounded;
     m_Grounded  = false;
     m_IsPushing = false;
-    m_VelocityY -= kGravity;
+    if (m_HackFlightEnabled) {
+        m_VelocityY = static_cast<float>(m_HackFlightVerticalDir) * kHackFlightSpeed;
+    } else {
+        m_VelocityY -= kGravity;
+    }
 
     // Read input directly when this cat owns real key bindings.
     // For cats with UNKNOWN keys (spawned in LocalPlayGameScene),
@@ -73,6 +87,7 @@ void PlayerCat::PhysicsUpdate() {
     // has already been reset to false at this point.
     if (m_InputEnabled &&
         m_JumpKey != Util::Keycode::UNKNOWN &&
+        !m_HackFlightEnabled &&
         m_PrevGrounded &&
         Util::Input::IsKeyDown(m_JumpKey)) {
         Jump();

@@ -6,6 +6,7 @@
 
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
+#include "game/HackMenu.hpp"
 #include "systems/PhysicsWorld.hpp"
 #include "game/PlayerCat.hpp"
 #include "game/PlayerKeyConfig.hpp"
@@ -47,6 +48,14 @@ private:
     void TryOpenDoor();
     void TryClearLevel();
     [[nodiscard]] bool IsPlayerInOpenDoorZone() const;
+    void SetupHackMenu();
+    void HackTeleportToKey() const;
+    void HackTeleportToDoor() const;
+    void HackGrantKey();
+    void HackOpenDoor();
+    void HackTeleportToCheckpoint() const;
+    void HackTriggerCheckpoint();
+    void ApplyHackFlightToPlayer(bool enabled) const;
 
     void HandleHazardsAndRespawn();
     [[nodiscard]] bool IsStompCollision(const IPhysicsBody& mobBody) const;
@@ -99,6 +108,7 @@ private:
 
     std::shared_ptr<GameText> m_CheckText;
     std::shared_ptr<GameText> m_TimerText;
+    HackMenu m_HackMenu;
 
     std::shared_ptr<PlayerCat> m_Player;
 
@@ -118,6 +128,8 @@ private:
     bool  m_DoorOpened = false;
     bool  m_PlayerDead = false;
     bool  m_ClearDone = false;
+    bool  m_FlightEnabled = false;
+    bool  m_MobDamageDisabled = false;
 
     float m_ElapsedSec = 0.0f;
     float m_DeathWaitSec = 0.0f;

@@ -35,6 +35,7 @@ public:
     static constexpr float kGravity          = 0.75f;
     static constexpr float kJumpForce        = 11.0f;
     static constexpr float kGroundMoveSpeed  = 5.0f;
+    static constexpr float kHackFlightSpeed  = 5.0f;
     static constexpr float kRunOnPlayerSpeed = 6.2f;
     static constexpr float kHalfWidth        = 18.0f;
     static constexpr float kHalfHeight       = 23.0f;
@@ -51,6 +52,8 @@ public:
     [[nodiscard]] Util::Keycode GetJumpKey()  const { return m_JumpKey;  }
 
     void SetMoveDir(int dir)               { m_MoveDir = dir; }
+    void SetHackFlightEnabled(bool enabled);
+    void SetHackFlightVerticalDir(int dir) { m_HackFlightVerticalDir = dir; }
 
     void Jump();
 
@@ -110,6 +113,8 @@ private:
     bool      m_Grounded     = true;
     bool      m_PrevGrounded = true;
     bool      m_IsPushing    = false;
+    bool      m_HackFlightEnabled = false;
+    int       m_HackFlightVerticalDir = 0;
 
     glm::vec2 m_DesiredDelta = {0.f, 0.f};
 };

@@ -6,6 +6,7 @@
 
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
+#include "game/HackMenu.hpp"
 #include "systems/PhysicsWorld.hpp"
 #include "game/PlayerCat.hpp"
 #include "game/PlayerKeyConfig.hpp"
@@ -49,6 +50,15 @@ private:
     void UpdateKeyFollow() const;
     void TryOpenDoorAndClear();
     void UpdateDoorEntryAndClear();
+    void SetupHackMenu();
+    void TeleportPlayersTo(const glm::vec2& pos) const;
+    void ApplyHackFlightToPlayers(bool enabled) const;
+    void HackTeleportToKey() const;
+    void HackTeleportToDoor() const;
+    void HackGrantKey();
+    void HackOpenDoor();
+    void HackTeleportToButton() const;
+    void HackPressButton();
 
     static constexpr int   kLevelIndex = 1;
     static constexpr float kRoomLeftX  = -624.0f;
@@ -95,12 +105,14 @@ private:
     std::vector<float>                            m_PlankTargetX;
 
     std::shared_ptr<GameText> m_TimerText;
+    HackMenu m_HackMenu;
 
     std::vector<PlayerBinding> m_Players;
 
     bool  m_ButtonPressed = false;
     int   m_KeyCarrierIdx = -1;
     bool  m_DoorOpened    = false;
+    bool  m_FlightEnabled = false;
     float m_ElapsedSec    = 0.0f;
 
     std::vector<bool> m_PlayerEntered;

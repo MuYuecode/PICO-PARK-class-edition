@@ -206,12 +206,16 @@ void LevelOneScene::OnEnter() {
     m_World.Register(m_BoxA);
     m_World.Register(m_BoxB);
     SetupStaticBoundaries();
+    SetupHackMenu();
+    m_HackMenu.AddToRoot(m_Actors.Root());
 
     LOG_INFO("LevelOneScene::OnEnter players={}", playerCount);
 }
 
 
 void LevelOneScene::OnExit() {
+    m_HackMenu.RemoveFromRoot(m_Actors.Root());
+
     for (auto& pb : m_Players) {
         if (pb.cat) m_Actors.Root().RemoveChild(pb.cat);
     }
@@ -278,6 +282,69 @@ void LevelOneScene::UpdateTimerText() const {
     m_TimerText->SetText("TIME " + SaveManager::FormatTime(m_ElapsedSec));
 }
 
+void LevelOneScene::SetupHackMenu() {
+    m_HackMenu.SetItems({
+        {"TP KEY", false, false, {}, [this]() { HackTeleportToKey(); }},
+        {"TP DOOR", false, false, {}, [this]() { HackTeleportToDoor(); }},
+        {"GET KEY", false, false, {}, [this]() { HackGrantKey(); }},
+        {"OPEN DOOR", false, false, {}, [this]() { HackOpenDoor(); }},
+        {"BOX NEED 1", false, false, {}, [this]() { HackSetBoxesOnePusher(); }},
+        {"BOX ASIDE", false, false, {}, [this]() { HackMoveBoxesAside(); }},
+    });
+}
+
+void LevelOneScene::TeleportPlayersTo(const glm::vec2& pos) const {
+    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
+    constexpr float kTeleportSpacing = 42.0f;
+    int activeIndex = 0;
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr || !pb.cat->IsActive()) continue;
+        pb.cat->SetPosition(pos + glm::vec2{kTeleportSpacing * static_cast<float>(activeIndex), 0.0f});
+        ++activeIndex;
+    }
+}
+
+void LevelOneScene::HackTeleportToKey() const {
+    if (m_KeyCarrierIdx >= 0) return;
+    if (m_KeySprite == nullptr) return;
+    TeleportPlayersTo(m_KeySprite->GetPosition() + glm::vec2{0.0f, PlayerCat::kHalfHeight});
+}
+
+void LevelOneScene::HackTeleportToDoor() const {
+    if (m_Actors.Door() == nullptr) return;
+    TeleportPlayersTo(m_Actors.Door()->GetPosition());
+}
+
+void LevelOneScene::HackGrantKey() {
+    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
+    m_KeyCarrierIdx = 0;
+    UpdateKeyFollow();
+}
+
+void LevelOneScene::HackOpenDoor() {
+    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
+    m_DoorOpened = true;
+    m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+    if (m_KeySprite != nullptr) {
+        m_KeySprite->SetVisible(false);
+    }
+    m_Audio.PlaySe(SoundEffect::Door);
+}
+
+void LevelOneScene::HackSetBoxesOnePusher() const {
+    if (m_BoxA != nullptr) m_BoxA->SetRequiredPushers(1);
+    if (m_BoxB != nullptr) m_BoxB->SetRequiredPushers(1);
+}
+
+void LevelOneScene::HackMoveBoxesAside() const {
+    if (m_BoxA != nullptr) {
+        m_BoxA->SetPosition({kRoomLeftX + 120.0f, kRoomFloorY + m_BoxA->GetHalfSize().y});
+    }
+    if (m_BoxB != nullptr) {
+        m_BoxB->SetPosition({kRoomRightX - 120.0f, kRoomFloorY + m_BoxB->GetHalfSize().y});
+    }
+}
+
 void LevelOneScene::TryPickKey() {
     if (m_KeyCarrierIdx >= 0) return;
 
@@ -293,6 +360,7 @@ void LevelOneScene::TryPickKey() {
 
 void LevelOneScene::UpdateKeyFollow() const {
     if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
+    if (m_DoorOpened) return;
     const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
     if (carrier == nullptr) return;
 
@@ -379,6 +447,7 @@ void LevelOneScene::Update() {
     UpdateKeyFollow();
     TryOpenDoorAndClear();
     UpdateDoorEntryAndClear();
+    m_HackMenu.Update();
     if (m_ClearDone) {
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
         return;

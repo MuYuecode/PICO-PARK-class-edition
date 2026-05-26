@@ -275,6 +275,7 @@ void LevelTwoScene::OnEnter() {
     m_ButtonPressed = false;
     m_KeyCarrierIdx = -1;
     m_DoorOpened = false;
+    m_FlightEnabled = false;
 
     if (m_Actors.Header()) m_Actors.Header()->SetVisible(false);
     if (m_Actors.Floor()) m_Actors.Floor()->SetVisible(false);
@@ -330,11 +331,15 @@ void LevelTwoScene::OnEnter() {
     SpawnPlayers(playerCount);
     SetupStaticBoundaries();
     SetupPlanks(playerCount);
+    SetupHackMenu();
+    m_HackMenu.AddToRoot(m_Actors.Root());
 
     LOG_INFO("LevelTwoScene::OnEnter players={}", playerCount);
 }
 
 void LevelTwoScene::OnExit() {
+    m_HackMenu.RemoveFromRoot(m_Actors.Root());
+
     for (auto& pb : m_Players) {
         if (pb.cat) m_Actors.Root().RemoveChild(pb.cat);
     }
@@ -392,8 +397,17 @@ void LevelTwoScene::HandlePlayerInput() const {
 
         pb.cat->SetMoveDir(moveDir);
 
+        int verticalDir = 0;
+        if (m_FlightEnabled) {
+            const bool goUp = (pb.key.up != k::UNKNOWN) && ip::IsKeyPressed(pb.key.up);
+            const bool goDown = (pb.key.down != k::UNKNOWN) && ip::IsKeyPressed(pb.key.down);
+            if (goUp && !goDown) verticalDir = 1;
+            else if (goDown && !goUp) verticalDir = -1;
+        }
+        pb.cat->SetHackFlightVerticalDir(verticalDir);
+
         const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
-        if (pb.cat->IsGrounded() && wantJump) {
+        if (!m_FlightEnabled && pb.cat->IsGrounded() && wantJump) {
             pb.cat->Jump();
             m_Audio.PlaySe(SoundEffect::Jump);
         }
@@ -402,6 +416,86 @@ void LevelTwoScene::HandlePlayerInput() const {
 
 void LevelTwoScene::UpdateTimerText() const {
     m_TimerText->SetText("TIME " + SaveManager::FormatTime(m_ElapsedSec));
+}
+
+void LevelTwoScene::SetupHackMenu() {
+    m_HackMenu.SetItems({
+        {"TP KEY", false, false, {}, [this]() { HackTeleportToKey(); }},
+        {"TP DOOR", false, false, {}, [this]() { HackTeleportToDoor(); }},
+        {"GET KEY", false, false, {}, [this]() { HackGrantKey(); }},
+        {"OPEN DOOR", false, false, {}, [this]() { HackOpenDoor(); }},
+        {"TP BUTTON", false, false, {}, [this]() { HackTeleportToButton(); }},
+        {"PRESS BUTTON", false, false, {}, [this]() { HackPressButton(); }},
+        {"FLIGHT", true, m_FlightEnabled, [this](bool enabled) {
+             m_FlightEnabled = enabled;
+             ApplyHackFlightToPlayers(enabled);
+         }, {}},
+    });
+}
+
+void LevelTwoScene::TeleportPlayersTo(const glm::vec2& pos) const {
+    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
+    constexpr float kTeleportSpacing = 42.0f;
+    int activeIndex = 0;
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr || !pb.cat->IsActive()) continue;
+        pb.cat->SetPosition(pos + glm::vec2{kTeleportSpacing * static_cast<float>(activeIndex), 0.0f});
+        ++activeIndex;
+    }
+}
+
+void LevelTwoScene::ApplyHackFlightToPlayers(bool enabled) const {
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr) continue;
+        pb.cat->SetHackFlightEnabled(enabled);
+    }
+}
+
+void LevelTwoScene::HackTeleportToKey() const {
+    if (m_KeyCarrierIdx >= 0) return;
+    if (m_KeySprite == nullptr) return;
+    TeleportPlayersTo(m_KeySprite->GetPosition() + glm::vec2{0.0f, PlayerCat::kHalfHeight});
+}
+
+void LevelTwoScene::HackTeleportToDoor() const {
+    if (m_Actors.Door() == nullptr) return;
+    TeleportPlayersTo(m_Actors.Door()->GetPosition());
+}
+
+void LevelTwoScene::HackGrantKey() {
+    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
+    m_KeyCarrierIdx = 0;
+    UpdateKeyFollow();
+}
+
+void LevelTwoScene::HackOpenDoor() {
+    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
+    m_DoorOpened = true;
+    m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+    if (m_KeySprite != nullptr) {
+        m_KeySprite->SetVisible(false);
+    }
+    m_Audio.PlaySe(SoundEffect::Door);
+}
+
+void LevelTwoScene::HackTeleportToButton() const {
+    if (m_ButtonSprite == nullptr) return;
+    TeleportPlayersTo(m_ButtonSprite->GetPosition() + glm::vec2{0.0f, PlayerCat::kHalfHeight});
+}
+
+void LevelTwoScene::HackPressButton() {
+    if (m_ButtonPressed) return;
+
+    m_ButtonPressed = true;
+    if (m_ButtonSprite != nullptr) {
+        m_ButtonSprite->SetImage(GA_RESOURCE_DIR "/Image/Level_Cover/LevelTwoScene/ButtonDown.png");
+    }
+    m_Audio.PlaySe(SoundEffect::Button);
+
+    for (int i = 0; i < static_cast<int>(m_PlankBodies.size()); ++i) {
+        if (m_PlankBodies[i] == nullptr) continue;
+        m_PlankBodies[i]->SetTargetX(m_PlankTargetX[static_cast<size_t>(i)]);
+    }
 }
 
 void LevelTwoScene::TryActivateButton() {
@@ -460,6 +554,7 @@ void LevelTwoScene::TryPickKey() {
 
 void LevelTwoScene::UpdateKeyFollow() const {
     if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
+    if (m_DoorOpened) return;
 
     const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
     if (carrier == nullptr || !carrier->IsActive()) return;
@@ -548,6 +643,7 @@ void LevelTwoScene::Update() {
     UpdateKeyFollow();
     TryOpenDoorAndClear();
     UpdateDoorEntryAndClear();
+    m_HackMenu.Update();
 
     if (m_ClearDone) {
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});

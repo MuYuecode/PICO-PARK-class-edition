@@ -6,6 +6,7 @@
 
 #include "app/Scene.hpp"
 #include "game/Character.hpp"
+#include "game/HackMenu.hpp"
 #include "game/PlayerCat.hpp"
 #include "game/PlayerKeyConfig.hpp"
 #include "systems/BulletBody.hpp"
@@ -61,6 +62,15 @@ private:
     void UpdateKeyFollow() const;
     void TryOpenDoorAndClear();
     void UpdateDoorEntryAndClear();
+    void SetupHackMenu();
+    void TeleportPlayersTo(const glm::vec2& pos) const;
+    void ApplyHackFlightToPlayers(bool enabled) const;
+    void HackTeleportToKey() const;
+    void HackTeleportToDoor() const;
+    void HackGrantKey();
+    void HackOpenDoor();
+    void HackBreakJarOnce();
+    void HackBreakJarCompletely();
 
     static constexpr int kLevelIndex = 3;
     static constexpr float kViewLeftX = -640.0f;
@@ -88,6 +98,7 @@ private:
 
     std::shared_ptr<Character> m_BulletSprite;
     std::shared_ptr<GameText> m_TimerText;
+    HackMenu m_HackMenu;
     std::shared_ptr<BulletBody> m_BulletBody;
     StaticBody* m_JarBody = nullptr;
     StaticBody* m_ShooterBody = nullptr;
@@ -102,6 +113,7 @@ private:
     bool m_DoorOpened = false;
     bool m_ClearDone = false;
     bool m_BulletActive = false;
+    bool m_FlightEnabled = false;
 
     float m_BulletCooldownSec = kInitialBulletDelaySec;
     float m_ElapsedSec = 0.0f;

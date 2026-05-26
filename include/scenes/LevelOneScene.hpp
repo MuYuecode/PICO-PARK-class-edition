@@ -10,6 +10,7 @@
 #include "game/PlayerCat.hpp"
 #include "game/PushableBox.hpp"
 #include "game/GameText.hpp"
+#include "game/HackMenu.hpp"
 #include "game/PlayerKeyConfig.hpp"
 
 class LevelOneScene : public Scene {
@@ -40,6 +41,14 @@ private:
     void TryPickKey();
     void UpdateKeyFollow() const;
     void TryOpenDoorAndClear();
+    void SetupHackMenu();
+    void TeleportPlayersTo(const glm::vec2& pos) const;
+    void HackTeleportToKey() const;
+    void HackTeleportToDoor() const;
+    void HackGrantKey();
+    void HackOpenDoor();
+    void HackSetBoxesOnePusher() const;
+    void HackMoveBoxesAside() const;
 
     static bool AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
                             const glm::vec2& bPos, const glm::vec2& bHalf);
@@ -64,6 +73,7 @@ private:
     std::shared_ptr<PushableBox> m_BoxB;
 
     std::shared_ptr<GameText> m_TimerText;
+    HackMenu m_HackMenu;
 
     std::vector<PlayerBinding> m_Players;
 

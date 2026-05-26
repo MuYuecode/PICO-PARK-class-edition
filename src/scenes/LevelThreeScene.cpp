@@ -196,9 +196,18 @@ void LevelThreeScene::HandleConsensusInput() {
     }
 
     m_Player->SetMoveDir(moveDir);
+    if (m_FlightEnabled) {
+        int verticalDir = 0;
+        if (allUp && !allDown) verticalDir = 1;
+        else if (allDown && !allUp) verticalDir = -1;
+        m_Player->SetHackFlightVerticalDir(verticalDir);
+    } else {
+        m_Player->SetHackFlightVerticalDir(0);
+    }
 
     const bool blockJumpForDoorEntry = IsPlayerInOpenDoorZone();
-    if (allJumpHeld && !m_JumpConsensusLatched && m_Player->IsGrounded() && !blockJumpForDoorEntry) {
+    if (allJumpHeld && !m_JumpConsensusLatched &&
+        !m_FlightEnabled && m_Player->IsGrounded() && !blockJumpForDoorEntry) {
         m_Player->Jump();
         m_Audio.PlaySe(SoundEffect::Jump);
         m_JumpConsensusLatched = true;
@@ -220,6 +229,71 @@ bool LevelThreeScene::IsPlayerInOpenDoorZone() const {
 
     return AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
                        m_Actors.Door()->GetPosition(), doorHalf);
+}
+
+void LevelThreeScene::SetupHackMenu() {
+    m_HackMenu.SetItems({
+        {"TP KEY", false, false, {}, [this]() { HackTeleportToKey(); }},
+        {"TP DOOR", false, false, {}, [this]() { HackTeleportToDoor(); }},
+        {"GET KEY", false, false, {}, [this]() { HackGrantKey(); }},
+        {"OPEN DOOR", false, false, {}, [this]() { HackOpenDoor(); }},
+        {"TP CHECK", false, false, {}, [this]() { HackTeleportToCheckpoint(); }},
+        {"SET CHECK", false, false, {}, [this]() { HackTriggerCheckpoint(); }},
+        {"FLIGHT", true, m_FlightEnabled, [this](bool enabled) {
+             m_FlightEnabled = enabled;
+             ApplyHackFlightToPlayer(enabled);
+         }, {}},
+        {"NO MOB DMG", true, m_MobDamageDisabled,
+         [this](bool enabled) { m_MobDamageDisabled = enabled; }, {}},
+    });
+}
+
+void LevelThreeScene::HackTeleportToKey() const {
+    if (m_HasKey) return;
+    if (m_Player == nullptr || m_KeySprite == nullptr) return;
+    m_Player->SetPosition(m_KeySprite->GetPosition() + glm::vec2{0.0f, PlayerCat::kHalfHeight});
+}
+
+void LevelThreeScene::HackTeleportToDoor() const {
+    if (m_Player == nullptr || m_Actors.Door() == nullptr) return;
+    m_Player->SetPosition(m_Actors.Door()->GetPosition());
+}
+
+void LevelThreeScene::HackGrantKey() {
+    if (m_Player == nullptr) return;
+    m_HasKey = true;
+    UpdateKeyFollow();
+}
+
+void LevelThreeScene::HackOpenDoor() {
+    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
+    m_DoorOpened = true;
+    m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+    if (m_KeySprite != nullptr) {
+        m_KeySprite->SetVisible(false);
+    }
+    m_Audio.PlaySe(SoundEffect::Door);
+}
+
+void LevelThreeScene::HackTeleportToCheckpoint() const {
+    if (m_Player == nullptr || m_FlagSprite == nullptr) return;
+    m_Player->SetPosition(m_FlagSprite->GetPosition() + glm::vec2{0.0f, PlayerCat::kHalfHeight});
+}
+
+void LevelThreeScene::HackTriggerCheckpoint() {
+    if (m_FlagSprite == nullptr || m_RMidFloorSprite == nullptr) return;
+    m_CheckpointReached = true;
+    const float floorTopY = m_RMidFloorSprite->GetPosition().y +
+                            SpriteHalfH(m_RMidFloorSprite, 16.0f);
+    m_RespawnPoint = {m_FlagSprite->GetPosition().x,
+                      floorTopY + PlayerCat::kHalfHeight};
+    m_CheckText->SetVisible(true);
+    m_CheckText->SetColor(Util::Color::FromRGB(30, 150, 40, 255));
+}
+
+void LevelThreeScene::ApplyHackFlightToPlayer(bool enabled) const {
+    if (m_Player == nullptr) return;
+    m_Player->SetHackFlightEnabled(enabled);
 }
 
 void LevelThreeScene::SetupSceneVisuals() {
@@ -400,6 +474,8 @@ void LevelThreeScene::OnEnter() {
     m_HasKey = false;
     m_DoorOpened = false;
     m_ClearDone = false;
+    m_FlightEnabled = false;
+    m_MobDamageDisabled = false;
     m_JumpConsensusLatched = false;
     m_CheckText->SetVisible(false);
     m_CheckText->SetColor(Util::Color::FromRGB(0, 0, 0, 255));
@@ -477,9 +553,13 @@ void LevelThreeScene::OnEnter() {
     SetupDynamicBodies();
 
     m_World.Register(m_Player);
+    SetupHackMenu();
+    m_HackMenu.AddToRoot(m_Actors.Root());
 }
 
 void LevelThreeScene::OnExit() {
+    m_HackMenu.RemoveFromRoot(m_Actors.Root());
+
     m_World.UnfreezeAll();
     m_World.Clear();
 
@@ -591,6 +671,7 @@ void LevelThreeScene::TryPickKey() {
 
 void LevelThreeScene::UpdateKeyFollow() const {
     if (!m_HasKey || m_Player == nullptr) return;
+    if (m_DoorOpened) return;
     m_KeySprite->SetPosition(m_Player->GetPosition() + glm::vec2{-26.0f, 28.0f});
 }
 
@@ -745,6 +826,8 @@ void LevelThreeScene::HandleHazardsAndRespawn() {
         return;
     }
 
+    if (m_MobDamageDisabled) return;
+
     const auto checkMob = [&](const std::shared_ptr<IPhysicsBody>& mob) -> bool {
         if (mob == nullptr || !mob->IsActive()) return false;
         const glm::vec2 playerPos = m_Player->GetPosition();
@@ -802,6 +885,7 @@ void LevelThreeScene::Update() {
     TryOpenDoor();
     TryClearLevel();
     HandleHazardsAndRespawn();
+    m_HackMenu.Update();
 
     m_ElapsedSec += Util::Time::GetDeltaTimeMs() / 1000.0f;
     UpdateTimerText();

@@ -192,8 +192,17 @@ void LevelFourScene::HandlePlayerInput() const {
 
         pb.cat->SetMoveDir(moveDir);
 
+        int verticalDir = 0;
+        if (m_FlightEnabled) {
+            const bool goUp = (pb.key.up != k::UNKNOWN) && ip::IsKeyPressed(pb.key.up);
+            const bool goDown = (pb.key.down != k::UNKNOWN) && ip::IsKeyPressed(pb.key.down);
+            if (goUp && !goDown) verticalDir = 1;
+            else if (goDown && !goUp) verticalDir = -1;
+        }
+        pb.cat->SetHackFlightVerticalDir(verticalDir);
+
         const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
-        if (pb.cat->IsGrounded() && wantJump) {
+        if (!m_FlightEnabled && pb.cat->IsGrounded() && wantJump) {
             pb.cat->Jump();
             m_Audio.PlaySe(SoundEffect::Jump);
         }
@@ -202,6 +211,81 @@ void LevelFourScene::HandlePlayerInput() const {
 
 void LevelFourScene::UpdateTimerText() const {
     m_TimerText->SetText("TIME " + SaveManager::FormatTime(m_ElapsedSec));
+}
+
+void LevelFourScene::SetupHackMenu() {
+    m_HackMenu.SetItems({
+        {"TP KEY", false, false, {}, [this]() { HackTeleportToKey(); }},
+        {"TP DOOR", false, false, {}, [this]() { HackTeleportToDoor(); }},
+        {"GET KEY", false, false, {}, [this]() { HackGrantKey(); }},
+        {"OPEN DOOR", false, false, {}, [this]() { HackOpenDoor(); }},
+        {"FLIGHT", true, m_FlightEnabled, [this](bool enabled) {
+             m_FlightEnabled = enabled;
+             ApplyHackFlightToPlayers(enabled);
+         }, {}},
+        {"CRACK JAR", false, false, {}, [this]() { HackBreakJarOnce(); }},
+        {"BREAK JAR", false, false, {}, [this]() { HackBreakJarCompletely(); }},
+    });
+}
+
+void LevelFourScene::TeleportPlayersTo(const glm::vec2& pos) const {
+    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
+    constexpr float kTeleportSpacing = 42.0f;
+    int activeIndex = 0;
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr || !pb.cat->IsActive()) continue;
+        pb.cat->SetPosition(pos + glm::vec2{kTeleportSpacing * static_cast<float>(activeIndex), 0.0f});
+        ++activeIndex;
+    }
+}
+
+void LevelFourScene::ApplyHackFlightToPlayers(bool enabled) const {
+    for (const auto& pb : m_Players) {
+        if (pb.cat == nullptr) continue;
+        pb.cat->SetHackFlightEnabled(enabled);
+    }
+}
+
+void LevelFourScene::HackTeleportToKey() const {
+    if (m_JarState != JarState::Gone) return;
+    if (m_KeyCarrierIdx >= 0) return;
+    if (m_KeySprite == nullptr) return;
+    TeleportPlayersTo(m_KeySprite->GetPosition() + glm::vec2{0.0f, -PlayerCat::kHalfHeight});
+}
+
+void LevelFourScene::HackTeleportToDoor() const {
+    if (m_Actors.Door() == nullptr) return;
+    TeleportPlayersTo(m_Actors.Door()->GetPosition());
+}
+
+void LevelFourScene::HackGrantKey() {
+    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
+    if (m_JarState != JarState::Gone) HackBreakJarCompletely();
+    m_KeyCarrierIdx = 0;
+    UpdateKeyFollow();
+}
+
+void LevelFourScene::HackOpenDoor() {
+    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
+    m_DoorOpened = true;
+    m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
+    if (m_KeySprite != nullptr) {
+        m_KeySprite->SetVisible(false);
+    }
+    m_Audio.PlaySe(SoundEffect::Door);
+}
+
+void LevelFourScene::HackBreakJarOnce() {
+    if (m_JarState == JarState::Gone) return;
+    AdvanceJarState();
+    DeactivateBullet();
+}
+
+void LevelFourScene::HackBreakJarCompletely() {
+    while (m_JarState != JarState::Gone) {
+        AdvanceJarState();
+    }
+    DeactivateBullet();
 }
 
 float LevelFourScene::CurrentBulletSpeed() const {
@@ -319,6 +403,7 @@ void LevelFourScene::TryPickKey() {
 
 void LevelFourScene::UpdateKeyFollow() const {
     if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
+    if (m_DoorOpened) return;
 
     const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
     if (carrier == nullptr || !carrier->IsActive()) return;
@@ -399,6 +484,7 @@ void LevelFourScene::OnEnter() {
     m_ElapsedSec = 0.0f;
     m_JarState = JarState::Jar0;
     m_BulletActive = false;
+    m_FlightEnabled = false;
     m_BulletCooldownSec = kInitialBulletDelaySec;
     m_BulletSprite->SetVisible(false);
 
@@ -432,11 +518,15 @@ void LevelFourScene::OnEnter() {
 
     m_BulletBody = std::make_shared<BulletBody>(m_ShooterSprite->GetPosition(), kBulletHalf);
     m_World.Register(m_BulletBody);
+    SetupHackMenu();
+    m_HackMenu.AddToRoot(m_Actors.Root());
 
     LOG_INFO("LevelFourScene::OnEnter players={}", playerCount);
 }
 
 void LevelFourScene::OnExit() {
+    m_HackMenu.RemoveFromRoot(m_Actors.Root());
+
     for (auto& pb : m_Players) {
         if (pb.cat) m_Actors.Root().RemoveChild(pb.cat);
     }
@@ -503,6 +593,7 @@ void LevelFourScene::Update() {
     UpdateKeyFollow();
     TryOpenDoorAndClear();
     UpdateDoorEntryAndClear();
+    m_HackMenu.Update();
 
     if (m_ClearDone) {
         RequestSceneOp({SceneOpType::ClearToAndGoTo, SceneId::LevelSelect});
