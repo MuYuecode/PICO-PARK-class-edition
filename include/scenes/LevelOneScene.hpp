@@ -50,9 +50,6 @@ private:
     void HackSetBoxesOnePusher() const;
     void HackMoveBoxesAside() const;
 
-    static bool AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
-                            const glm::vec2& bPos, const glm::vec2& bHalf);
-
     static constexpr int   kLevelIndex = 0;
     static constexpr float kRoomLeftX  = -624.0f;
     static constexpr float kRoomRightX =  624.0f;

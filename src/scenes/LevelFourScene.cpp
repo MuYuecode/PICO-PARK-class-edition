@@ -4,9 +4,8 @@
 #include <cmath>
 
 #include "app/AppUtil.hpp"
-#include "game/CatAssets.hpp"
 #include "systems/BulletBody.hpp"
-#include "scenes/KeyboardConfigScene.hpp"
+#include "scenes/LevelSceneHelpers.hpp"
 #include "systems/SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -46,12 +45,6 @@ LevelFourScene::LevelFourScene(SceneServices services)
     m_TimerText->SetZIndex(40.0f);
     m_TimerText->SetPosition({350.0f, 310.0f});
     m_BulletSprite->SetVisible(false);
-}
-
-bool LevelFourScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
-                                 const glm::vec2& bPos, const glm::vec2& bHalf) {
-    return std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) &&
-           std::abs(aPos.y - bPos.y) < (aHalf.y + bHalf.y);
 }
 
 float LevelFourScene::FloorTopY() const {
@@ -141,31 +134,7 @@ void LevelFourScene::SetupStaticBoundaries() {
 }
 
 void LevelFourScene::SpawnPlayers(int count) {
-    m_Players.clear();
-    m_Players.reserve(static_cast<size_t>(count));
-
-    for (int i = 0; i < count; ++i) {
-        const std::string color = m_Actors.CatColorOrder()[static_cast<size_t>(i)];
-        auto cat = std::make_shared<PlayerCat>(
-            CatAssets::BuildFullAnimPaths(color),
-            k::UNKNOWN, k::UNKNOWN, k::UNKNOWN);
-
-        PlayerBinding pb;
-        pb.cat = cat;
-        pb.key = m_Session.GetAppliedKeyConfigs()[static_cast<size_t>(i)];
-
-        if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
-            pb.key = KeyboardConfigScene::k_Default1P;
-        } else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
-            pb.key = KeyboardConfigScene::k_Default2P;
-        }
-
-        cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
-        m_Players.push_back(pb);
-        m_Actors.Root().AddChild(cat);
-        m_World.Register(cat);
-    }
-
+    LevelSceneHelpers::SpawnPlayerBindings(m_Players, count, m_Actors, m_Session, m_World);
     ApplyInitialFormation();
 }
 
@@ -180,33 +149,7 @@ void LevelFourScene::ApplyInitialFormation() const {
 }
 
 void LevelFourScene::HandlePlayerInput() const {
-    for (const auto& pb : m_Players) {
-        if (pb.cat == nullptr || !pb.cat->IsActive() || !pb.cat->GetInputEnabled()) continue;
-
-        int moveDir = 0;
-        const bool goLeft = (pb.key.left != k::UNKNOWN) && ip::IsKeyPressed(pb.key.left);
-        const bool goRight = (pb.key.right != k::UNKNOWN) && ip::IsKeyPressed(pb.key.right);
-
-        if (goLeft && !goRight) moveDir = -1;
-        else if (goRight && !goLeft) moveDir = 1;
-
-        pb.cat->SetMoveDir(moveDir);
-
-        int verticalDir = 0;
-        if (m_FlightEnabled) {
-            const bool goUp = (pb.key.up != k::UNKNOWN) && ip::IsKeyPressed(pb.key.up);
-            const bool goDown = (pb.key.down != k::UNKNOWN) && ip::IsKeyPressed(pb.key.down);
-            if (goUp && !goDown) verticalDir = 1;
-            else if (goDown && !goUp) verticalDir = -1;
-        }
-        pb.cat->SetHackFlightVerticalDir(verticalDir);
-
-        const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
-        if (!m_FlightEnabled && pb.cat->IsGrounded() && wantJump) {
-            pb.cat->Jump();
-            m_Audio.PlaySe(SoundEffect::Jump);
-        }
-    }
+    LevelSceneHelpers::HandlePlayerInput(m_Players, m_Audio, m_FlightEnabled);
 }
 
 void LevelFourScene::UpdateTimerText() const {
@@ -229,21 +172,11 @@ void LevelFourScene::SetupHackMenu() {
 }
 
 void LevelFourScene::TeleportPlayersTo(const glm::vec2& pos) const {
-    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
-    constexpr float kTeleportSpacing = 42.0f;
-    int activeIndex = 0;
-    for (const auto& pb : m_Players) {
-        if (pb.cat == nullptr || !pb.cat->IsActive()) continue;
-        pb.cat->SetPosition(pos + glm::vec2{kTeleportSpacing * static_cast<float>(activeIndex), 0.0f});
-        ++activeIndex;
-    }
+    LevelSceneHelpers::TeleportActivePlayersTo(m_Players, pos);
 }
 
 void LevelFourScene::ApplyHackFlightToPlayers(bool enabled) const {
-    for (const auto& pb : m_Players) {
-        if (pb.cat == nullptr) continue;
-        pb.cat->SetHackFlightEnabled(enabled);
-    }
+    LevelSceneHelpers::ApplyHackFlightToPlayers(m_Players, enabled);
 }
 
 void LevelFourScene::HackTeleportToKey() const {
@@ -393,8 +326,9 @@ void LevelFourScene::TryPickKey() {
     for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
         if (m_Players[i].cat == nullptr || !m_Players[i].cat->IsActive()) continue;
 
-        if (AabbOverlap(m_Players[i].cat->GetPosition(), m_Players[i].cat->GetHalfSize(),
-                        m_KeySprite->GetPosition(), kKeyHalf)) {
+        if (LevelSceneHelpers::AabbOverlap(
+                m_Players[i].cat->GetPosition(), m_Players[i].cat->GetHalfSize(),
+                m_KeySprite->GetPosition(), kKeyHalf)) {
             m_KeyCarrierIdx = i;
             return;
         }
@@ -412,64 +346,22 @@ void LevelFourScene::UpdateKeyFollow() const {
 }
 
 void LevelFourScene::TryOpenDoorAndClear() {
-    if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
-    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
-
-    const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
-    if (carrier == nullptr || !carrier->IsActive()) return;
-
-    const glm::vec2 doorPos = m_Actors.Door()->GetPosition();
-    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
-
-    const bool carrierTouchDoor = AabbOverlap(
-        carrier->GetPosition(), carrier->GetHalfSize(),
-        doorPos, doorHalf);
-
-    if (carrierTouchDoor) {
-        m_DoorOpened = true;
-        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
-        m_KeySprite->SetVisible(false);
-        m_Audio.PlaySe(SoundEffect::Door);
-    }
+    LevelSceneHelpers::TryOpenDoorWithKeyCarrier(
+        m_Players, m_KeyCarrierIdx, m_Actors.Door(), m_KeySprite, m_DoorOpened, m_Audio);
 }
 
 void LevelFourScene::UpdateDoorEntryAndClear() {
     if (!m_DoorOpened || m_Actors.Door() == nullptr) return;
-
-    const glm::vec2 doorPos = m_Actors.Door()->GetPosition();
-    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
-    const int totalPlayers = static_cast<int>(m_Players.size());
-
-    for (int i = 0; i < totalPlayers; ++i) {
-        if (i >= static_cast<int>(m_PlayerEntered.size())) break;
-        if (m_PlayerEntered[static_cast<size_t>(i)]) continue;
-
-        auto& pb = m_Players[i];
-        auto& cat = pb.cat;
-        if (cat == nullptr || !cat->IsActive()) continue;
-
-        const bool touchingDoor = AabbOverlap(
-            cat->GetPosition(), cat->GetHalfSize(),
-            doorPos, doorHalf);
-
-        const bool pressedUp = (pb.key.up != k::UNKNOWN) && ip::IsKeyDown(pb.key.up);
-
-        if (!(touchingDoor && pressedUp)) continue;
-
-        m_PlayerEntered[static_cast<size_t>(i)] = true;
-        ++m_EnteredCount;
-
-        cat->SetVisible(false);
-        cat->SetInputEnabled(false);
-        cat->SetActive(false);
-        cat->SetPosition({640.0f, -360.0f});
-    }
-
-    if (!m_ClearDone && m_EnteredCount == totalPlayers) {
-        SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
-        m_ClearDone = true;
-        m_Audio.PlaySe(SoundEffect::Win);
-    }
+    LevelSceneHelpers::UpdateDoorEntryAndClear(
+        m_Players,
+        m_PlayerEntered,
+        m_EnteredCount,
+        m_ClearDone,
+        m_Actors.Door(),
+        m_Session.GetSelectedPlayerCount(),
+        kLevelIndex,
+        m_ElapsedSec,
+        m_Audio);
 }
 
 void LevelFourScene::OnEnter() {

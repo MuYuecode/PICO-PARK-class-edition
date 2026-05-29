@@ -1,9 +1,7 @@
 #include "scenes/LevelOneScene.hpp"
 #include "game/BoundaryFactory.hpp"
 #include <algorithm>
-#include <cmath>
-#include "game/CatAssets.hpp"
-#include "scenes/KeyboardConfigScene.hpp"
+#include "scenes/LevelSceneHelpers.hpp"
 #include "systems/SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -41,12 +39,6 @@ LevelOneScene::LevelOneScene(SceneServices services)
     m_TimerText->SetPosition({450.0f, 320.0f});
 }
 
-bool LevelOneScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
-                                const glm::vec2& bPos, const glm::vec2& bHalf) {
-    return std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) &&
-           std::abs(aPos.y - bPos.y) < (aHalf.y + bHalf.y);
-}
-
 void LevelOneScene::SetupStaticBoundaries() {
     // Derive the physical floor surface from the visual floor sprite.
     // This keeps collider and art aligned.
@@ -71,35 +63,8 @@ void LevelOneScene::SetupStaticBoundaries() {
 
 
 void LevelOneScene::SpawnPlayers(int count) {
-    m_Players.clear();
-    m_Players.reserve(static_cast<size_t>(count));
-
-    for (int i = 0; i < count; ++i) {
-        const std::string color = m_Actors.CatColorOrder()[static_cast<size_t>(i)];
-        auto cat = std::make_shared<PlayerCat>(
-            CatAssets::BuildFullAnimPaths(color),
-            k::UNKNOWN, k::UNKNOWN, k::UNKNOWN);
-
-        PlayerBinding pb;
-        pb.cat = cat;
-        pb.key = m_Session.GetAppliedKeyConfigs()[static_cast<size_t>(i)];
-
-        if (i == 0 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
-            pb.key = KeyboardConfigScene::k_Default1P;
-        } else if (i == 1 && pb.key.left == k::UNKNOWN && pb.key.right == k::UNKNOWN) {
-            pb.key = KeyboardConfigScene::k_Default2P;
-        }
-
-        cat->SetZIndex(20.0f + static_cast<float>(i) * 0.01f);
-        m_Players.push_back(pb);
-        m_Actors.Root().AddChild(cat);
-    }
-
+    LevelSceneHelpers::SpawnPlayerBindings(m_Players, count, m_Actors, m_Session, m_World);
     ApplyInitialFormation();
-
-    for (auto& pb : m_Players) {
-        m_World.Register(pb.cat);
-    }
 }
 
 void LevelOneScene::ApplyInitialFormation() {
@@ -258,24 +223,7 @@ void LevelOneScene::ResumeGameplay() {
 }
 
 void LevelOneScene::HandlePlayerInput() const {
-    for (const auto& pb : m_Players) {
-        if (pb.cat == nullptr) continue;
-
-        int moveDir = 0;
-        const bool goLeft  = (pb.key.left  != k::UNKNOWN) && ip::IsKeyPressed(pb.key.left);
-        const bool goRight = (pb.key.right != k::UNKNOWN) && ip::IsKeyPressed(pb.key.right);
-
-        if (goLeft && !goRight) moveDir = -1;
-        else if (goRight && !goLeft) moveDir = 1;
-
-        pb.cat->SetMoveDir(moveDir);
-
-        const bool wantJump = (pb.key.jump != k::UNKNOWN) && ip::IsKeyDown(pb.key.jump);
-        if (pb.cat->IsGrounded() && wantJump) {
-            pb.cat->Jump();
-            m_Audio.PlaySe(SoundEffect::Jump);
-        }
-    }
+    LevelSceneHelpers::HandlePlayerInput(m_Players, m_Audio);
 }
 
 void LevelOneScene::UpdateTimerText() const {
@@ -294,14 +242,7 @@ void LevelOneScene::SetupHackMenu() {
 }
 
 void LevelOneScene::TeleportPlayersTo(const glm::vec2& pos) const {
-    if (m_Players.empty() || m_Players[0].cat == nullptr) return;
-    constexpr float kTeleportSpacing = 42.0f;
-    int activeIndex = 0;
-    for (const auto& pb : m_Players) {
-        if (pb.cat == nullptr || !pb.cat->IsActive()) continue;
-        pb.cat->SetPosition(pos + glm::vec2{kTeleportSpacing * static_cast<float>(activeIndex), 0.0f});
-        ++activeIndex;
-    }
+    LevelSceneHelpers::TeleportActivePlayersTo(m_Players, pos);
 }
 
 void LevelOneScene::HackTeleportToKey() const {
@@ -350,8 +291,9 @@ void LevelOneScene::TryPickKey() {
 
     for (int i = 0; i < static_cast<int>(m_Players.size()); ++i) {
         if (m_Players[i].cat == nullptr) continue;
-        if (AabbOverlap(m_Players[i].cat->GetPosition(), m_Players[i].cat->GetHalfSize(),
-                        m_KeySprite->GetPosition(), kKeyHalf)) {
+        if (LevelSceneHelpers::AabbOverlap(
+                m_Players[i].cat->GetPosition(), m_Players[i].cat->GetHalfSize(),
+                m_KeySprite->GetPosition(), kKeyHalf)) {
             m_KeyCarrierIdx = i;
             return;
         }
@@ -368,67 +310,22 @@ void LevelOneScene::UpdateKeyFollow() const {
 }
 
 void LevelOneScene::TryOpenDoorAndClear() {
-    if (m_KeyCarrierIdx < 0 || m_KeyCarrierIdx >= static_cast<int>(m_Players.size())) return;
-    if (m_Actors.Door() == nullptr || m_DoorOpened) return;
-
-    const auto& carrier = m_Players[m_KeyCarrierIdx].cat;
-    if (carrier == nullptr) return;
-
-    const glm::vec2 doorPos  = m_Actors.Door()->GetPosition();
-    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
-
-    const bool carrierTouchDoor = AabbOverlap(
-        carrier->GetPosition(), carrier->GetHalfSize(),
-        doorPos, doorHalf
-    );
-
-    if (carrierTouchDoor) {
-        m_DoorOpened = true;
-        m_Actors.Door()->SetImage(GA_RESOURCE_DIR "/Image/Background/door_open.png");
-        m_KeySprite->SetVisible(false);
-        m_Audio.PlaySe(SoundEffect::Door);
-    }
+    LevelSceneHelpers::TryOpenDoorWithKeyCarrier(
+        m_Players, m_KeyCarrierIdx, m_Actors.Door(), m_KeySprite, m_DoorOpened, m_Audio);
 }
 
 void LevelOneScene::UpdateDoorEntryAndClear() {
     if (!m_DoorOpened || m_Actors.Door() == nullptr) return;
-
-    const glm::vec2 doorPos  = m_Actors.Door()->GetPosition();
-    const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
-    const int totalPlayers   = static_cast<int>(m_Players.size());
-
-    for (int i = 0; i < totalPlayers; ++i) {
-        if (i >= static_cast<int>(m_PlayerEntered.size())) break;
-        if (m_PlayerEntered[static_cast<size_t>(i)]) continue;
-
-        auto& pb  = m_Players[i];
-        auto& cat = pb.cat;
-        if (cat == nullptr) continue;
-
-        const bool touchingDoor = AabbOverlap(
-            cat->GetPosition(), cat->GetHalfSize(),
-            doorPos, doorHalf
-        );
-
-        // Entering the door requires pressing UP.
-        const bool pressedUp = (pb.key.up != k::UNKNOWN) && ip::IsKeyDown(pb.key.up);
-
-        if (!(touchingDoor && pressedUp)) continue;
-
-        m_PlayerEntered[static_cast<size_t>(i)] = true;
-        ++m_EnteredCount;
-
-        cat->SetVisible(false);
-        cat->SetInputEnabled(false);
-        cat->SetActive(false);
-        cat->SetPosition({640.0f, -360.0f});
-    }
-
-    if (!m_ClearDone && m_EnteredCount == totalPlayers) {
-        SaveManager::UpdateBestTime(kLevelIndex, m_Session.GetSelectedPlayerCount(), m_ElapsedSec);
-        m_ClearDone = true;
-        m_Audio.PlaySe(SoundEffect::Win);
-    }
+    LevelSceneHelpers::UpdateDoorEntryAndClear(
+        m_Players,
+        m_PlayerEntered,
+        m_EnteredCount,
+        m_ClearDone,
+        m_Actors.Door(),
+        m_Session.GetSelectedPlayerCount(),
+        kLevelIndex,
+        m_ElapsedSec,
+        m_Audio);
 }
 
 void LevelOneScene::Update() {

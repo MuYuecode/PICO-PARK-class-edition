@@ -6,6 +6,7 @@
 
 #include "game/CatAssets.hpp"
 #include "scenes/KeyboardConfigScene.hpp"
+#include "scenes/LevelSceneHelpers.hpp"
 #include "systems/SaveManager.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
@@ -125,12 +126,6 @@ LevelThreeScene::LevelThreeScene(SceneServices services)
     m_TimerText->SetPosition({450.0f, 320.0f});
 }
 
-bool LevelThreeScene::AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
-                                  const glm::vec2& bPos, const glm::vec2& bHalf) {
-    return std::abs(aPos.x - bPos.x) < (aHalf.x + bHalf.x) &&
-           std::abs(aPos.y - bPos.y) < (aHalf.y + bHalf.y);
-}
-
 void LevelThreeScene::BuildConsensusBindings(int playerCount) {
     m_ConsensusBindings.clear();
     m_ConsensusBindings.reserve(static_cast<size_t>(playerCount));
@@ -227,8 +222,9 @@ bool LevelThreeScene::IsPlayerInOpenDoorZone() const {
     doorHalf.x += 12.0f;
     doorHalf.y += 8.0f;
 
-    return AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
-                       m_Actors.Door()->GetPosition(), doorHalf);
+    return LevelSceneHelpers::AabbOverlap(
+        m_Player->GetPosition(), m_Player->GetHalfSize(),
+        m_Actors.Door()->GetPosition(), doorHalf);
 }
 
 void LevelThreeScene::SetupHackMenu() {
@@ -643,8 +639,9 @@ void LevelThreeScene::UpdateCheckpoint() {
     if (m_PlayerDead || m_CheckpointReached || m_Player == nullptr) return;
 
     const glm::vec2 flagHalf = glm::abs(m_FlagSprite->GetScaledSize()) * 0.5f;
-    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
-                     m_FlagSprite->GetPosition(), flagHalf)) {
+    if (!LevelSceneHelpers::AabbOverlap(
+            m_Player->GetPosition(), m_Player->GetHalfSize(),
+            m_FlagSprite->GetPosition(), flagHalf)) {
         return;
     }
 
@@ -661,8 +658,9 @@ void LevelThreeScene::TryPickKey() {
     if (m_PlayerDead || m_HasKey || m_Player == nullptr) return;
 
     const glm::vec2 keyHalf = glm::abs(m_KeySprite->GetScaledSize()) * 0.5f;
-    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
-                     m_KeySprite->GetPosition(), keyHalf)) {
+    if (!LevelSceneHelpers::AabbOverlap(
+            m_Player->GetPosition(), m_Player->GetHalfSize(),
+            m_KeySprite->GetPosition(), keyHalf)) {
         return;
     }
 
@@ -679,8 +677,9 @@ void LevelThreeScene::TryOpenDoor() {
     if (!m_HasKey || m_DoorOpened || m_Player == nullptr || m_Actors.Door() == nullptr) return;
 
     const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
-    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
-                     m_Actors.Door()->GetPosition(), doorHalf)) {
+    if (!LevelSceneHelpers::AabbOverlap(
+            m_Player->GetPosition(), m_Player->GetHalfSize(),
+            m_Actors.Door()->GetPosition(), doorHalf)) {
         return;
     }
 
@@ -696,8 +695,9 @@ void LevelThreeScene::TryClearLevel() {
     }
 
     const glm::vec2 doorHalf = glm::abs(m_Actors.Door()->GetScaledSize()) * 0.5f;
-    if (!AabbOverlap(m_Player->GetPosition(), m_Player->GetHalfSize(),
-                     m_Actors.Door()->GetPosition(), doorHalf)) {
+    if (!LevelSceneHelpers::AabbOverlap(
+            m_Player->GetPosition(), m_Player->GetHalfSize(),
+            m_Actors.Door()->GetPosition(), doorHalf)) {
         return;
     }
 
@@ -835,7 +835,7 @@ void LevelThreeScene::HandleHazardsAndRespawn() {
         const glm::vec2 mobPos = mob->GetPosition();
         const glm::vec2 mobHalf = mob->GetHalfSize();
 
-        const bool overlapNow = AabbOverlap(playerPos, playerHalf, mobPos, mobHalf);
+        const bool overlapNow = LevelSceneHelpers::AabbOverlap(playerPos, playerHalf, mobPos, mobHalf);
         const bool nearContact =
             std::abs(playerPos.x - mobPos.x) <= (playerHalf.x + mobHalf.x + kHazardContactSlack) &&
             std::abs(playerPos.y - mobPos.y) <= (playerHalf.y + mobHalf.y + kHazardContactSlack);

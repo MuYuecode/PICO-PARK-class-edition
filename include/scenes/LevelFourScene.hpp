@@ -39,9 +39,6 @@ private:
         Gone,
     };
 
-    static bool AabbOverlap(const glm::vec2& aPos, const glm::vec2& aHalf,
-                            const glm::vec2& bPos, const glm::vec2& bHalf);
-
     void SetupSceneVisuals();
     void SetupStaticBoundaries();
     void SpawnPlayers(int count);
