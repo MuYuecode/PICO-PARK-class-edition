@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "app/Scene.hpp"
+#include "app/SceneActorGroup.hpp"
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
 #include "systems/SaveManager.hpp"
@@ -51,6 +52,8 @@ public:
     };
 
 private:
+    SceneActorGroup m_ActorGroup;
+
     std::shared_ptr<Character> m_SelectorFrame;
 
     std::shared_ptr<GameText>  m_TitleText;

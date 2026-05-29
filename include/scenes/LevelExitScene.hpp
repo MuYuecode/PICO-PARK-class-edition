@@ -4,6 +4,7 @@
 #include <array>
 #include <memory>
 
+#include "app/SceneActorGroup.hpp"
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
 #include "app/Scene.hpp"
@@ -21,6 +22,8 @@ private:
     static constexpr int ROW_COUNT = 4;
     static constexpr float kTextX = 0.0f;
     static constexpr std::array<float, ROW_COUNT> kRowY = {70.0f, -5.0f, -80.0f, -155.0f};
+
+    SceneActorGroup m_ActorGroup;
 
     std::shared_ptr<Character> m_DimBg;
     std::shared_ptr<Character> m_ExitFrame;

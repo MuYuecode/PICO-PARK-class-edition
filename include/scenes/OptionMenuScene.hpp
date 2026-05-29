@@ -9,6 +9,7 @@
 #include <string>
 
 #include "app/Scene.hpp"
+#include "app/SceneActorGroup.hpp"
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
 #include "game/UITriangleButton.hpp"
@@ -33,6 +34,8 @@ public:
     Settings m_Pending;
 
 private:
+    SceneActorGroup m_ActorGroup;
+
     std::shared_ptr<Character> m_ExitGameButton;
 
     std::shared_ptr<Character> m_OptionMenuFrame;

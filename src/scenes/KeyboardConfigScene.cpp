@@ -134,6 +134,28 @@ KeyboardConfigScene::KeyboardConfigScene(SceneServices services)
     m_CancelText->SetPosition({COL_CANCEL_X,  ROW_Y_BTN});
     m_DefaultText->SetPosition({COL_DEFAULT_X, ROW_Y_BTN});
 
+    m_ActorGroup
+        .Add(m_ExitGameButton)
+        .Add(m_Frame)
+        .Add(m_ChoiceFrame)
+        .Add(m_HLine1)
+        .Add(m_HLine2)
+        .Add(m_HLine3)
+        .Add(m_TitleText)
+        .Add(m_PlayerLabel)
+        .Add(m_PlayerLeftBtn)
+        .Add(m_PlayerValue)
+        .Add(m_PlayerRightBtn);
+    for (int i = 0; i < BIND_COUNT; ++i) {
+        m_ActorGroup
+            .Add(m_BindLabels[i])
+            .Add(m_BindValues[i]);
+    }
+    m_ActorGroup
+        .Add(m_OkText)
+        .Add(m_CancelText)
+        .Add(m_DefaultText);
+
     {
         std::array<KeyConfigData, MAX_PLAYERS> loaded;
         if (SaveManager::LoadKeyConfigs(loaded)) {
@@ -164,24 +186,7 @@ KeyboardConfigScene::KeyboardConfigScene(SceneServices services)
 void KeyboardConfigScene::OnEnter() {
     LOG_INFO("KeyboardConfigScene::OnEnter");
 
-    m_Actors.Root().AddChild(m_ExitGameButton);
-    m_Actors.Root().AddChild(m_Frame);
-    m_Actors.Root().AddChild(m_ChoiceFrame);
-    m_Actors.Root().AddChild(m_HLine1);
-    m_Actors.Root().AddChild(m_HLine2);
-    m_Actors.Root().AddChild(m_HLine3);
-    m_Actors.Root().AddChild(m_TitleText);
-    m_Actors.Root().AddChild(m_PlayerLabel);
-    m_Actors.Root().AddChild(m_PlayerLeftBtn);
-    m_Actors.Root().AddChild(m_PlayerValue);
-    m_Actors.Root().AddChild(m_PlayerRightBtn);
-    for (int i = 0; i < BIND_COUNT; ++i) {
-        m_Actors.Root().AddChild(m_BindLabels[i]);
-        m_Actors.Root().AddChild(m_BindValues[i]);
-    }
-    m_Actors.Root().AddChild(m_OkText);
-    m_Actors.Root().AddChild(m_CancelText);
-    m_Actors.Root().AddChild(m_DefaultText);
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_ExitGameButton->SetPosition({399.2f, 285.1f});
     m_ExitGameButton->SetVisible(true);
@@ -201,26 +206,8 @@ void KeyboardConfigScene::OnEnter() {
 void KeyboardConfigScene::OnExit() {
     LOG_INFO("KeyboardConfigScene::OnExit");
 
-    m_Actors.Root().RemoveChild(m_Frame);
-    m_Actors.Root().RemoveChild(m_ChoiceFrame);
-    m_Actors.Root().RemoveChild(m_HLine1);
-    m_Actors.Root().RemoveChild(m_HLine2);
-    m_Actors.Root().RemoveChild(m_HLine3);
-    m_Actors.Root().RemoveChild(m_TitleText);
-    m_Actors.Root().RemoveChild(m_PlayerLabel);
-    m_Actors.Root().RemoveChild(m_PlayerLeftBtn);
-    m_Actors.Root().RemoveChild(m_PlayerValue);
-    m_Actors.Root().RemoveChild(m_PlayerRightBtn);
-    for (int i = 0; i < BIND_COUNT; ++i) {
-        m_Actors.Root().RemoveChild(m_BindLabels[i]);
-        m_Actors.Root().RemoveChild(m_BindValues[i]);
-    }
-    m_Actors.Root().RemoveChild(m_OkText);
-    m_Actors.Root().RemoveChild(m_CancelText);
-    m_Actors.Root().RemoveChild(m_DefaultText);
-
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
-    m_Actors.Root().RemoveChild(m_ExitGameButton);
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 }
 
 void KeyboardConfigScene::Update() {

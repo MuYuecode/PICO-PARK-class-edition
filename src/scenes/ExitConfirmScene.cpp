@@ -33,18 +33,20 @@ ExitConfirmScene::ExitConfirmScene(SceneServices services)
     m_ChoiceFrame = std::make_shared<Character>(
         GA_RESOURCE_DIR "/Image/Background/Choice_Frame.png");
     m_ChoiceFrame->SetZIndex(20);
+
+    m_ActorGroup
+        .Add(m_MenuFrame)
+        .Add(m_ExitGameButton)
+        .Add(m_ExitGame1Text)
+        .Add(m_YesText)
+        .Add(m_NoText)
+        .Add(m_ChoiceFrame);
 }
 
 void ExitConfirmScene::OnEnter() {
     LOG_INFO("ExitConfirmScene::OnEnter");
 
-    m_Actors.Root().AddChild(m_MenuFrame);
-    m_Actors.Root().AddChild(m_ExitGameButton);
-
-    m_Actors.Root().AddChild(m_ExitGame1Text);
-    m_Actors.Root().AddChild(m_YesText);
-    m_Actors.Root().AddChild(m_NoText);
-    m_Actors.Root().AddChild(m_ChoiceFrame);
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_MenuFrame->SetScale({408.0f / 695.0f, 287.0f / 218.0f});
     m_MenuFrame->SetVisible(true);
@@ -58,15 +60,9 @@ void ExitConfirmScene::OnEnter() {
 void ExitConfirmScene::OnExit() {
     LOG_INFO("ExitConfirmScene::OnExit");
 
-    m_Actors.Root().RemoveChild(m_ExitGame1Text);
-    m_Actors.Root().RemoveChild(m_YesText);
-    m_Actors.Root().RemoveChild(m_NoText);
-    m_Actors.Root().RemoveChild(m_ChoiceFrame);
-
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
-    m_Actors.Root().RemoveChild(m_MenuFrame);
-    m_Actors.Root().RemoveChild(m_ExitGameButton);
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 }
 
 void ExitConfirmScene::Update() {

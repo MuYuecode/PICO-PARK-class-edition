@@ -19,6 +19,10 @@ TitleScene::TitleScene(SceneServices services)
     m_PressEnterText = std::make_shared<GameText>("PRESS ENTER KEY", 66, orange);
     m_PressEnterText->SetZIndex(0);
     m_PressEnterText->SetPosition({0.f, -155.f});
+
+    m_ActorGroup
+        .Add(m_TitleSub)
+        .Add(m_PressEnterText);
 }
 
 void TitleScene::SetupStaticBoundaries() {
@@ -62,8 +66,7 @@ void TitleScene::OnEnter() {
         }
     }
 
-    m_Actors.Root().AddChild(m_TitleSub);
-    m_Actors.Root().AddChild(m_PressEnterText);
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_FlashTimer = 0.f;
     m_PressEnterText->SetVisible(true);
@@ -89,8 +92,7 @@ void TitleScene::OnEnter() {
 void TitleScene::OnExit() {
     LOG_INFO("TitleScene::OnExit");
 
-    m_Actors.Root().RemoveChild(m_TitleSub);
-    m_Actors.Root().RemoveChild(m_PressEnterText);
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 
     for (auto& cat : m_Actors.StartupCats()) {
         if (cat != nullptr) cat->SetInputEnabled(false);

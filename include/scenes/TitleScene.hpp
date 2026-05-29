@@ -3,6 +3,7 @@
 
 #include <memory>
 #include "app/Scene.hpp"
+#include "app/SceneActorGroup.hpp"
 #include "game/GameText.hpp"
 #include "systems/PhysicsWorld.hpp"
 
@@ -18,6 +19,8 @@ public:
 
 private:
     void SetupStaticBoundaries();
+
+    SceneActorGroup m_ActorGroup;
 
     std::shared_ptr<GameText> m_TitleSub;
     std::shared_ptr<GameText> m_PressEnterText;

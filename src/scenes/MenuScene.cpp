@@ -48,6 +48,16 @@ MenuScene::MenuScene(SceneServices services)
 
     m_LocalPlayText = std::make_shared<GameText>(" LOCAL PLAY MODE", 65, black);
     m_LocalPlayText->SetPosition({0.f, -153.f});
+
+    m_ActorGroup
+        .Add(m_MenuFrame)
+        .Add(m_ExitGameButton)
+        .Add(m_blue_cat_run_img)
+        .Add(m_LeftTriButton)
+        .Add(m_RightTriButton)
+        .Add(m_ExitGameText)
+        .Add(m_OptionText)
+        .Add(m_LocalPlayText);
 }
 
 void MenuScene::SetupStaticBoundaries() {
@@ -67,14 +77,7 @@ void MenuScene::SetupStaticBoundaries() {
 void MenuScene::OnEnter() {
     LOG_INFO("MenuScene::OnEnter  index={}", m_SelectedIndex);
 
-    m_Actors.Root().AddChild(m_MenuFrame);
-    m_Actors.Root().AddChild(m_ExitGameButton);
-    m_Actors.Root().AddChild(m_blue_cat_run_img);
-    m_Actors.Root().AddChild(m_LeftTriButton);
-    m_Actors.Root().AddChild(m_RightTriButton);
-    m_Actors.Root().AddChild(m_ExitGameText);
-    m_Actors.Root().AddChild(m_OptionText);
-    m_Actors.Root().AddChild(m_LocalPlayText);
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_LeftTriButton->ResetState();
     m_RightTriButton->ResetState();
@@ -101,14 +104,7 @@ void MenuScene::OnEnter() {
 void MenuScene::OnExit() {
     LOG_INFO("MenuScene::OnExit");
 
-    m_Actors.Root().RemoveChild(m_MenuFrame);
-    m_Actors.Root().RemoveChild(m_ExitGameButton);
-    m_Actors.Root().RemoveChild(m_blue_cat_run_img);
-    m_Actors.Root().RemoveChild(m_LeftTriButton);
-    m_Actors.Root().RemoveChild(m_RightTriButton);
-    m_Actors.Root().RemoveChild(m_ExitGameText);
-    m_Actors.Root().RemoveChild(m_OptionText);
-    m_Actors.Root().RemoveChild(m_LocalPlayText);
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 
     m_World.Clear();
 }

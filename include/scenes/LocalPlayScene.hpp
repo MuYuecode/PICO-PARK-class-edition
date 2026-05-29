@@ -6,6 +6,7 @@
 #define PICOPART_LOCALPLAYSCENE_HPP
 
 #include "app/Scene.hpp"
+#include "app/SceneActorGroup.hpp"
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
 
@@ -26,6 +27,8 @@ public:
     static constexpr int MAX_PLAYERS = 8;
 
 private:
+    SceneActorGroup m_ActorGroup;
+
     std::shared_ptr<Character>          m_MenuFrame;
     std::shared_ptr<Character>          m_ExitGameButton;
     std::shared_ptr<UITriangleButton> m_LeftTriButton;

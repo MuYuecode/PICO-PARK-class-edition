@@ -52,19 +52,21 @@ LocalPlayScene::LocalPlayScene(SceneServices services)
     m_NoConfigText->SetZIndex(20);
     m_NoConfigText->SetPosition({0.0f, -188.0f});
     m_NoConfigText->SetVisible(false);
+
+    m_ActorGroup
+        .Add(m_MenuFrame)
+        .Add(m_ExitGameButton)
+        .Add(m_LeftTriButton)
+        .Add(m_RightTriButton)
+        .Add(m_BlueCatRunImg)
+        .Add(m_PlayerCountText)
+        .Add(m_NoConfigText);
 }
 
 void LocalPlayScene::OnEnter() {
     LOG_INFO("LocalPlayScene::OnEnter  players={}", m_PlayerCount);
 
-    m_Actors.Root().AddChild(m_MenuFrame);
-    m_Actors.Root().AddChild(m_ExitGameButton);
-    m_Actors.Root().AddChild(m_LeftTriButton);
-    m_Actors.Root().AddChild(m_RightTriButton);
-    m_Actors.Root().AddChild(m_BlueCatRunImg);
-
-    m_Actors.Root().AddChild(m_PlayerCountText);
-    m_Actors.Root().AddChild(m_NoConfigText);
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_MenuFrame->SetVisible(true);
     m_MenuFrame->SetScale({1.0f, 1.0f});
@@ -92,17 +94,10 @@ void LocalPlayScene::OnEnter() {
 void LocalPlayScene::OnExit() {
     LOG_INFO("LocalPlayScene::OnExit");
 
-    m_Actors.Root().RemoveChild(m_PlayerCountText);
-    m_Actors.Root().RemoveChild(m_NoConfigText);
-
     m_MenuFrame->SetScale({1.0f, 1.0f});
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
 
-    m_Actors.Root().RemoveChild(m_LeftTriButton);
-    m_Actors.Root().RemoveChild(m_RightTriButton);
-    m_Actors.Root().RemoveChild(m_BlueCatRunImg);
-    m_Actors.Root().RemoveChild(m_ExitGameButton);
-    m_Actors.Root().RemoveChild(m_MenuFrame);
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 }
 
 void LocalPlayScene::Update() {

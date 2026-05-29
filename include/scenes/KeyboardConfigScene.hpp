@@ -8,6 +8,7 @@
 #include <array>
 #include <vector>
 #include "app/Scene.hpp"
+#include "app/SceneActorGroup.hpp"
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
 #include "game/UITriangleButton.hpp"
@@ -29,6 +30,8 @@ public:
     static constexpr int MAX_PLAYERS = 8;
 
 private:
+    SceneActorGroup m_ActorGroup;
+
     std::shared_ptr<Character> m_ExitGameButton;
     std::shared_ptr<Character> m_Frame;
     std::shared_ptr<Character> m_ChoiceFrame;

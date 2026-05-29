@@ -2,6 +2,7 @@
 #define MENU_SCENE_HPP
 
 #include "app/Scene.hpp"
+#include "app/SceneActorGroup.hpp"
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
 #include "game/UITriangleButton.hpp"
@@ -21,6 +22,8 @@ private:
     void SetupStaticBoundaries();
     void ShowCurrentOption() const;
     void HideAllOptions()    const;
+
+    SceneActorGroup m_ActorGroup;
 
     std::shared_ptr<Character>        m_MenuFrame;
     std::shared_ptr<Character>        m_ExitGameButton;

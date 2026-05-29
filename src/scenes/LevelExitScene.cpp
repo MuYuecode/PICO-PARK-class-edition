@@ -47,18 +47,20 @@ LevelExitScene::LevelExitScene(SceneServices services)
     m_LevelSelectText->SetPosition({kTextX, kRowY[2]});
     m_TitleText->SetPosition({kTextX, kRowY[3]});
 
+    m_ActorGroup
+        .Add(m_DimBg)
+        .Add(m_ExitFrame)
+        .Add(m_ExitButton)
+        .Add(m_BlueCatRunIcon)
+        .Add(m_ChoiceFrame)
+        .Add(m_ReturnGameText)
+        .Add(m_RetryText)
+        .Add(m_LevelSelectText)
+        .Add(m_TitleText);
 }
 
 void LevelExitScene::OnEnter() {
-    m_Actors.Root().AddChild(m_DimBg);
-    m_Actors.Root().AddChild(m_ExitFrame);
-    m_Actors.Root().AddChild(m_ExitButton);
-    m_Actors.Root().AddChild(m_BlueCatRunIcon);
-    m_Actors.Root().AddChild(m_ChoiceFrame);
-    m_Actors.Root().AddChild(m_ReturnGameText);
-    m_Actors.Root().AddChild(m_RetryText);
-    m_Actors.Root().AddChild(m_LevelSelectText);
-    m_Actors.Root().AddChild(m_TitleText);
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_SelectedRow = 0;
     m_WaitEscRelease = true;
@@ -66,15 +68,7 @@ void LevelExitScene::OnEnter() {
 }
 
 void LevelExitScene::OnExit() {
-    m_Actors.Root().RemoveChild(m_DimBg);
-    m_Actors.Root().RemoveChild(m_ExitFrame);
-    m_Actors.Root().RemoveChild(m_ExitButton);
-    m_Actors.Root().RemoveChild(m_BlueCatRunIcon);
-    m_Actors.Root().RemoveChild(m_ChoiceFrame);
-    m_Actors.Root().RemoveChild(m_ReturnGameText);
-    m_Actors.Root().RemoveChild(m_RetryText);
-    m_Actors.Root().RemoveChild(m_LevelSelectText);
-    m_Actors.Root().RemoveChild(m_TitleText);
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 }
 
 void LevelExitScene::Update() {

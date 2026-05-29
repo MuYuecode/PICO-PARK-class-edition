@@ -2,6 +2,7 @@
 #define EXIT_CONFIRM_SCENE_HPP
 
 #include "app/Scene.hpp"
+#include "app/SceneActorGroup.hpp"
 #include "game/Character.hpp"
 #include "game/GameText.hpp"
 
@@ -15,6 +16,8 @@ public:
     void Update()  override;
 
 private:
+    SceneActorGroup m_ActorGroup;
+
     std::shared_ptr<GameText>  m_ExitGame1Text;
     std::shared_ptr<GameText>  m_YesText;
     std::shared_ptr<GameText>  m_NoText;

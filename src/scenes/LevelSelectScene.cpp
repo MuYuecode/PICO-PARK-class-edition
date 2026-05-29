@@ -34,6 +34,16 @@ LevelSelectScene::LevelSelectScene(SceneServices services)
         "2 PLAYERS BEST TIME: --:--.--", 48);
     m_BestTimeText->SetZIndex(35);
     m_BestTimeText->SetPosition({0.0f, -278.0f});
+
+    m_ActorGroup
+        .Add(m_SelectorFrame)
+        .Add(m_TitleText)
+        .Add(m_BestTimeText);
+    for (int i = 0; i < LEVEL_COUNT; ++i) {
+        m_ActorGroup
+            .Add(m_LevelCover[i])
+            .Add(m_Crown[i]);
+    }
 }
 
 glm::vec2 LevelSelectScene::CellPos(int idx) {
@@ -55,13 +65,7 @@ void LevelSelectScene::OnEnter() {
 
     m_SelectedIdx = 0;
 
-    m_Actors.Root().AddChild(m_SelectorFrame);
-    m_Actors.Root().AddChild(m_TitleText);
-    m_Actors.Root().AddChild(m_BestTimeText);
-    for (int i = 0; i < LEVEL_COUNT; ++i) {
-        m_Actors.Root().AddChild(m_LevelCover[i]);
-        m_Actors.Root().AddChild(m_Crown[i]);
-    }
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_Actors.Header()->SetVisible(false);
     if (m_Actors.Floor() != nullptr) m_Actors.Floor()->SetVisible(false);
@@ -79,13 +83,7 @@ void LevelSelectScene::OnEnter() {
 void LevelSelectScene::OnExit() {
     LOG_INFO("LevelSelectScene::OnExit");
 
-    m_Actors.Root().RemoveChild(m_SelectorFrame);
-    m_Actors.Root().RemoveChild(m_TitleText);
-    m_Actors.Root().RemoveChild(m_BestTimeText);
-    for (int i = 0; i < LEVEL_COUNT; ++i) {
-        m_Actors.Root().RemoveChild(m_LevelCover[i]);
-        m_Actors.Root().RemoveChild(m_Crown[i]);
-    }
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 
     m_Actors.Header()->SetVisible(true);
     if (m_Actors.Floor() != nullptr) m_Actors.Floor()->SetVisible(true);

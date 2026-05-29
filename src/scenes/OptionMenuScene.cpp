@@ -144,6 +144,32 @@ OptionMenuScene::OptionMenuScene(SceneServices services)
     m_CancelText->SetZIndex(35);
     m_CancelText->SetPosition({COL_CANCEL_X, ROW_Y_BTN});
 
+    m_ActorGroup
+        .Add(m_ExitGameButton)
+        .Add(m_OptionMenuFrame)
+        .Add(m_ChoiceFrame)
+        .Add(m_TitleText)
+        .Add(m_KbConfigLabel)
+        .Add(m_KbConfigOpen)
+        .Add(m_BgColorLabel)
+        .Add(m_BgColorLeftBtn)
+        .Add(m_BgColorValue)
+        .Add(m_BgColorRightBtn)
+        .Add(m_BgmVolumeLabel)
+        .Add(m_BgmVolumeLeftBtn)
+        .Add(m_BgmVolumeValue)
+        .Add(m_BgmVolumeRightBtn)
+        .Add(m_SeVolumeLabel)
+        .Add(m_SeVolumeLeftBtn)
+        .Add(m_SeVolumeValue)
+        .Add(m_SeVolumeRightBtn)
+        .Add(m_DispNumberLabel)
+        .Add(m_DispNumberLeftBtn)
+        .Add(m_DispNumberValue)
+        .Add(m_DispNumberRightBtn)
+        .Add(m_OkText)
+        .Add(m_CancelText);
+
     OptionSettingsData saved;
     if (SaveManager::LoadOptionSettings(saved)) {
         m_Applied.bgColorIndex = saved.bgColorIndex;
@@ -161,30 +187,7 @@ OptionMenuScene::OptionMenuScene(SceneServices services)
 void OptionMenuScene::OnEnter() {
     LOG_INFO("OptionMenuScene::OnEnter");
 
-    m_Actors.Root().AddChild(m_ExitGameButton);
-    m_Actors.Root().AddChild(m_OptionMenuFrame);
-    m_Actors.Root().AddChild(m_ChoiceFrame);
-    m_Actors.Root().AddChild(m_TitleText);
-    m_Actors.Root().AddChild(m_KbConfigLabel);
-    m_Actors.Root().AddChild(m_KbConfigOpen);
-    m_Actors.Root().AddChild(m_BgColorLabel);
-    m_Actors.Root().AddChild(m_BgColorLeftBtn);
-    m_Actors.Root().AddChild(m_BgColorValue);
-    m_Actors.Root().AddChild(m_BgColorRightBtn);
-    m_Actors.Root().AddChild(m_BgmVolumeLabel);
-    m_Actors.Root().AddChild(m_BgmVolumeLeftBtn);
-    m_Actors.Root().AddChild(m_BgmVolumeValue);
-    m_Actors.Root().AddChild(m_BgmVolumeRightBtn);
-    m_Actors.Root().AddChild(m_SeVolumeLabel);
-    m_Actors.Root().AddChild(m_SeVolumeLeftBtn);
-    m_Actors.Root().AddChild(m_SeVolumeValue);
-    m_Actors.Root().AddChild(m_SeVolumeRightBtn);
-    m_Actors.Root().AddChild(m_DispNumberLabel);
-    m_Actors.Root().AddChild(m_DispNumberLeftBtn);
-    m_Actors.Root().AddChild(m_DispNumberValue);
-    m_Actors.Root().AddChild(m_DispNumberRightBtn);
-    m_Actors.Root().AddChild(m_OkText);
-    m_Actors.Root().AddChild(m_CancelText);
+    m_ActorGroup.AddTo(m_Actors.Root());
 
     m_OptionMenuFrame->SetPosition({0.0f, -5.0f});
     m_ExitGameButton->SetPosition({399.2f, 285.1f});
@@ -208,32 +211,8 @@ void OptionMenuScene::OnEnter() {
 void OptionMenuScene::OnExit() {
     LOG_INFO("OptionMenuScene::OnExit");
 
-    m_Actors.Root().RemoveChild(m_OptionMenuFrame);
-    m_Actors.Root().RemoveChild(m_TitleText);
-    m_Actors.Root().RemoveChild(m_KbConfigLabel);
-    m_Actors.Root().RemoveChild(m_KbConfigOpen);
-    m_Actors.Root().RemoveChild(m_BgColorLabel);
-    m_Actors.Root().RemoveChild(m_BgColorLeftBtn);
-    m_Actors.Root().RemoveChild(m_BgColorValue);
-    m_Actors.Root().RemoveChild(m_BgColorRightBtn);
-    m_Actors.Root().RemoveChild(m_BgmVolumeLabel);
-    m_Actors.Root().RemoveChild(m_BgmVolumeLeftBtn);
-    m_Actors.Root().RemoveChild(m_BgmVolumeValue);
-    m_Actors.Root().RemoveChild(m_BgmVolumeRightBtn);
-    m_Actors.Root().RemoveChild(m_SeVolumeLabel);
-    m_Actors.Root().RemoveChild(m_SeVolumeLeftBtn);
-    m_Actors.Root().RemoveChild(m_SeVolumeValue);
-    m_Actors.Root().RemoveChild(m_SeVolumeRightBtn);
-    m_Actors.Root().RemoveChild(m_DispNumberLabel);
-    m_Actors.Root().RemoveChild(m_DispNumberLeftBtn);
-    m_Actors.Root().RemoveChild(m_DispNumberValue);
-    m_Actors.Root().RemoveChild(m_DispNumberRightBtn);
-    m_Actors.Root().RemoveChild(m_OkText);
-    m_Actors.Root().RemoveChild(m_CancelText);
-    m_Actors.Root().RemoveChild(m_ChoiceFrame);
-
     m_ExitGameButton->SetPosition({331.0f, -14.0f});
-    m_Actors.Root().RemoveChild(m_ExitGameButton);
+    m_ActorGroup.RemoveFrom(m_Actors.Root());
 }
 
 void OptionMenuScene::Update() {
