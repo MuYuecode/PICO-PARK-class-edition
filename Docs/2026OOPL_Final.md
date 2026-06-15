@@ -5,6 +5,7 @@
 組別：T02  
 組員：陳書璿  
 復刻遊戲：PICO PARK: Classic Edition
+開發環境：CLion
 
 ## 專案簡介
 本專案以《PICO PARK: Classic Edition》為參考，製作本機多人合作平台遊戲。
